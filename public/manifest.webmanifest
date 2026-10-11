@@ -1,0 +1,13 @@
+{
+  "name": "Thymio · Cartes",
+  "short_name": "Thymio",
+  "description": "Programme le robot Thymio 3 avec des cartes.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#fff4de",
+  "theme_color": "#fff4de",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

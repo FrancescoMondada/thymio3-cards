@@ -1,0 +1,68 @@
+import { layout } from '../program.js';
+import { TICKS_PER_MS } from '../spec.js';
+
+const TURN_MS = 1500;                      // a 90 degree turn of the firmware angle controller
+const PULSE_UP_MS = 1280, PULSE_DOWN_MS = 2560;   // Common_GetBodyColorPulse()
+const HOME = { x: 0, y: 0, th: 0 };
+
+const lerp = (a, b, p) => a + (b - a) * p;
+const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p));
+const CIRCLE_OF = { F: 0, R: 2, B: 4, L: 6 };
+
+export const homePose = () => ({ ...HOME });
+
+// A real robot does not tell where it is, only which step it started and when its motion ended
+// ("@@step", "@@moved"). The mat shows the ideal movement of that step, timed like the robot's:
+// a straight step lasts what the 15 cm calibration says, a turn about a second and a half. When
+// the robot says it is done the avatar is at the end of the step, early or late.
+export class PoseAnimator {
+  constructor() { this.reset('', null); }
+
+  reset(program, cal) {
+    this.program = program;
+    this.path = layout(program);
+    this.cal = cal || { fw: 9000000, bw: 9000000 };
+    this.index = -1;
+    this.code = '';
+    this.t0 = 0;
+    this.moved = true;
+    this.ended = false;
+    this.startedAt = 0;
+  }
+
+  setCal(cal) { this.cal = cal; }
+
+  begin(now) { this.startedAt = now; }
+
+  onStep(index, code, now) { this.index = index; this.code = code; this.t0 = now; this.moved = false; }
+
+  onMoved(index) { if (index === this.index) this.moved = true; }
+
+  onEnd() { this.ended = true; this.moved = true; }
+
+  duration() {
+    if (this.code === 'F') return this.cal.fw / TICKS_PER_MS;
+    if (this.code === 'B') return this.cal.bw / TICKS_PER_MS;
+    return TURN_MS;
+  }
+
+  pose(now) {
+    const { start, poses } = this.path;
+    if (this.index < 0) return { x: start.x, y: start.y, th: start.h * 90 };
+    const to = poses[Math.min(this.index, poses.length - 1)];
+    const from = this.index === 0 ? start : poses[this.index - 1];
+    let p = this.moved ? 1 : Math.min(0.985, (now - this.t0) / this.duration());
+    if (this.code === 'L' || this.code === 'R') p = ease(p);
+    return { x: lerp(from.x, to.x, p), y: lerp(from.y, to.y, p), th: lerp(from.h, to.h, p) * 90 };
+  }
+
+  // What the robot's LEDs show, as far as the interface can tell: the body pulses, and the
+  // circle shows the direction of the step.
+  leds(now) {
+    const t = (now - this.startedAt) % (PULSE_UP_MS + PULSE_DOWN_MS);
+    const pulse = t < PULSE_UP_MS ? t / PULSE_UP_MS : 1 - (t - PULSE_UP_MS) / PULSE_DOWN_MS;
+    const circle = new Array(8).fill(0);
+    if (!this.ended && this.index >= 0 && this.code in CIRCLE_OF) circle[CIRCLE_OF[this.code]] = 16;
+    return { pulse: this.ended ? 0 : pulse, circle };
+  }
+}
