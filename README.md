@@ -6,7 +6,7 @@ Programmer le **mode Séquence** du Thymio 3 avec des **cartes**, sur une tablet
 **Démo en ligne : <https://francescomondada.github.io/thymio3-cards/>** (robot virtuel).
 Avec un **robot de démonstration** qui joue le rôle du Bluetooth (connexion, relance à chaque carte,
 journal) : <https://francescomondada.github.io/thymio3-cards/?fakerobot>. Avec un vrai robot, il faut
-Chrome ou Edge (Web Bluetooth).
+Chrome ou Edge (Web Bluetooth), ou **Bluefy** sur iPhone et iPad (voir plus bas).
 
 On touche (ou on glisse) des cartes *Avance*, *Recule*, *Tourne à gauche*, *Tourne à droite* pour
 construire un programme, puis on appuie sur **C'est parti !** : le robot le rejoue. Sans robot, un
@@ -25,9 +25,16 @@ npm run build      # site statique dans dist/
 ```
 
 Pour piloter un vrai robot : **Chrome ou Edge** (Web Bluetooth), sur ordinateur ou tablette
-Android. Safari et Firefox, et donc l'iPad, ne savent pas faire du Web Bluetooth (un navigateur
-comme Bluefy le sait) : l'application reste alors en simulation. Le déploiement GitHub Pages est
-dans `.github/workflows/deploy.yml`, comme pour le cockpit.
+Android. Safari et Firefox, et donc **l'iPhone et l'iPad** (où tous les navigateurs, Chrome compris,
+reposent sur Safari), ne savent pas faire du Web Bluetooth : l'application reste alors en simulation,
+et son réglage « Pour les grands » le dit. **Sur iPhone et iPad, installer
+[Bluefy](https://apps.apple.com/app/id1492822055)** (navigateur gratuit de l'App Store qui ajoute
+le Web Bluetooth), y ouvrir l'adresse de l'application (HTTPS, comme sur GitHub Pages) et
+connecter le robot. Non testé avec Bluefy : l'API choisit la taille des paquets en
+essayant de 510 octets à 23, l'envoi du module (15 Ko, une seule fois par robot) y sera
+probablement plus lent qu'avec Chrome. En cas de problème, envoyer le journal de la connexion
+(voir « Déboguer la connexion »). Le déploiement GitHub Pages est dans `.github/workflows/deploy.yml`,
+comme pour le cockpit.
 
 ## Ce qui est reproduit : le mode Séquence du firmware
 
@@ -132,7 +139,7 @@ pilote jamais les moteurs.
   le triangle d'avertissement qui apparaissait de temps en temps).
 
 Le script complet, avec le programme en cours, s'affiche et se télécharge dans le panneau « Pour les
-grands » (engrenage) : il tourne tel quel dans n'importe quel outil MicroPython pour Thymio 3.
+grands » (l'icône du robot orange, en haut à gauche) : il tourne tel quel dans n'importe quel outil MicroPython pour Thymio 3.
 
 > Avec un canal vers le script en cours (par exemple une caractéristique BLE qui alimente
 > `stdin_ringbuf` côté firmware), le programme pourrait être mis à jour sans relancer le mode.
@@ -140,7 +147,7 @@ grands » (engrenage) : il tourne tel quel dans n'importe quel outil MicroPython
 
 ## Déboguer la connexion
 
-Réglages (engrenage) → **Journal de la connexion** : chaque étape avec sa durée. `⇨` ce que
+Réglages (icône du robot orange, en haut à gauche) → **Journal de la connexion** : chaque étape avec sa durée. `⇨` ce que
 l'interface envoie (taille du script, exécution, arrêt), `⇦` ce que le robot renvoie sur stdout,
 `·` les événements de l'API (connexion, chargement du script, fin du script), `✖` les erreurs.
 Les mêmes lignes sont dans la console du navigateur, préfixées `[robot]`. Boutons : **Tester le
@@ -203,7 +210,15 @@ cette interface.
 
 ## Statut — à lire
 
-**Non validé sur un robot physique.** Ce qui est vérifié :
+**Essayé sur un vrai robot Thymio 3 (octobre 2026) : tout fonctionne** : connexion, installation du
+module, cartes, relance à chaque modification, lecture, arrêt, et programme identique des deux côtés.
+Les durées relevées dans le journal de la connexion : module installé une seule fois en ≈ 5 s
+(15 Ko, paquets de 510 octets), puis lanceur envoyé en 50 à 200 ms et `hello` du mode au bout de
+0,3 à 0,8 s. Les problèmes rencontrés pendant cet essai (liaison encombrée par les flux de capteurs
+d'un client précédent, faux avertissements, relances en double, envois trop longs) sont corrigés et
+documentés dans « Déboguer la connexion ».
+
+Ce qui est vérifié en plus, sans robot, par les tests :
 
 - `tests/test_sequence_mode.py` fait tourner le **vrai script** sur un robot virtuel
   (`tests/fake_robot.py` : cinématique, gyroscope en ticks, minuteur matériel, contrôleur d'angle du
@@ -218,11 +233,9 @@ cette interface.
   construit, par le chemin Bluetooth (API simulée, stdout découpé en morceaux de 11 octets).
 - Les appels MicroPython utilisés ont été relus dans `ref/mp/ports/esp32/thymio_*.c`.
 
-À contrôler sur le robot : le comportement du compteur `distance_calib_timer_get()` après
-l'alarme (le script a un repli sur l'horloge), que `MOTORS.set_speed()` applique bien les mêmes
-corrections moteur que `Common_SetTargetSpeed()`, le temps réel d'envoi du script, la mémoire du
-compilateur MicroPython pour 15 Ko, la fréquence réelle de la boucle, la vitesse de rotation (le
-robot virtuel suppose 15 cm en 1,8 s à la vitesse 300, la valeur d'usine du minuteur).
+Pas encore vérifié : la précision des 15 cm et des 90° mesurée à la règle sur le sol (les tests la
+mesurent sur le robot virtuel, l'essai réel n'a montré aucun défaut visible), d'autres versions du
+micrologiciel que celle essayée, et l'iPhone / l'iPad avec Bluefy (voir plus haut).
 
 ## Organisation
 
@@ -253,7 +266,7 @@ changements.
   drapeau de départ, jauge des 50 cartes, robot virtuel (écran) ou réel (robot), Bluetooth,
   messages du tapis (le robot apprend, remets-le au départ, bravo, attention, liaison coupée).
   Les mots n'existent que pour les lecteurs d'écran (`aria-label`, zone `aria-live` cachée) et dans
-  la page de l'adulte, derrière l'engrenage : langue, sons, exemples, état du robot, dernière
+  la page de l'adulte, derrière l'icône du robot orange en haut à gauche : langue, sons, exemples, état du robot, dernière
   erreur, script Python.
 
 - **La carte tourne, pas le robot** : le robot est toujours au même endroit de l'écran, tourné vers
@@ -264,18 +277,21 @@ changements.
   rose) ; le toucher à nouveau l'enlève. Il ne sert qu'à être vu : le robot n'en tient pas compte.
   Hors de l'écran, une flèche au bord de l'écran, qui tourne avec le tapis, indique sa direction.
 - **Remettre le robot au départ** : la touche **R** ramène le robot sur la case de départ, direction
-  haut (cela se fait aussi tout seul à chaque modification des cartes et à chaque départ). Avec un
-  vrai robot, le remettre à la main sur la case départ avant de recommencer.
+  haut (cela se fait aussi tout seul à chaque modification des cartes et à chaque départ). **Le
+  retour se voit** : le tapis glisse et tourne en sens inverse sous le robot (0,45 à 0,95 s, plus
+  long si le chemin est long, virage par le plus court côté), puis le robot fait un petit bond en
+  arrivant ; rien ne bouge s'il est déjà sur la case départ, ni si le système demande de réduire
+  les animations. Avec un vrai robot, le remettre à la main sur la case départ avant de recommencer.
 - **Le chemin du robot n'est pas dessiné par défaut** : l'enfant l'imagine. Le tapis ne montre que
   le robot, à zoom fixe sans tenir compte du programme (cadrer le trajet le révélerait). La touche **D** affiche le chemin prévu et la trace déjà parcourue, et cadre tout
   le trajet (le zoom s'adapte pour qu'il reste entier dans l'écran) ; une seconde pression le cache. Il n'y a pas de bouton à l'écran, et le choix n'est
   pas mémorisé : chaque ouverture repart sans chemin. La touche est documentée dans les réglages
-  (engrenage → raccourcis clavier). Sur une tablette sans clavier elle n'est pas disponible.
+  (icône du robot orange → raccourcis clavier). Sur une tablette sans clavier elle n'est pas disponible.
 - Toucher une carte de la palette l'ajoute à la fin ; la glisser l'insère où on la dépose ; glisser
   une carte de la piste la déplace ; la déposer sur la gomme la supprime ; toucher une carte fait
   apparaître sa croix. Sur tablette, une carte de la piste se soulève en la gardant appuyée un
   instant (un balayage fait défiler un long programme).
 - Clavier : flèches = cartes, Entrée = c'est parti, Retour arrière = gomme, Échap = stop, R = robot
-  au départ, D = chemin. Tout est aussi dans les réglages (engrenage).
+  au départ, D = chemin. Tout est aussi dans les réglages (icône du robot orange, en haut à gauche).
 - Avec un vrai robot, le remettre sur la case départ avant de recommencer : le robot repart de là
   où il est et prend son cap actuel comme cap zéro.

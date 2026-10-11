@@ -1,5 +1,5 @@
 // The words of the interface. The main screen shows none: it is all pictograms. These strings are
-// for screen readers (aria-labels, a hidden live region) and for the adults' page (gear button).
+// for screen readers (aria-labels, a hidden live region) and for the adults' page (the logo button at the top left).
 export const LANGS = [
   { id: 'fr', label: 'Français' },
   { id: 'en', label: 'English' },
@@ -25,7 +25,8 @@ const fr = {
     disconnect: 'Déconnecter', script: 'Script Python envoyé au robot', scriptHint: 'Le mode Séquence du robot, écrit en MicroPython, avec votre programme à l’intérieur.',
     copy: 'Copier', copied: 'Copié !', download: 'Télécharger',
     about: 'Ce programme reproduit le mode Séquence du robot : 15 cm en avant ou en arrière, tours de 90°, 50 cartes au maximum. Sur un vrai robot, c’est un script MicroPython qui conduit les moteurs avec le gyroscope, comme le micrologiciel.',
-    noBluetooth: 'Ce navigateur ne sait pas se connecter au robot (Web Bluetooth). Utilisez Chrome ou Edge sur ordinateur ou sur tablette Android. Sur iPad, utilisez un navigateur compatible comme Bluefy. En attendant, le robot virtuel fonctionne.',
+    noBluetoothTitle: 'Ce navigateur ne peut pas se connecter au robot (Web Bluetooth).',
+    noBluetooth: 'Utilisez Chrome ou Edge sur ordinateur ou sur tablette Android. Sur iPhone et iPad, Safari et Chrome ne le savent pas : utilisez un navigateur compatible comme Bluefy (gratuit, App Store). En attendant, le robot virtuel fonctionne.',
     shortcuts: [['↑ ↓ ← →', 'Ajouter la carte avance, recule, gauche, droite'], ['Entrée', 'C’est parti !'], ['Retour arrière', 'Gomme : enlever la dernière carte'], ['Échap', 'Stop'], ['R', 'Remettre le robot sur la case départ (sur le tapis)'], ['D', 'Montrer ou cacher le chemin du robot sur le tapis (caché au départ)']],
     mapHelp: 'Tapis : le robot est toujours tourné vers le haut, c’est le tapis qui tourne. Toucher une case y pose le drapeau d’arrivée (pour la voir seulement, le robot n’en tient pas compte) ; le toucher à nouveau l’enlève. Un drapeau hors de l’écran est indiqué par une flèche au bord.',
     shortcutsTitle: 'Raccourcis clavier',
@@ -60,7 +61,8 @@ const en = {
     disconnect: 'Disconnect', script: 'Python script sent to the robot', scriptHint: 'The robot’s Sequence mode, written in MicroPython, with your program inside.',
     copy: 'Copy', copied: 'Copied!', download: 'Download',
     about: 'This reproduces the robot’s Sequence mode: 15 cm forward or backward, 90° turns, 50 cards at most. On a real robot, a MicroPython script drives the motors with the gyroscope, like the firmware does.',
-    noBluetooth: 'This browser cannot connect to the robot (Web Bluetooth). Use Chrome or Edge on a computer or an Android tablet. On an iPad, use a compatible browser such as Bluefy. Meanwhile the virtual robot works.',
+    noBluetoothTitle: 'This browser cannot connect to the robot (Web Bluetooth).',
+    noBluetooth: 'Use Chrome or Edge on a computer or an Android tablet. On an iPhone or iPad, Safari and Chrome cannot do it: use a compatible browser such as Bluefy (free, App Store). Meanwhile the virtual robot works.',
     shortcuts: [['↑ ↓ ← →', 'Add the forward, backward, left, right card'], ['Enter', 'Go!'], ['Backspace', 'Eraser: remove the last card'], ['Esc', 'Stop'], ['R', 'Put the robot back on the start square (on the mat)'], ['D', 'Show or hide the robot’s path on the mat (hidden at the start)']],
     mapHelp: 'Mat: the robot always faces up, it is the mat that turns. Touching a square puts the target flag there (only to be seen, the robot does not use it); touching it again removes it. A flag out of sight is pointed at by an arrow on the edge.',
     shortcutsTitle: 'Keyboard shortcuts',
@@ -95,7 +97,8 @@ const de = {
     disconnect: 'Trennen', script: 'Python-Skript für den Roboter', scriptHint: 'Der Sequenz-Modus des Roboters in MicroPython, mit deinem Programm darin.',
     copy: 'Kopieren', copied: 'Kopiert!', download: 'Herunterladen',
     about: 'Das bildet den Sequenz-Modus des Roboters nach: 15 cm vor oder zurück, 90°-Drehungen, höchstens 50 Karten. Auf einem echten Roboter steuert ein MicroPython-Skript die Motoren mit dem Gyroskop, wie die Firmware.',
-    noBluetooth: 'Dieser Browser kann sich nicht mit dem Roboter verbinden (Web Bluetooth). Nimm Chrome oder Edge am Computer oder auf einem Android-Tablet. Auf dem iPad hilft ein kompatibler Browser wie Bluefy. Der virtuelle Roboter funktioniert trotzdem.',
+    noBluetoothTitle: 'Dieser Browser kann sich nicht mit dem Roboter verbinden (Web Bluetooth).',
+    noBluetooth: 'Nimm Chrome oder Edge am Computer oder auf einem Android-Tablet. Auf iPhone und iPad können Safari und Chrome das nicht: nimm einen kompatiblen Browser wie Bluefy (kostenlos, App Store). Der virtuelle Roboter funktioniert trotzdem.',
     shortcuts: [['↑ ↓ ← →', 'Karte vorwärts, rückwärts, links, rechts hinzufügen'], ['Eingabe', 'Los geht’s!'], ['Rücktaste', 'Radiergummi: letzte Karte entfernen'], ['Esc', 'Stopp'], ['R', 'Roboter auf das Startfeld zurückstellen (auf der Matte)'], ['D', 'Weg des Roboters auf der Matte zeigen oder verbergen (anfangs verborgen)']],
     mapHelp: 'Matte: der Roboter schaut immer nach oben, die Matte dreht sich. Ein Feld antippen setzt dort die Zielflagge (nur zum Anschauen, der Roboter nutzt sie nicht); nochmal antippen entfernt sie. Eine Flagge außerhalb des Bildes wird durch einen Pfeil am Rand angezeigt.',
     shortcutsTitle: 'Tastenkürzel',
@@ -130,7 +133,8 @@ const it = {
     disconnect: 'Scollega', script: 'Script Python inviato al robot', scriptHint: 'La modalità Sequenza del robot, scritta in MicroPython, con il tuo programma dentro.',
     copy: 'Copia', copied: 'Copiato!', download: 'Scarica',
     about: 'Riproduce la modalità Sequenza del robot: 15 cm avanti o indietro, giri di 90°, al massimo 50 carte. Su un robot vero, uno script MicroPython guida i motori con il giroscopio, come il firmware.',
-    noBluetooth: 'Questo browser non può collegarsi al robot (Web Bluetooth). Usa Chrome o Edge su computer o su tablet Android. Su iPad usa un browser compatibile come Bluefy. Intanto il robot virtuale funziona.',
+    noBluetoothTitle: 'Questo browser non può collegarsi al robot (Web Bluetooth).',
+    noBluetooth: 'Usa Chrome o Edge su computer o su tablet Android. Su iPhone e iPad Safari e Chrome non ne sono capaci: usa un browser compatibile come Bluefy (gratuito, App Store). Intanto il robot virtuale funziona.',
     shortcuts: [['↑ ↓ ← →', 'Aggiungi la carta avanti, indietro, sinistra, destra'], ['Invio', 'Via!'], ['Backspace', 'Gomma: togli l’ultima carta'], ['Esc', 'Stop'], ['R', 'Rimetti il robot sul quadrato di partenza (sul tappeto)'], ['D', 'Mostra o nascondi il percorso del robot sul tappeto (nascosto all’inizio)']],
     mapHelp: 'Tappeto: il robot guarda sempre in alto, è il tappeto che gira. Toccando un quadrato vi si mette la bandiera d’arrivo (solo da vedere, il robot non la usa); toccandola di nuovo si toglie. Una bandiera fuori dallo schermo è indicata da una freccia sul bordo.',
     shortcutsTitle: 'Scorciatoie da tastiera',

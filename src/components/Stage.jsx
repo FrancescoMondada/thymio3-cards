@@ -135,6 +135,14 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
         if (d) d.style.opacity = String(0.18 + 0.82 * ((leds?.circle?.[k] || 0) / 16));
       }
     },
+    // the robot is back on the start square: a little pop
+    arrive() {
+      const el = robot.current;
+      if (!el) return;
+      el.classList.remove('arrive');
+      void el.getBoundingClientRect();
+      el.classList.add('arrive');
+    },
   }), []);
 
   const touch = (e) => {

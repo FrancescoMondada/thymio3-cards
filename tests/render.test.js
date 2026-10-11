@@ -59,6 +59,26 @@ test('the settings page renders in every language, connected or not, with a jour
   }
 });
 
+test('without Web Bluetooth the settings page says what to use, Bluefy on an iPhone or iPad, in every language', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+    };
+    const off = renderToStaticMarkup(h(Panel, { ...base, bluetooth: false }));
+    const on = renderToStaticMarkup(h(Panel, { ...base, bluetooth: true }));
+    assert.ok(/Bluefy/.test(t.panel.noBluetooth) && /iPhone/.test(t.panel.noBluetooth) && /iPad/.test(t.panel.noBluetooth) && /Chrome/.test(t.panel.noBluetooth), `the warning names Chrome, Bluefy, iPhone and iPad (${lang})`);
+    assert.ok(off.includes('Bluefy'), `the warning is shown (${lang})`);
+    assert.ok(off.includes('role="alert"') && off.includes(t.panel.noBluetoothTitle), `with a headline (${lang})`);
+    assert.ok(off.includes('href="https://apps.apple.com/app/id1492822055"'), `and a link to Bluefy (${lang})`);
+    assert.ok(off.indexOf('role="alert"') < off.indexOf(t.panel.language), `before everything else on the page (${lang})`);
+    assert.ok(!on.includes('Bluefy'), `and only when the browser cannot connect (${lang})`);
+  }
+});
+
 test('the connect button shows its states: grey, connecting, in sync, on, standby, unavailable', async () => {
   const { default: TopBar } = await load('/src/components/TopBar.jsx');
   const { I18N } = await load('/src/i18n.js');
@@ -75,6 +95,27 @@ test('the connect button shows its states: grey, connecting, in sync, on, standb
   for (const m of [on, sync, standby]) assert.ok(m.includes('class="tick"'), 'a tick when connected');
   assert.ok(!off.includes('class="tick"'));
   for (const m of [off, wait, on, sync, standby, no]) assert.equal(textOf(m), '');
+});
+
+test('the top left logo opens the settings, and there is no other settings button', async () => {
+  const { default: TopBar } = await load('/src/components/TopBar.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    let opened = 0;
+    const tree = TopBar({ t, conn: { status: 'disconnected' }, live: false, bluetooth: true, busy: false, syncing: false, modeUp: false, onConnect: noop, onPanel: () => { opened += 1; } });
+    const buttons = [];
+    const walk = (el) => { if (!el || typeof el !== 'object') return; if (el.type === 'button') buttons.push(el); [].concat(el.props?.children ?? []).forEach(walk); };
+    walk(tree);
+    const logo = buttons.find((b) => b.props.className === 'logo');
+    assert.ok(logo, `the logo is a button (${lang})`);
+    assert.equal(logo.props['aria-label'], t.panel.title, `named for screen readers (${lang})`);
+    logo.props.onClick();
+    assert.equal(opened, 1, `and opens the settings (${lang})`);
+    assert.equal(buttons.length, 2, `the logo and the robot are the only buttons (${lang})`);
+    const markup = renderToStaticMarkup(h(TopBar, { t, conn: { status: 'disconnected' }, live: false, bluetooth: true, busy: false, syncing: false, modeUp: false, onConnect: noop, onPanel: noop }));
+    assert.ok(!markup.includes('gear'), 'no gear any more');
+    assert.equal(textOf(markup), '', 'still no text');
+  }
 });
 
 test('the disconnect question has no words and two answers', async () => {

@@ -55,12 +55,6 @@ export const FlagIcon = () => (
     <path d="M16 10 H50 L42 22 L50 34 H16 Z" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
   </svg>
 );
-export const GearIcon = () => (
-  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="32" cy="32" r="9" />
-    <path d="M32 6 V13 M32 51 V58 M6 32 H13 M51 32 H58 M13.6 13.6 L18.5 18.5 M45.5 45.5 L50.4 50.4 M50.4 13.6 L45.5 18.5 M18.5 45.5 L13.6 50.4" />
-  </svg>
-);
 export const BatteryIcon = ({ level = 1 }) => (
   <svg viewBox="0 0 40 20" aria-hidden="true" focusable="false">
     <rect x="1.5" y="2.5" width="31" height="15" rx="4" fill="none" stroke="currentColor" strokeWidth="2.5" />

@@ -10,7 +10,7 @@ import { cleanProgram, MAX_STEPS } from './spec.js';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
-import { PoseAnimator, homePose } from './robot/pose-anim.js';
+import { Homing, PoseAnimator, homePose } from './robot/pose-anim.js';
 import { supportsBluetooth } from './api.js';
 import { play as sfx, setSoundEnabled } from './sound.js';
 import { useDrag } from './useDrag.js';
@@ -22,6 +22,8 @@ const toProgram = (cards) => cards.map((c) => c.code).join('');
 
 const load = (key, fallback) => { try { const v = localStorage.getItem(key); return v == null ? fallback : v; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
+
+const reduceMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 export default function App() {
   const [lang, setLang] = useState(detectLang);
@@ -62,6 +64,9 @@ export default function App() {
   const robot = useRef(null);
   const anim = useRef(new PoseAnimator());
   const home = useRef(true);                // the avatar waits on the start square
+  const wasHome = useRef(true);             // (the animation loop) it was on the start square at the last frame
+  const shown = useRef(homePose());         // the pose drawn at the last frame
+  const homing = useRef(null);              // the glide back to the start square, while there is one
   const sync = useRef(null);                // keeps the robot's program equal to the cards (robot/sync.js)
   const syncCallbacks = useRef({});
   const S = useRef({});
@@ -214,17 +219,31 @@ export default function App() {
       const dt = Math.min(100, now - last);
       last = now;
       const s = S.current;
-      let pose, leds;
+      let leds;
       if (!s.live) {
         sim.current.advance(dt * s.speed);
         const l = sim.current.leds();
-        pose = home.current ? homePose() : sim.current.pose();
         leds = { pulse: l && sim.current.running ? l.front[0] / 16 : 0, circle: l && sim.current.running ? l.circle : [] };
       } else {
-        pose = home.current ? homePose() : anim.current.pose(now);
         leds = anim.current.leds(now);
         if (s.phase !== 'playing') leds = { pulse: 0, circle: [] };
       }
+      // Where the robot is. Sent back to the start square (the cards were touched), it does not jump
+      // there: the mat glides and turns back under it, and the robot gives a little pop when it arrives.
+      let pose;
+      if (home.current) {
+        if (!wasHome.current && !reduceMotion() && Homing.needed(shown.current)) homing.current = new Homing(shown.current, now);
+        pose = homePose();
+        if (homing.current) {
+          const h = homing.current.at(now);
+          if (h.done) { homing.current = null; stageRef.current?.arrive(); } else pose = h.pose;
+        }
+      } else {
+        homing.current = null;
+        pose = s.live ? anim.current.pose(now) : sim.current.pose();
+      }
+      wasHome.current = home.current;
+      shown.current = pose;
       stageRef.current?.setPose(pose, leds);
       raf = requestAnimationFrame(loop);
     };

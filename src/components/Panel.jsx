@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CloseIcon } from '../icons.jsx';
+import { BluetoothOffIcon, CloseIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
 const SPEEDS = [1, 2, 4];
+const BLUEFY_URL = 'https://apps.apple.com/app/id1492822055';   // a browser with Web Bluetooth, for iPhone and iPad
 
 // The page for the adult: language, sounds, the robot, examples, and the Python that runs.
 export default function Panel({
@@ -51,6 +52,17 @@ export default function Panel({
           <button className="close" onClick={onClose} aria-label={t.panel.close}><CloseIcon /></button>
         </header>
 
+        {!bluetooth && (
+          <div className="nobt" role="alert">
+            <span className="nobt-icon"><BluetoothOffIcon /></span>
+            <div>
+              <b>{t.panel.noBluetoothTitle}</b>
+              <p>{t.panel.noBluetooth}</p>
+              <a className="nobt-link" href={BLUEFY_URL} target="_blank" rel="noopener noreferrer">Bluefy · App Store</a>
+            </div>
+          </div>
+        )}
+
         <div className="rows">
           <div className="row">
             <label>{t.panel.language}</label>
@@ -88,7 +100,6 @@ export default function Panel({
         </div>
 
         <h3>{t.panel.robot}</h3>
-        {!bluetooth && <p className="warn">{t.panel.noBluetooth}</p>}
         {lastError && <p className="warn"><b>{t.panel.lastError}</b><br />{lastError}</p>}
         {live ? (
           <dl className="facts">

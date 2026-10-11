@@ -11,6 +11,30 @@ const CIRCLE_OF = { F: 0, R: 2, B: 4, L: 6 };
 
 export const homePose = () => ({ ...HOME });
 
+// The robot goes back to the start square (the cards were touched): the mat slides and turns back
+// under it, so that the return is seen. Eased, 0.45 to 0.95 s depending on the distance; the turn
+// takes the short way round.
+const HOMING_MIN_MS = 450, HOMING_MAX_MS = 950;
+const turnToHome = (th) => { const r = ((th % 360) + 360) % 360; return (r <= 180 ? -r : 360 - r) || 0; };
+
+export class Homing {
+  // Is there anything to show? (the robot is not on the start square already)
+  static needed(from) { return Math.hypot(from.x, from.y) > 0.02 || Math.abs(turnToHome(from.th)) > 0.5; }
+
+  constructor(from, now) {
+    this.from = { x: from.x, y: from.y, th: from.th };
+    this.dth = turnToHome(from.th);
+    this.t0 = now;
+    this.duration = Math.max(HOMING_MIN_MS, Math.min(HOMING_MAX_MS, 400 + 120 * Math.hypot(from.x, from.y) + 2 * Math.abs(this.dth)));
+  }
+
+  at(now) {
+    const p = Math.max(0, Math.min(1, (now - this.t0) / this.duration));
+    const e = ease(p);
+    return { pose: { x: lerp(this.from.x, 0, e), y: lerp(this.from.y, 0, e), th: this.from.th + this.dth * e }, done: p >= 1 };
+  }
+}
+
 // A real robot does not tell where it is, only which step it started and when its motion ended
 // ("@@step", "@@moved"). The mat shows the ideal movement of that step, timed like the robot's:
 // a straight step lasts what the 15 cm calibration says, a turn about a second and a half. When

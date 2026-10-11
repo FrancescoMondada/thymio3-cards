@@ -1,8 +1,8 @@
 import React from 'react';
-import { BatteryIcon, ConnectIcon, GearIcon, RobotIcon } from '../icons.jsx';
+import { BatteryIcon, ConnectIcon, RobotIcon } from '../icons.jsx';
 
-// No words: the logo, the robot (grey and waiting, in colour with a tick once it is connected,
-// waves moving while it is given the cards), the gear.
+// No words: the logo, which is also the way to the grown-ups' page (settings), and the robot (grey
+// and waiting, in colour with a tick once it is connected, waves moving while it is given the cards).
 export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp, onConnect, onPanel }) {
   const connecting = conn.status === 'connecting';
   // connected: the mode runs on the robot ('on'), it is being given the cards ('sync'), or it is not running ('standby')
@@ -14,7 +14,7 @@ export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp
   const level = conn.battery ? Math.max(0.1, Math.min(1, (conn.battery - 3.3) / 0.9)) : null;
   return (
     <header className="top">
-      <div className="logo" aria-hidden="true"><RobotIcon /></div>
+      <button className="logo" onClick={onPanel} aria-label={t.panel.title}><RobotIcon /></button>
       <div className="spacer" />
       <button
         className={`robot-btn ${state} ${live ? 'live' : ''}`}
@@ -25,7 +25,6 @@ export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp
         <ConnectIcon state={state} />
         {live && level != null && <span className="bat"><BatteryIcon level={level} /></span>}
       </button>
-      <button className="gear" onClick={onPanel} aria-label={t.panel.title}><GearIcon /></button>
     </header>
   );
 }
