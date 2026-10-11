@@ -3,11 +3,16 @@
 Programmer le **mode Séquence** du Thymio 3 avec des **cartes**, sur une tablette ou un téléphone,
 à l'âge de 6 ans.
 
+**Démo en ligne : <https://francescomondada.github.io/thymio3-cards/>** (robot virtuel).
+Avec un **robot de démonstration** qui joue le rôle du Bluetooth (connexion, relance à chaque carte,
+journal) : <https://francescomondada.github.io/thymio3-cards/?fakerobot>. Avec un vrai robot, il faut
+Chrome ou Edge (Web Bluetooth).
+
 On touche (ou on glisse) des cartes *Avance*, *Recule*, *Tourne à gauche*, *Tourne à droite* pour
 construire un programme, puis on appuie sur **C'est parti !** : le robot le rejoue. Sans robot, un
 **robot virtuel** joue le même programme sur un tapis quadrillé, avec la même mécanique.
 
-Même base que [`thymio3-cockpit`](../thymio3-cockpit) : React + Vite, et l'API
+Même base que [`thymio3-cockpit`](https://github.com/FrancescoMondada/thymio3-cockpit) : React + Vite, et l'API
 [`Mobsya/thymio3-ts-api`](https://github.com/Mobsya/thymio3-ts-api) prise directement sur GitHub
 (non copiée ici). Le comportement du robot vient du firmware
 [`Mobsya/thymio3-firmware-esp32`](https://github.com/Mobsya/thymio3-firmware-esp32).
