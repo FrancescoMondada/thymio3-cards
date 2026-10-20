@@ -372,10 +372,56 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
   .tool { width: 60px; height: 60px; border-radius: 20px; }
   .go { height: 66px; }
 }
+/* A phone held upright: the program is what the child works on, it gets the room. Smaller cards (six to a
+   row instead of four), a palette that is not taller than it has to be, less of the mat, and the choices of
+   a repeat or an "if" card as large as the width allows. */
+@media (max-width: 520px) and (orientation: portrait) {
+  :root { --card: 44px; --pcard: 54px; }
+  .board { grid-template-rows: minmax(0, 32%) minmax(0, 1fr); }
+  .left, .right { gap: 10px; }
+  .track-scroll { padding: 12px 10px 4px; border-radius: 22px; }
+  .track { gap: 10px 8px; padding: 6px 2px 4px; }
+  .card { border-radius: 14px; box-shadow: 0 4px 0 var(--cd), 0 7px 10px rgba(60, 40, 10, .14); }
+  .flag-tile, .empty-hint .ghost-slot { border-radius: 14px; }
+  .slot .x { top: -11px; right: -11px; width: 30px; height: 30px; }
+  .slot .x svg { width: 13px; height: 13px; }
+  .slot.done::after { width: 20px; height: 20px; font-size: 13px; right: -5px; bottom: -3px; }
+  .dock { gap: 10px; padding-bottom: 4px; }
+  .palette { gap: 8px; }
+  .pcard { aspect-ratio: auto; height: var(--pcard); min-height: 0; border-radius: 18px; box-shadow: 0 5px 0 var(--cd), 0 8px 12px rgba(60, 40, 10, .14); }
+  .pcard svg { max-height: 62%; }
+  .pcard:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--cd); }
+  .tool { width: 54px; height: 54px; border-radius: 18px; }
+  .go { height: 58px; }
+  .go svg { width: 38px; height: 38px; }
+  /* the choices: across the whole width of the program box, taller than wide */
+  .picker { left: -9px; right: -9px; padding: 6px; gap: 5px; }
+  .picker .pick-row { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+  .picker .pick-row + .pick-row { padding-top: 5px; }
+  .picker .pick { aspect-ratio: auto; height: 44px; border-radius: 11px; }
+}
+/* a short phone (older Android, iPhone SE): the palette and the mat give a little more */
+@media (max-width: 520px) and (orientation: portrait) and (max-height: 720px) {
+  :root { --pcard: 46px; }
+  .board { grid-template-rows: minmax(0, 28%) minmax(0, 1fr); }
+  .pcard { border-radius: 16px; }
+  .tool { width: 48px; height: 48px; border-radius: 16px; }
+  .tool svg:not(.ring) { width: 30px; height: 30px; }
+  .go { height: 52px; }
+  .go svg { width: 34px; height: 34px; }
+}
 @media (max-height: 520px) {
-  :root { --card: 50px; --pcard: 58px; }
-  .pcard { aspect-ratio: auto; min-height: 58px; border-radius: 18px; box-shadow: 0 5px 0 var(--cd); }
-  .go { height: 58px; } .tool { width: 54px; height: 54px; }
+  :root { --card: 44px; --pcard: 46px; }
+  .pcard { aspect-ratio: auto; height: var(--pcard); min-height: 0; border-radius: 16px; box-shadow: 0 5px 0 var(--cd); }
+  .pcard svg { max-height: 62%; }
+  .dock { gap: 8px; padding-bottom: 2px; }
+  .palette { gap: 8px; }
+  .go { height: 50px; } .tool { width: 48px; height: 48px; border-radius: 16px; }
+  .track { gap: 10px 8px; }
+  .card { border-radius: 14px; }
+  .flag-tile, .empty-hint .ghost-slot { border-radius: 14px; }
+  .picker .pick-row { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+  .picker .pick { aspect-ratio: auto; height: 40px; border-radius: 11px; }
   .top { padding-top: 6px; padding-bottom: 6px; }
   .robot-btn { height: 42px; }
 }
