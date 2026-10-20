@@ -41,6 +41,7 @@ MAX_ROT_SPEED = 500     # MAX_ROTATION_SPEED
 STOP_MOVE_MS = 500      # pause after a straight segment (behavior.c STOP_DURATION_US)
 STOP_ROT_MS = 700       # pause after a rotation (sequence.c STOP_DURATION_us)
 PROX_THRESHOLD = 1500
+SND_UPDATE = 12         # onboard sound "arrows" (a short click): the cards were changed from the interface (-1: none)
 SIDE_ACC = 15000        # robot on its side
 UPSIDE_ACC = -13000     # robot upside down
 MAXB = 16               # MAX_BRIGHTNESS
@@ -69,6 +70,19 @@ STATE_NAMES = ("record", "play", "erase_all", "erase_last")
 PS_REPLAY = 0
 PS_MOVEMENT = 1
 PS_ROTATION = 2
+PS_SENSE = 3
+
+# The cards (one character each, see src/spec.js and src/lang.js, which this follows exactly):
+#   F B L R   the steps          ( )   a group          2..9   repeat the next card or group
+#   r y g c b p w k   if the ground is red, yellow, green, cyan, blue, purple, white or black,
+#                     do the next card or group
+#   E Y G C U P W K   the same colours (in the same order), for a repeat card that has a colour: do the
+#                     next card or group again and again while the ground is that colour
+TOKENS = "FBLR()23456789rygcbpwkEYGCUPWK"
+REPEATS = "23456789"
+WHILES = "EYGCUPWK"
+COLORS = "rygcbpwk"
+SENSE_TICKS = 5         # the ground is read on this many ticks (100 ms) before an "if" decides
 
 # IR remote codes (rc5.h)
 RC_2 = 2
@@ -96,6 +110,7 @@ lego_f = [thymio.LEDS_LEGO_FRONT(i) for i in range(8)]
 lego_b = [thymio.LEDS_LEGO_BACK(i) for i in range(8)]
 prox_bl = thymio.PROXIMITY(5)
 prox_br = thymio.PROXIMITY(6)
+ground = None           # the colour sensor, made when an "if" first needs it (a firmware without one still runs the other cards)
 
 
 def say(*parts):
@@ -196,11 +211,133 @@ class Edge:
         return r
 
 
+def compile_program(program):
+    # The cards as a list of operations, each with the index of its card (src/lang.js: compile):
+    #   ["S", index, step]  ["L", index, n] .. ["E", loop]  a loop of n  ["I", index, colour, skip]  an "if"
+    #   ["W", index, colour, skip] .. ["X", w]  a loop while the ground is that colour
+    # It is read leniently: a group not closed is closed at the end, a ")" with nothing to close is
+    # ignored, a repeat or an "if" with no card after it does nothing.
+    t = [c for c in program if c in TOKENS][:BUFFER_SIZE]
+    ops = []
+    n = len(t)
+
+    def unit(i):
+        if i >= n or t[i] == ")":
+            return -1
+        c = t[i]
+        if c in "FBLR":
+            ops.append(["S", i, c])
+            return i + 1
+        if c == "(":
+            j = i + 1
+            while j < n and t[j] != ")":
+                j = unit(j)
+            if j < n:
+                return j + 1
+            return j
+        at = len(ops)
+        if c in REPEATS:
+            ops.append(["L", i, int(c)])
+        elif c in WHILES:
+            ops.append(["W", i, COLORS[WHILES.index(c)], 0])
+        else:
+            ops.append(["I", i, c, 0])
+        j = unit(i + 1)
+        if j < 0 or len(ops) == at + 1:         # nothing to do in it: it does nothing
+            ops.pop()
+            if j < 0:
+                return i + 1
+            return j
+        if c in REPEATS:
+            ops.append(["E", at])
+        else:
+            if c in WHILES:
+                ops.append(["X", at])
+            ops[at][3] = len(ops) - at - 1
+        return j
+
+    i = 0
+    while i < n:
+        if t[i] == ")":
+            i += 1
+        else:
+            i = unit(i)
+    return ops
+
+
+class Machine:
+    # Runs the operations one at a time. next() gives the next step or the next "if" (and stops there:
+    # the caller reads the ground and calls decide()); None at the end of the program.
+    def __init__(self, ops):
+        self.ops = ops
+        self.pc = 0
+        self.loops = []
+
+    def next(self):
+        ops = self.ops
+        while self.pc < len(ops):
+            op = ops[self.pc]
+            kind = op[0]
+            if kind == "S":
+                self.pc += 1
+                return op
+            if kind == "I" or kind == "W":
+                return op
+            if kind == "X":
+                self.pc = op[1]
+            elif kind == "L":
+                self.loops.append([self.pc, op[2]])
+                self.pc += 1
+            else:
+                top = self.loops[-1]
+                top[1] -= 1
+                if top[1] > 0:
+                    self.pc = top[0] + 1
+                else:
+                    self.loops.pop()
+                    self.pc += 1
+        return None
+
+    def decide(self, taken):
+        op = self.ops[self.pc]
+        if taken:
+            self.pc += 1
+        else:
+            self.pc += 1 + op[3]
+
+
+def ground_color(h, s, v):
+    # The colour the sensor sees, from its hue (0..360), saturation and value (0..100): the thresholds
+    # of UpdateColor() in main/color_sensor.c, except that a surface that is dark and grey is black
+    # here (the firmware calls it unknown). "?" is none of the eight.
+    if s < 12:
+        if v > 65:
+            return "w"
+        if v <= 20:
+            return "k"
+        return "?"
+    if v <= 20:
+        return "k"
+    if h <= 10 or h > 350:
+        return "r"
+    if h <= 30:
+        return "y"
+    if h <= 80:
+        return "g"
+    if h <= 210:
+        return "c"
+    if h <= 260:
+        return "b"
+    if h <= 350:
+        return "p"
+    return "?"
+
+
 class Sequence:
     def __init__(self, program, phase=0):
         self.seq = []
         for ch in program:
-            if ch in "FBLR" and len(self.seq) < BUFFER_SIZE:
+            if ch in TOKENS and len(self.seq) < BUFFER_SIZE:
                 self.seq.append(ch)
         self.wr = len(self.seq)
         self.rd = 0
@@ -218,6 +355,11 @@ class Sequence:
         self.last_el = 0
         self.t_move = 0
         self.current = ""
+        self.machine = None
+        self.sense_op = None
+        self.sense_seen = ""
+        self.sense_hsv = (0, 0, 0)
+        self.sense_left = 0
         # calibration read once, like Sequence_Start()
         cal = mot.get_distance_calibration()
         self.dur_fw = int(cal[0])
@@ -253,6 +395,85 @@ class Sequence:
         self.cnt_last = 0
         self.cnt_exit = 0
         self.led_counter = 0
+        # live update (see rx_poll): the frames of the message being received
+        self.rx_msg = -1
+        self.rx_got = {}
+        self.rx_last = -1
+
+    # ---- live update ----------------------------------------------------------------------------
+    def rx_poll(self):
+        # The interface changes the cards of a running mode without restarting it: it writes the four
+        # body LEDs through the Bluetooth command (the firmware stores what it is given, and these
+        # getters read it back). Twelve 4-bit values make a frame:
+        #   0 message number, 1 always 15 (the mode never writes 15 on that channel: this is what
+        #   tells a frame from its own lights), 2 last-frame flag (8) + frame number, 3..10 eight
+        #   nibbles of the message, 11 checksum. The message is the number of cards (two nibbles, the first
+        #   with a flag for advanced cards), then the cards: two bits each (F B L R) or, with advanced
+        #   cards, five bits each (their number in TOKENS, from 1). Once complete it is applied and
+        #   answered by the usual "@@prog" line. The mode's next tick puts its own lights back.
+        if rgb[0].get_intensity_green() != 15:
+            return
+        n = []
+        for i in range(4):
+            led = rgb[i]
+            n.append(led.get_intensity_red())
+            n.append(led.get_intensity_green())
+            n.append(led.get_intensity_blue())
+        total = 5
+        for i in range(11):
+            total += (i + 1) * n[i]
+        if (total & 15) != n[11]:
+            return
+        if n[0] != self.rx_msg:
+            self.rx_msg = n[0]
+            self.rx_got = {}
+            self.rx_last = -1
+        self.rx_got[n[2] & 7] = n[3:11]
+        if n[2] & 8:
+            self.rx_last = n[2] & 7
+        if self.rx_last < 0:
+            return
+        stream = []
+        for i in range(self.rx_last + 1):
+            if i not in self.rx_got:
+                return
+            stream += self.rx_got[i]
+        self.rx_got = {}
+        self.rx_last = -1
+        count = (stream[0] & 7) * 16 + stream[1]
+        cards = []
+        if count > BUFFER_SIZE:
+            return
+        if stream[0] < 8:
+            if len(stream) < 2 + (count + 1) // 2:
+                return
+            for k in range(count):
+                v = stream[2 + k // 2]
+                cards.append("FBLR"[(v >> 2) & 3 if k % 2 == 0 else v & 3])
+        else:
+            if len(stream) < 2 + (5 * count + 3) // 4:
+                return
+            bits = 0
+            have = 0
+            pos = 2
+            for k in range(count):
+                while have < 5:
+                    bits = (bits << 4) | stream[pos]
+                    pos += 1
+                    have += 4
+                have -= 5
+                code = (bits >> have) & 31
+                bits &= (1 << have) - 1
+                if code < 1 or code > len(TOKENS):
+                    return
+                cards.append(TOKENS[code - 1])
+        changed = cards != self.seq[:self.wr]
+        self.seq = cards
+        self.wr = count
+        self.rd = 0
+        self.report_prog()              # the answer first: the interface waits for it, not for the sound
+        if changed and SND_UPDATE >= 0:
+            play_sound(SND_UPDATE)      # like a button of the robot: the change is heard (not for a message sent again)
 
     # ---- reporting ------------------------------------------------------------
     def report_prog(self):
@@ -415,6 +636,8 @@ class Sequence:
             say("exit")
             self.quit = True
             return
+        if self.state == ST_RECORD:
+            self.rx_poll()
         brightness = self.body_pulse()
         if self.state != ST_ERASE_ALL and self.state != ST_ERASE_LAST:
             set_front(brightness, 0, brightness)
@@ -443,6 +666,7 @@ class Sequence:
         imu.reset_angle()           # StartSequenceHeading(): every replay starts at 0
         self.target_heading = 0
         self.play_state = PS_REPLAY
+        self.machine = Machine(compile_program(self.seq[:self.wr]))
 
     def record(self, status, command):
         if self.wr < BUFFER_SIZE:
@@ -498,13 +722,53 @@ class Sequence:
                     self.rotation_in_progress = False
                     self.play_state = PS_REPLAY
             self.update_lego(self.wr, self.rd)
+        elif self.play_state == PS_SENSE:
+            self.sense()
+            self.update_lego(self.wr, self.rd)
+
+    def sense(self):
+        # An "if" or a "while": the ground is read on SENSE_TICKS ticks, the colour seen most often counts (a tie goes
+        # to the first of "rygcbpwk?"), and the card after the "if" is done only if it is the one asked for.
+        global ground
+        try:
+            if ground is None:
+                ground = thymio.COLOR_SENSOR()
+            h, s, v = ground.get_hsv()
+        except Exception:
+            h, s, v = 0, 5, 55              # no sensor: the ground is none of the eight colours
+        self.sense_seen += ground_color(h, s, v)
+        self.sense_hsv = (h, s, v)
+        self.sense_left -= 1
+        if self.sense_left > 0:
+            return
+        best = "?"
+        top = 0
+        for c in "rygcbpwk?":
+            votes = self.sense_seen.count(c)
+            if votes > top:
+                best = c
+                top = votes
+        taken = best == self.sense_op[2]
+        hsv = self.sense_hsv
+        say("if", self.sense_op[1], 1 if taken else 0, best, hsv[0], hsv[1], hsv[2])      # (the last reading too: to see what the sensor says)
+        self.machine.decide(taken)
+        self.play_state = PS_REPLAY
 
     def handle_replay(self):
-        if self.rd < self.wr:
-            if not self.motion_in_progress and not self.rotation_in_progress:
-                self.current = self.seq[self.rd]
-                self.rd += 1
-                say("step", self.rd - 1, self.current)
+        if self.motion_in_progress or self.rotation_in_progress:
+            return
+        op = self.machine.next()
+        if op is not None:
+            self.rd = op[1] + 1             # the card being done (one more than its index)
+            if op[0] == "I" or op[0] == "W":
+                self.sense_op = op
+                self.sense_seen = ""
+                self.sense_left = SENSE_TICKS
+                self.play_state = PS_SENSE
+                say("sense", op[1])
+            else:
+                self.current = op[2]
+                say("step", op[1], self.current)
                 if self.current == BWD:
                     self.start_move(-1)
                     self.play_state = PS_MOVEMENT
@@ -527,8 +791,8 @@ class Sequence:
             self.rd = 0
             self.set_state(ST_RECORD)
             lego_off()
+            say("end")                      # before the sound: the audio pipeline can take its time, the interface waits for this
             play_sound(6)
-            say("end")
 
     # ---- erase gestures (ProcessEraseAction) --------------------------------------------------------
     def process_erase(self, command):

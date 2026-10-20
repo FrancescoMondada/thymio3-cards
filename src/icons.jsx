@@ -1,4 +1,6 @@
 import React from 'react';
+import { isStep, isOpen, isClose, isRepeat, isColor, isWhile, WHILE_COLOR } from './spec.js';
+import { GROUND_CSS } from './colors.js';
 
 // Chunky, rounded, white-on-colour pictograms. 64 x 64.
 const base = { viewBox: '0 0 64 64', 'aria-hidden': true, focusable: 'false' };
@@ -6,6 +8,7 @@ const stroke = { stroke: 'currentColor', strokeWidth: 4, strokeLinejoin: 'round'
 
 // The drawing alone (64 x 64, drawn with currentColor), so that the mat can reuse it in small.
 export function ArrowShape({ code }) {
+  if (!isStep(code)) return <TokenShape code={code} />;
   return (
     <>
       {code === 'F' && <path d="M32 7 L56 33 H41 V57 H23 V33 H8 Z" {...stroke} />}
@@ -18,6 +21,42 @@ export function ArrowShape({ code }) {
       )}
     </>
   );
+}
+
+// A digit 2..9 as the segments of a display, 14 x 26 around (0, 0): the robot's own LED style.
+const SEGMENT = { a: 'M-7 -13 H7', b: 'M7 -13 V0', c: 'M7 0 V13', d: 'M-7 13 H7', e: 'M-7 0 V13', f: 'M-7 -13 V0', g: 'M-7 0 H7' };
+const DIGIT_SEGMENTS = { 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgecd', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg' };
+export const digitPath = (n) => [...(DIGIT_SEGMENTS[n] || '')].map((k) => SEGMENT[k]).join(' ');
+
+// The advanced cards: a group's brackets, "repeat the next card" (a loop arrow around the number of
+// times, or around a colour: while the ground is that colour), "if the ground is this colour" (a question mark over a floor tile of that colour). No words.
+function TokenShape({ code }) {
+  if (isOpen(code) || isClose(code)) {
+    return <path d={isOpen(code) ? 'M43 7 Q15 32 43 57' : 'M21 7 Q49 32 21 57'} fill="none" stroke="currentColor" strokeWidth={10} strokeLinecap="round" />;
+  }
+  if (isRepeat(code) || isWhile(code)) {
+    // the loop arrow, around the number of times, or around the colour it goes on for while the ground has it
+    return (
+      <>
+        <path d="M32 10 A22 22 0 1 1 10 32" fill="none" stroke="currentColor" strokeWidth={6.5} strokeLinecap="round" />
+        <path d="M10 18 L3 31 H17 Z" fill="currentColor" stroke="currentColor" strokeWidth={3} strokeLinejoin="round" />
+        {isRepeat(code)
+          ? <g transform="translate(32 32) scale(.9)"><path d={digitPath(code)} fill="none" stroke="currentColor" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" /></g>
+          : <circle cx="32" cy="32" r="10.5" fill={GROUND_CSS[WHILE_COLOR[code]]} stroke="currentColor" strokeWidth={4} />}
+      </>
+    );
+  }
+  if (isColor(code)) {
+    // a question mark over a tile of the floor, in the colour asked for: "is the ground this colour?"
+    return (
+      <>
+        <path d="M22 12 Q22 3 32 3 Q42 3 42 11 Q42 17 36 20.5 Q32 23 32 27" fill="none" stroke="currentColor" strokeWidth={7.5} strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="32" cy="35.5" r="4.2" fill="currentColor" />
+        <path d="M6 59 L14 46 H50 L58 59 Z" fill={GROUND_CSS[code]} stroke="currentColor" strokeWidth={3.5} strokeLinejoin="round" />
+      </>
+    );
+  }
+  return null;
 }
 
 export function ArrowIcon({ code }) {
@@ -49,10 +88,23 @@ export const TrashIcon = () => (
     <path d="M27 26 V46" /><path d="M37 26 V46" />
   </svg>
 );
+export const BrushIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M50 8 L58 16 L30 44 L22 36 Z" fill="currentColor" />
+    <path d="M22 38 C12 38 12 48 8 56 C18 56 28 54 30 44" />
+  </svg>
+);
 export const FlagIcon = () => (
   <svg {...base}>
     <path d="M16 58 V8" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
     <path d="M16 10 H50 L42 22 L50 34 H16 Z" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+  </svg>
+);
+export const PathIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="14" cy="50" r="5" fill="currentColor" />
+    <path d="M14 42 C14 24 44 34 44 20" strokeDasharray="1 9" />
+    <path d="M35 21 L44 11 L53 21" />
   </svg>
 );
 export const BatteryIcon = ({ level = 1 }) => (
@@ -103,9 +155,9 @@ export const BluetoothOffIcon = () => (
 );
 
 // The robot and the waves it sends. off: grey and dashed, waiting to be reached; wait: the waves
-// move; on: the robot is in colour, its lights on, the waves green, and a tick; no: this browser
-// cannot reach a robot.
-export function ConnectIcon({ state = 'off' }) {
+// move; on: the robot is in colour, its lights on, the waves green, and a tick (the tick can be left
+// out: the robot is reached but not ready); no: this browser cannot reach a robot.
+export function ConnectIcon({ state = 'off', tick = true }) {
   return (
     <svg {...base} className={`conn-icon ${state}`}>
       <g className="waves" fill="none" strokeWidth="4.5" strokeLinecap="round">
@@ -121,7 +173,7 @@ export function ConnectIcon({ state = 'off' }) {
         <circle className="lb" cx="36" cy="50" r="4.5" fill="#18d6e0" />
         <circle cx="26" cy="39" r="5.5" fill="currentColor" />
       </g>
-      {(state === 'on' || state === 'sync' || state === 'standby') && (
+      {tick && (state === 'on' || state === 'sync' || state === 'standby') && (
         <g className="tick"><circle cx="50" cy="50" r="12" fill="#19b35a" stroke="#fff" strokeWidth="3.5" /><path d="M44 50 L49 55 L57 45" fill="none" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" /></g>
       )}
       {state === 'no' && (

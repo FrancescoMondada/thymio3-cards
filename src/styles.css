@@ -170,6 +170,17 @@ svg { display: block; }
 .keys dd { margin: 0; }
 kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9px; background: #f3f0fa; border: 2px solid #e2dcf2; border-bottom-width: 4px; font: 800 13px/1 var(--font); text-align: center; white-space: nowrap; }
 .warn { background: #fff7d6; } .stage-note.link { background: #ffe9e9; }
+/* the brush that paints the floor of the virtual robot (advanced mode) */
+.brushbar { position: absolute; top: 10px; left: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 20px); }
+.brush { width: clamp(38px, 10vw, 44px); height: clamp(38px, 10vw, 44px); flex: none; border-radius: 50%; background: #fff; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--line); display: grid; place-items: center; color: var(--ink); }
+.brush.on { background: var(--ink); color: #fff; border-color: var(--ink); box-shadow: 0 3px 0 #000; }
+.brush svg { width: 24px; height: 24px; }
+.swatches { display: flex; flex-wrap: nowrap; gap: 0; padding: 3px; border-radius: 20px; background: rgba(255, 255, 255, .92); border: 3px solid var(--line); min-width: 0; }
+.swatch { width: clamp(22px, 7.4vw, 30px); height: clamp(22px, 7.4vw, 30px); flex: none; border-radius: 50%; display: grid; place-items: center; border: 2px solid transparent; }
+.swatch.on { border-color: var(--ink); }
+.swatch i { width: 70%; height: 70%; border-radius: 50%; border: 2px solid rgba(42, 43, 68, .55); display: block; }
+.swatch.none i { background: repeating-linear-gradient(45deg, #fff 0 3px, #f5c2c2 3px 5px); }
+.floor-tile { opacity: .92; stroke: rgba(42, 43, 68, .25); stroke-width: .03; }
 .celebrate { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .celebrate span { position: absolute; left: 50%; top: 45%; width: 38px; color: #ffc61a; animation: burst 1.5s ease-out forwards; }
 .celebrate span:nth-child(3n) { color: var(--pink); } .celebrate span:nth-child(3n+1) { color: #3d8bfd; }
@@ -198,6 +209,9 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .card, .pcard { --c: var(--F); --cd: var(--F-d); }
 .c-F { --c: var(--F); --cd: var(--F-d); } .c-B { --c: var(--B); --cd: var(--B-d); }
 .c-L { --c: var(--L); --cd: var(--L-d); } .c-R { --c: var(--R); --cd: var(--R-d); }
+.c-open, .c-close { --c: #7c8aa5; --cd: #566380; }
+.c-repeat { --c: #14b8a6; --cd: #0f857a; }
+.c-if { --c: #3d4663; --cd: #272d45; }
 .card {
   width: 100%; height: 100%; border-radius: 18px; background: var(--c); color: #fff;
   display: grid; place-items: center; box-shadow: 0 5px 0 var(--cd), 0 9px 14px rgba(60, 40, 10, .14);
@@ -215,6 +229,19 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .slot.selected { transform: translateY(-5px); z-index: 2; }
 .slot.selected .card { box-shadow: 0 5px 0 var(--cd), 0 0 0 4px #fff, 0 0 0 7px var(--pink); }
 .slot.lifted { opacity: .25; }
+/* an "if" card says what the ground was: green for yes, red for no, once */
+.slot .flash { position: absolute; inset: -4px; border-radius: 22px; pointer-events: none; animation: flash .9s ease-out forwards; z-index: 3; }
+.slot .flash.yes { border: 5px solid #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, .35); }
+.slot .flash.no { border: 5px solid #ef4444; box-shadow: 0 0 0 4px rgba(239, 68, 68, .3); }
+@keyframes flash { 0% { opacity: 1; transform: scale(1.12); } 70% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
+/* the value of a repeat or an "if" card: a bar under the selected card */
+.picker { position: absolute; left: 0; right: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; background: #fff; border: 3px solid var(--line); border-radius: 20px; box-shadow: 0 8px 22px rgba(60, 40, 10, .22); }
+.picker { gap: 6px; padding: 8px; }
+.picker .pick-row { display: grid; grid-template-columns: repeat(8, minmax(0, 52px)); gap: 5px; justify-content: center; width: 100%; }
+.picker .pick-row + .pick-row { padding-top: 7px; border-top: 3px dashed var(--line); }
+.picker .pick { width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; background: var(--c); color: #fff; display: grid; place-items: center; box-shadow: 0 3px 0 var(--cd); border: 3px solid transparent; padding: 0; }
+.picker .pick.on { border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.picker .pick svg { width: 82%; height: 82%; }
 .slot .x {
   position: absolute; top: -13px; right: -13px; width: 36px; height: 36px; border-radius: 50%;
   background: var(--stop); color: #fff; display: grid; place-items: center; border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.25);
@@ -284,6 +311,12 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .seg-ctl { display: inline-flex; background: #f3f0fa; border-radius: 14px; padding: 4px; gap: 2px; flex-wrap: wrap; }
 .seg-ctl button { padding: 9px 14px; border-radius: 10px; font-weight: 800; font-size: 14px; }
 .seg-ctl button.on { background: var(--ink); color: #fff; }
+.quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.tile-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: 14px; background: #f3f0fa; font-weight: 800; font-size: 14px; }
+.tile-btn svg { width: 22px; height: 22px; flex: none; }
+.tile-btn.reset svg { color: #e11d48; }
+.tile-btn.on { background: var(--ink); color: #fff; }
+.tile-btn:disabled { opacity: .4; }
 .examples { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .examples button { background: #faf7ff; border-radius: 16px; padding: 10px; text-align: left; display: grid; gap: 6px; border: 2px solid #ece6f8; }
 .examples button:active { background: #efe8fb; }

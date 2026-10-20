@@ -15,12 +15,13 @@ export class SimBackend {
     this.budget = 0;
   }
 
-  play(program) {
+  // `floor(cx, cy)`: the colour letter of a floor cell, or undefined (see SimSequence)
+  play(program, floor) {
     this.robot = new VirtualThymio();
     this.mode = new SimSequence(this.robot, program, (e) => {
       if (e.type === 'end') this.running = false;
       this.emit(e);
-    });
+    }, { floor });
     this.stepIndex = 0;
     this.budget = 0;
     this.running = true;

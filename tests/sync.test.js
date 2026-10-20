@@ -19,6 +19,7 @@ function setup(opts = {}) {
   const backend = {
     idle: (p) => { calls.push(`idle ${p}`); return opts.manual ? new Promise((resolve, reject) => { gate.resolve = resolve; gate.reject = reject; }) : (opts.failIdle ? Promise.reject(new Error('boom')) : Promise.resolve()); },
     play: (p) => { calls.push(`play ${p}`); return Promise.resolve(); },
+    ...(opts.live ? { live: (p) => { calls.push(`live ${p}`); return opts.live === 'ok' ? Promise.resolve(120) : Promise.reject(new Error('live update: not acknowledged')); } } : {}),
   };
   const sync = new RobotSync({
     backend, delayMs: 450,
@@ -343,4 +344,103 @@ test('the safety net makes up for a start that was missed', async () => {
   sync.evaluate();
   await advance(0); await settle();
   assert.deepEqual(calls, ['idle FL']);
+});
+
+test('the state says when the first start failed, so that the icon does not wait for ever', async () => {
+  const bad = setup({ failIdle: true });
+  bad.sync.update({ program: 'FL', live: true, busy: false });
+  await bad.advance(0); await bad.settle();
+  const last = bad.states[bad.states.length - 1];
+  assert.equal(last.syncing, false);
+  assert.equal(last.failed, true, 'nothing is known of the robot and the start was given up');
+
+  const good = setup();
+  good.sync.update({ program: 'FL', live: true, busy: false });
+  await good.advance(0); await good.settle();
+  const ok = good.states[good.states.length - 1];
+  assert.deepEqual([ok.syncing, ok.modeUp, ok.failed], [false, true, false], 'a start that works is not a failure');
+  assert.ok(good.states.every((s) => s.failed === false), 'and was never one on the way');
+});
+
+test('an error of the mode before it ever said hello is reported as a failed start', async () => {
+  const { sync, states } = setup();
+  sync.update({ program: 'FL', live: true, busy: false });
+  sync.onEvent({ type: 'error', message: 'SyntaxError' });
+  assert.equal(states[states.length - 1].failed, true);
+});
+
+// ---- live update: the running mode takes the cards without being restarted --------------------
+async function running(opts) {
+  const t = setup(opts);
+  t.sync.update({ program: 'FL', live: true, busy: false });
+  await t.advance(0); await t.settle();                              // the first start: the mode is not up yet, it is started
+  t.calls.length = 0;
+  return t;
+}
+const change = async (t, program) => {
+  t.sync.update({ program, live: true, busy: false });
+  await t.advance(450); await t.settle();
+};
+
+test('live update: a mode that is up takes the new cards without being started again', async () => {
+  const t = await running({ live: 'ok' });
+  await change(t, 'FLR');
+  await change(t, 'FLRB');
+  assert.deepEqual(t.calls, ['live FLR', 'live FLRB'], 'no restart');
+  assert.ok(t.logs.some((l) => /live update: the running mode holds FLR \(120 ms, not restarted\)/.test(l)));
+  assert.equal(t.states.at(-1).syncing, false);
+  assert.equal(t.states.at(-1).modeUp, true);
+  // the robot holds what it was given: nothing more to do, nothing taken for a change made on the robot
+  t.sync.onEvent({ type: 'prog', program: 'FLRB' });
+  await t.advance(2000); await t.settle();
+  assert.deepEqual(t.calls, ['live FLR', 'live FLRB']);
+  assert.deepEqual(t.adopted, []);
+});
+
+test('live update: the first start of a robot is always the mode itself (nothing runs yet to be told)', async () => {
+  const t = setup({ live: 'ok' });
+  t.sync.update({ program: 'FL', live: true, busy: false });
+  await t.advance(0); await t.settle();
+  assert.deepEqual(t.calls, ['idle FL']);
+});
+
+test('live update: when the robot does not take it, the mode is started again with the cards, as before', async () => {
+  const t = await running({ live: 'fail' });
+  await change(t, 'FLR');
+  assert.deepEqual(t.calls, ['live FLR', 'idle FLR']);
+  assert.ok(t.logs.some((l) => /live update failed \(live update: not acknowledged\): starting the mode again instead/.test(l)));
+  assert.equal(t.states.at(-1).modeUp, true);
+  assert.deepEqual(t.errors, [], 'the interface is not alarmed: the cards got there');
+});
+
+test('live update: after two failures in a row it is not tried again, until the robot is connected again', async () => {
+  const t = await running({ live: 'fail' });
+  await change(t, 'FLR');
+  await change(t, 'FLRB');
+  await change(t, 'FLRBF');
+  assert.deepEqual(t.calls, ['live FLR', 'idle FLR', 'live FLRB', 'idle FLRB', 'idle FLRBF']);
+  assert.ok(t.logs.some((l) => /failed twice in a row/.test(l)));
+  t.sync.onEvent({ type: 'conn', status: 'disconnected' });           // the next connection starts afresh
+  assert.equal(t.sync.liveBroken, false);
+  assert.equal(t.sync.liveFails, 0);
+});
+
+test('live update: one success in between is a fresh start for the count', async () => {
+  const t = await running({ live: 'ok' });
+  t.sync.liveFails = 1;
+  await change(t, 'FLR');
+  assert.equal(t.sync.liveFails, 0);
+});
+
+test('live update: a backend that cannot do it, or a mode that is not up, restarts as always', async () => {
+  const noLive = await running({});                  // (no live() in this backend)
+  await change(noLive, 'FLR');
+  assert.deepEqual(noLive.calls, ['idle FLR']);
+  const left = await running({ live: 'ok' });
+  left.sync.onEvent({ type: 'exit' });                                 // the centre button of the robot: the mode is left
+  left.sync.update({ program: 'FLR', live: true, busy: false });
+  assert.deepEqual(left.calls, [], 'not started by itself either');
+  left.sync.update({ program: 'FLRB', live: true, busy: false });
+  await left.advance(450); await left.settle();
+  assert.deepEqual(left.calls, ['idle FLRB'], 'a mode that is not up is started, not written to');
 });

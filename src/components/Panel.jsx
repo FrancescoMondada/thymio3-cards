@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BluetoothOffIcon, CloseIcon } from '../icons.jsx';
+import { BluetoothOffIcon, CloseIcon, FlagIcon, PathIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
+import { cardClass } from '../spec.js';
 import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
@@ -11,6 +12,7 @@ const BLUEFY_URL = 'https://apps.apple.com/app/id1492822055';   // a browser wit
 // The page for the adult: language, sounds, the robot, examples, and the Python that runs.
 export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
+  showPath, onTogglePath, canReset, onResetRobot, advanced, onAdvanced,
   log, onClearLog, onTest, testing, canTest, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
@@ -79,6 +81,25 @@ export default function Panel({
               <button className={!sound ? 'on' : ''} onClick={() => onSound(false)}>{t.panel.off}</button>
             </div>
           </div>
+          <div className="row">
+            <label>{t.panel.quick}</label>
+            <div className="quick">
+              <button className={`tile-btn ${showPath ? 'on' : ''}`} aria-pressed={Boolean(showPath)} onClick={() => { onTogglePath(); onClose(); }}>
+                <PathIcon /><span>{t.panel.pathBtn}</span>
+              </button>
+              <button className="tile-btn reset" disabled={!canReset} onClick={() => { onResetRobot(); onClose(); }}>
+                <FlagIcon /><span>{t.panel.resetBtn}</span>
+              </button>
+            </div>
+          </div>
+          <div className="row">
+            <label>{t.panel.advanced}</label>
+            <div className="seg-ctl">
+              <button className={advanced ? 'on' : ''} onClick={() => onAdvanced(true)}>{t.panel.on}</button>
+              <button className={!advanced ? 'on' : ''} onClick={() => onAdvanced(false)}>{t.panel.off}</button>
+            </div>
+          </div>
+          <p className="hint">{t.panel.advancedHint}</p>
           {!live && (
             <div className="row">
               <label>{t.panel.speed}</label>
@@ -91,9 +112,9 @@ export default function Panel({
 
         <h3>{t.panel.examples}</h3>
         <div className="examples">
-          {EXAMPLES.map((ex) => (
-            <button key={ex.id} onClick={() => onExample(ex.program)}>
-              <span className="mini">{ex.program.split('').map((c, i) => <span key={i} className={`c-${c}`}><ArrowIcon code={c} /></span>)}</span>
+          {EXAMPLES.filter((ex) => advanced || !ex.advanced).map((ex) => (
+            <button key={ex.id} onClick={() => onExample(ex)}>
+              <span className="mini">{ex.program.split('').map((c, i) => <span key={i} className={cardClass(c)}><ArrowIcon code={c} /></span>)}</span>
               <b>{t.examples[ex.id]}</b>
             </button>
           ))}

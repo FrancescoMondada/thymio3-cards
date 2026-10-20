@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import { cleanProgram, MAX_STEPS } from '../src/spec.js';
 import { layout, bounds } from '../src/program.js';
-import { buildScriptFrom, buildModuleFrom, launcherFor, moduleNameFor, hash32, pulsePhase, minify, parseRobotLine, LineAssembler } from '../src/script-core.js';
+import { buildScriptFrom, buildModuleFrom, launcherFor, lightsFor, moduleNameFor, hash32, pulsePhase, minify, parseRobotLine, LineAssembler } from '../src/script-core.js';
 import { VirtualThymio } from '../src/sim/physics.js';
 import { SimSequence } from '../src/sim/mode.js';
 
@@ -20,8 +20,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = fs.readFileSync(path.join(here, '..', 'src', 'py', 'sequence_mode.py'), 'utf8');
 const GOLDEN = JSON.parse(fs.readFileSync(path.join(here, 'golden.json'), 'utf8'));
 
-test('cleanProgram keeps valid steps and at most 50', () => {
-  assert.equal(cleanProgram('FxL?R b'), 'FLR');
+test('cleanProgram keeps valid cards and at most 50', () => {
+  assert.equal(cleanProgram('FxL?R z'), 'FLR');
+  assert.equal(cleanProgram('F(2Lr)b'), 'F(2Lr)b', 'the advanced cards are cards too');
   assert.equal(cleanProgram(['F', 'B']), 'FB');
   assert.equal(cleanProgram('F'.repeat(80)).length, MAX_STEPS);
   assert.equal(cleanProgram(null), '');
@@ -66,7 +67,7 @@ test('the robot script carries the program and stays small', () => {
   assert.match(idle, /^AUTOPLAY = 0$/m);
   const small = buildScriptFrom(SOURCE, 'FFLR');
   assert.ok(small.length < SOURCE.length * 0.7, `minified ${small.length} of ${SOURCE.length}`);
-  assert.ok(small.length < 16000, 'a few seconds of Bluetooth upload');
+  assert.ok(small.length < 21000, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it)');
   assert.ok(!/^\s*#/m.test(small));
   assert.ok(small.trimEnd().endsWith('\nrun()'), 'the whole mode ends by running');
   assert.ok(minify('a = 1  # one\nb = "#"  # two\n\n# c\n').startsWith('a = 1\nb = "#"  # two\n'));
@@ -90,11 +91,12 @@ test('the minified script is valid Python and plays the same timeline on the vir
   }
 });
 
-function simTimeline(program) {
+function simTimeline(program, floorCells = []) {
   const robot = new VirtualThymio();
   const events = [];
   const t0 = () => robot.nowMs;
-  const mode = new SimSequence(robot, program, (e) => events.push({ ...e, t: t0() }));
+  const cells = new Map(floorCells.map(([x, y, c]) => [`${x},${y}`, c]));
+  const mode = new SimSequence(robot, program, (e) => events.push({ ...e, t: t0() }), { floor: (x, y) => cells.get(`${x},${y}`) });
   mode.start({ autoplay: true });
   for (let i = 0; i < 40000 && !events.some((e) => e.type === 'end'); i++) {
     if (i % 10 === 0) mode.tick();
@@ -102,7 +104,10 @@ function simTimeline(program) {
   }
   return {
     stepStartMs: events.filter((e) => e.type === 'step').map((e) => e.t),
+    stepIndex: events.filter((e) => e.type === 'step').map((e) => e.index),
     movedMs: events.filter((e) => e.type === 'moved').map((e) => e.t),
+    senseMs: events.filter((e) => e.type === 'sense').map((e) => e.t),
+    ifs: events.filter((e) => e.type === 'if').map((e) => [e.t, e.index, e.taken ? 1 : 0, e.seen]),
     endMs: events.find((e) => e.type === 'end')?.t,
     pose: [robot.x, robot.y, robot.headingDeg],
   };
@@ -110,9 +115,12 @@ function simTimeline(program) {
 
 for (const [name, g] of Object.entries(GOLDEN)) {
   test(`simulator follows the real script: ${name}`, () => {
-    const s = simTimeline(g.program);
+    const s = simTimeline(g.program, g.floor);
     assert.deepEqual(s.stepStartMs, g.stepStartMs, 'step start times');
+    assert.deepEqual(s.stepIndex, g.stepIndex, 'which card each step is');
     assert.deepEqual(s.movedMs, g.movedMs, 'motion end times');
+    assert.deepEqual(s.senseMs, g.senseMs, 'when the ground is read');
+    assert.deepEqual(s.ifs, g.ifs, 'what the ifs decided, and what they saw');
     assert.equal(s.endMs, g.endMs);
     assert.ok(Math.abs(s.pose[0] - g.finalPoseMm[0]) < 1.5, `x ${s.pose[0]} vs ${g.finalPoseMm[0]}`);
     assert.ok(Math.abs(s.pose[1] - g.finalPoseMm[1]) < 1.5, `y ${s.pose[1]} vs ${g.finalPoseMm[1]}`);
@@ -143,7 +151,7 @@ test('the module: no call at the end, a name from its content, a two-line launch
   assert.equal(launcherFor(name, 'F', { autoplay: false }), `import ${name}\n${name}.run("F", 0)\n`);
   assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123 }), `import ${name}\n${name}.run("F", 0, 123)\n`, 'with where the lights are');
   assert.ok(launcher.length < 80, 'two lines instead of the whole mode');
-  assert.ok(mod.length < 16000);
+  assert.ok(mod.length < 21000);
 });
 
 test('the phase of the lights comes from one clock, so that restarts continue them', () => {
@@ -157,4 +165,26 @@ test('the phase of the lights comes from one clock, so that restarts continue th
     assert.equal((2 * c) % 256, (2 * a) % 256, 'the circle is 2.56 s long');
     assert.ok(a >= 0 && a < 384);
   }
+});
+
+test('a start that waits begins with the lights of the first tick; a run, or a full buffer, does not', () => {
+  const LIGHTS = fs.readFileSync(new URL('../src/py/lights.py', import.meta.url), 'utf8');
+  const name = 'cards_0123abcd';
+  const two = `import ${name}\n${name}.run("FLR", 0, 77)\n`;
+  const waiting = launcherFor(name, 'FLR', { autoplay: false, phase: 77, lights: LIGHTS });
+  assert.ok(waiting.endsWith(two), 'then the two lines');
+  assert.ok(waiting.length > two.length && waiting.startsWith('import thymio as t\n'), 'the lights come first');
+  assert.match(waiting, /^P = 77$/m);
+  assert.match(waiting, /^N = 3$/m);
+  assert.ok(!/#/.test(waiting), 'minified: no comments');
+  assert.equal(waiting, lightsFor(LIGHTS, 'FLR', 77) + two);
+  // without the text of the lights (or for a run) the launcher is the two lines, as before
+  assert.equal(launcherFor(name, 'FLR', { autoplay: false, phase: 77 }), two);
+  assert.equal(launcherFor(name, 'FLR', { autoplay: true, phase: 77, lights: LIGHTS }), `import ${name}\n${name}.run("FLR", 1, 77)\n`);
+  // 49 steps get them, 50 (the buffer is full: the mode shows its overflow animation) do not
+  assert.ok(launcherFor(name, 'F'.repeat(49), { autoplay: false, lights: LIGHTS }).startsWith('import thymio as t'));
+  assert.equal(launcherFor(name, 'F'.repeat(50), { autoplay: false, lights: LIGHTS }), `import ${name}\n${name}.run("${'F'.repeat(50)}", 0)\n`);
+  assert.match(lightsFor(LIGHTS, 'F'.repeat(60), 0), /^N = 50$/m, 'at most the 50 steps of the buffer');
+  // it stays small: two Bluetooth packets at the usual MTU
+  assert.ok(Buffer.byteLength(launcherFor(name, 'F'.repeat(49), { autoplay: false, phase: 383, lights: LIGHTS })) <= 990);
 });

@@ -2,7 +2,8 @@
 // the interface can do on a virtual robot (replay a program). It prints the same events as
 // the script, through `emit`, and exposes the LEDs the robot would show.
 // tests/sim.test.js checks its timeline against the one of the real script.
-import { cleanProgram, MAX_STEPS, TICKS_PER_MS, FORWARD, BACKWARD, LEFT, RIGHT } from '../spec.js';
+import { cleanProgram, MAX_STEPS, TICKS_PER_MS, FORWARD, BACKWARD, LEFT, RIGHT, CELL_MM } from '../spec.js';
+import { compile, Machine } from '../lang.js';
 
 const MOVE_SPEED = 300;
 const MAX_ROT_SPEED = 500;
@@ -12,15 +13,24 @@ const MAXB = 16;
 const GUARD_TICKS = 150000;
 const S_KP = 0.1, S_KI = 0.2, S_MAX_I = 1000, S_LIMIT = 600;
 const ST = { record: 0, play: 1 };
-const PS = { replay: 0, movement: 1, rotation: 2 };
+const PS = { replay: 0, movement: 1, rotation: 2, sense: 3 };
+const SENSE_TICKS = 5;                        // the ground is read on this many ticks before an "if" decides
+const COLOUR_ORDER = 'rygcbpwk?';             // a tie between two colours goes to the first of these
 
 const tdiv = (a, b) => Math.trunc(a / b);
 const clamp = (v, l) => Math.max(-Math.abs(l), Math.min(Math.abs(l), v));
 
 export class SimSequence {
-  constructor(robot, program, emit) {
+  // `floor(cx, cy)` is the colour letter of the floor cell (cells of 15 cm, x right, y up, the start cell is
+  // 0, 0), or undefined: what the colour sensor under the virtual robot sees.
+  constructor(robot, program, emit, { floor } = {}) {
     this.r = robot;
     this.emit = emit || (() => {});
+    this.floor = floor || (() => undefined);
+    this.machine = null;
+    this.senseOp = null;
+    this.senseSeen = '';
+    this.senseLeft = 0;
     this.seq = cleanProgram(program).split('').slice(0, MAX_STEPS);
     this.wr = this.seq.length;
     this.rd = 0;
@@ -66,6 +76,7 @@ export class SimSequence {
     this.r.resetAngle();
     this.targetHeading = 0;
     this.playState = PS.replay;
+    this.machine = new Machine(compile(this.seq.slice(0, this.wr).join('')));
   }
 
   // Stop button: what cleanup() does on the robot.
@@ -208,26 +219,54 @@ export class SimSequence {
           this.playState = PS.replay;
         }
       }
+    } else if (this.playState === PS.sense) {
+      this.sense();
     }
   }
 
+  // An "if" or a "while": the ground is read on SENSE_TICKS ticks, the colour seen most often counts, and the
+  // card after it is done only if it is the one asked for (see sense() in sequence_mode.py).
+  sense() {
+    const cx = Math.floor(this.r.x / CELL_MM + 0.5), cy = Math.floor(this.r.y / CELL_MM + 0.5);
+    this.senseSeen += this.floor(cx, cy) || '?';
+    this.senseLeft -= 1;
+    if (this.senseLeft > 0) return;
+    let best = '?', top = 0;
+    for (const c of COLOUR_ORDER) {
+      const votes = [...this.senseSeen].filter((x) => x === c).length;
+      if (votes > top) { best = c; top = votes; }
+    }
+    const taken = best === this.senseOp[2];
+    this.emit({ type: 'if', index: this.senseOp[1], taken, seen: best });
+    this.machine.decide(taken);
+    this.playState = PS.replay;
+  }
+
   handleReplay() {
-    if (this.rd < this.wr) {
-      if (!this.motionInProgress && !this.rotationInProgress) {
-        const cur = this.seq[this.rd];
-        this.rd += 1;
-        this.emit({ type: 'step', index: this.rd - 1, code: cur });
-        if (cur === BACKWARD) { this.startMove(-1); this.playState = PS.movement; }
-        else if (cur === FORWARD) { this.startMove(1); this.playState = PS.movement; }
-        else if (cur === LEFT || cur === RIGHT) {
-          this.rotationInProgress = true;
-          this.targetHeading += cur === LEFT ? 90 : -90;
-          this.r.rotateAbsolute(this.targetHeading, MAX_ROT_SPEED);
-          this.rotDoneAt = -1;
-          this.playState = PS.rotation;
-        }
-        this.playAnimation(cur);
+    if (this.motionInProgress || this.rotationInProgress) return;
+    const op = this.machine.next();
+    if (op) {
+      this.rd = op[1] + 1;                          // the card being done (one more than its index)
+      if (op[0] === 'I' || op[0] === 'W') {
+        this.senseOp = op;
+        this.senseSeen = '';
+        this.senseLeft = SENSE_TICKS;
+        this.playState = PS.sense;
+        this.emit({ type: 'sense', index: op[1] });
+        return;
       }
+      const cur = op[2];
+      this.emit({ type: 'step', index: op[1], code: cur });
+      if (cur === BACKWARD) { this.startMove(-1); this.playState = PS.movement; }
+      else if (cur === FORWARD) { this.startMove(1); this.playState = PS.movement; }
+      else if (cur === LEFT || cur === RIGHT) {
+        this.rotationInProgress = true;
+        this.targetHeading += cur === LEFT ? 90 : -90;
+        this.r.rotateAbsolute(this.targetHeading, MAX_ROT_SPEED);
+        this.rotDoneAt = -1;
+        this.playState = PS.rotation;
+      }
+      this.playAnimation(cur);
     } else {
       this.rd = 0;
       this.state = ST.record;

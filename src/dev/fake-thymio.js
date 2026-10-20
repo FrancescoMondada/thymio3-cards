@@ -9,6 +9,7 @@
 // window.fakeRobot lets a test play the robot's side: press('F'), exit(), drop('status'), ...
 import { VirtualThymio } from '../sim/physics.js';
 import { SimSequence } from '../sim/mode.js';
+import { LiveReceiver, liveNibbles } from '../script-core.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fire = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
@@ -25,7 +26,9 @@ let connected = false;
 let ram = '';
 let loaded = '';
 let run = null;                             // the script that runs: { timer, mode, robot, kind }
-const flags = { dropStatus: false, slow: 1 };
+const flags = { dropStatus: false, slow: 1, live: 'ok' };   // live: 'ok', 'drop' (the frames are lost) or 'garble' (one value is wrong)
+const liveRx = new LiveReceiver();
+const floorCells = {};                         // "x,y" -> a colour letter: what the demo robot's colour sensor sees (window.fakeRobot.floor)
 
 // ---- what the robot prints ---------------------------------------------------------------------
 // The firmware sends stdout at 100 bytes or after 1 s of silence; the mode pads its lines to 100 bytes
@@ -55,6 +58,8 @@ const lineOf = (e) => {
     case 'state': return say('state', e.state);
     case 'step': return say('step', e.index, e.code);
     case 'moved': return say('moved', e.index);
+    case 'sense': return say('sense', e.index);
+    case 'if': return say('if', e.index, e.taken ? 1 : 0, e.seen);
     case 'end': return say('end');
     case 'bye': return say('bye');
     default: return undefined;
@@ -78,7 +83,7 @@ function stopRun(withTraceback) {
 
 function startMode(program, autoplay, phase = 0) {
   const robot = new VirtualThymio();
-  const mode = new SimSequence(robot, program, (e) => lineOf(e));
+  const mode = new SimSequence(robot, program, (e) => lineOf(e), { floor: (x, y) => floorCells[`${x},${y}`] });
   const r = { robot, mode, kind: 'mode', n: 0, timer: 0 };
   run = r;
   setTimeout(() => {                                // the interpreter compiles the module and starts
@@ -95,8 +100,8 @@ function startMode(program, autoplay, phase = 0) {
 }
 
 function execute(script) {
-  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR]*)", (\d)(?:, (\d+))?\)/.exec(script);
-  const whole = /^PROGRAM = "([FBLR]*)"/m.exec(script);
+  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwk]*)", (\d)(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
+  const whole = /^PROGRAM = "([FBLR()2-9rygcbpwk]*)"/m.exec(script);
   if (launcher) {
     if (![...files.keys()].includes(`${launcher[1]}.py`)) {
       print(`Traceback (most recent call last):\r\n  File "mp_script", line 1, in <module>\r\nImportError: no module named '${launcher[1]}'\r\n`, true);
@@ -147,6 +152,22 @@ export async function executeLoadedScript() {
   if (run) return;                                  // "Another script was already running"
   execute(loaded);
 }
+// The Bluetooth command of the API: two writes with response (the LEDs and the others). The mode reads
+// the body LEDs back, in frames (see rx_poll in sequence_mode.py): here the same frames go to the same
+// receiver, and a complete message is what the mode would take and answer with "@@prog".
+export async function setActuatorState(data) {
+  await sleep(90);
+  if (!connected || flags.live === 'drop') return;
+  const n = liveNibbles(data);
+  if (flags.live === 'garble') n[5] = (n[5] + 1) & 15;
+  const program = liveRx.push(n);
+  const m = run?.mode;
+  if (program === null || !m || m.state !== 0) return;      // (the mode takes cards only while it waits for them)
+  m.seq = program.split('');
+  m.wr = program.length;
+  m.rd = 0;
+  lineOf({ type: 'prog', program });
+}
 export async function stopScriptExecution() {
   await sleep(60);
   if (run) stopRun(true);
@@ -156,6 +177,7 @@ export async function stopScriptExecution() {
 if (typeof window !== 'undefined') {
   window.fakeRobot = {
     flags,
+    floor: floorCells,
     get files() { return [...files.keys()]; },
     get running() { return Boolean(run); },
     // a step recorded with the robot's own buttons

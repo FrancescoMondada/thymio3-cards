@@ -1,4 +1,5 @@
-import { LineAssembler, parseRobotLine } from '../script-core.js';
+import { LineAssembler, parseRobotLine, liveFrames, liveActuator, ringAt } from '../script-core.js';
+import { cleanProgram } from '../spec.js';
 
 // The real robot. The mode (src/py/sequence_mode.py) runs on the robot, drives the motors itself and
 // prints "@@..." lines that become the same events as the simulator's (see SimBackend).
@@ -50,7 +51,8 @@ export class RobotBackendCore {
   constructor(emit, {
     thymio, events, buildScript, launcher, module, doc, win, onLog,
     helloTimeoutMs = 10000, haltTimeoutMs = 3000, firmwareTimeoutMs = 6000, fileTimeoutMs = 8000, moduleUploadTimeoutMs = 40000,
-    unknownHaltMs = 700, moduleHelloTimeoutMs = 5000, uploadTimeoutMs = 30000, byeGraceMs = 40,
+    unknownHaltMs = 700, moduleHelloTimeoutMs = 5000, uploadTimeoutMs = 30000, byeGraceMs = 40, liveAckMs = 700, liveAttempts = 2,
+    liveRing = () => ringAt(Date.now() / 20),
   }) {
     this.thymio = thymio;
     this.EVENTS = events;
@@ -59,7 +61,9 @@ export class RobotBackendCore {
     this.module = module || null;
     this.doc = doc || document;
     this.win = win || window;
-    this.opt = { helloTimeoutMs, haltTimeoutMs, firmwareTimeoutMs, fileTimeoutMs, moduleUploadTimeoutMs, unknownHaltMs, moduleHelloTimeoutMs, uploadTimeoutMs, byeGraceMs };
+    this.opt = { helloTimeoutMs, haltTimeoutMs, firmwareTimeoutMs, fileTimeoutMs, moduleUploadTimeoutMs, unknownHaltMs, moduleHelloTimeoutMs, uploadTimeoutMs, byeGraceMs, liveAckMs, liveAttempts };
+    this.liveRing = liveRing;      // where the ring of the waiting mode is, to be written back as it is
+    this.liveMsg = 0;              // the number of the last live update message (1..15)
     this.emit = emit;
     this.log = (kind, text) => onLog?.(kind, text);
     this.lines = new LineAssembler();
@@ -409,6 +413,56 @@ export class RobotBackendCore {
       }
       await this.start(this.buildScript(program, { autoplay }), `mode "${program}" (${mode})`, this.opt.helloTimeoutMs);
     });
+  }
+
+  // Change the cards of the mode that runs, without restarting it (experimental). The program is written
+  // in the body LEDs of the robot, which the mode reads back (see liveFrames in script-core.js and
+  // rx_poll in sequence_mode.py), and the mode answers with its usual "@@prog" line. A message can be
+  // lost (the firmware keeps one command at a time), so it is sent again once; then this rejects and the
+  // caller starts the mode again instead. Resolves with how long it took.
+  live(program) {
+    return this.enqueue('live update', async () => {
+      if (typeof this.thymio.setActuatorState !== 'function') throw new Error('live update: the API cannot write the LEDs');
+      const wanted = cleanProgram(program);
+      const t0 = clock();
+      for (let attempt = 1; attempt <= this.opt.liveAttempts; attempt++) {
+        this.liveMsg = (this.liveMsg % 15) + 1;
+        const frames = liveFrames(wanted, this.liveMsg);
+        if (!frames) throw new Error('live update: the program does not fit in eight frames');
+        const ack = this.expectProg(wanted);
+        this.log('out', `live update "${wanted}": ${frames.length} frame${frames.length > 1 ? 's' : ''}, message ${this.liveMsg}${attempt > 1 ? ' (again)' : ''}`);
+        try {
+          const ring = this.liveRing();
+          const lego = Math.min(wanted.length, 16);
+          for (const frame of frames) {
+            await withTimeout(this.thymio.setActuatorState(liveActuator(frame, { circle: ring, lego })), this.opt.uploadTimeoutMs, 'live update');
+          }
+          if (await ack.wait(this.opt.liveAckMs)) {
+            const ms = Math.round(clock() - t0);
+            this.log('in', `live update acknowledged after ${ms} ms`);
+            return ms;
+          }
+          this.log('err', `live update: no "@@prog ${wanted || '-'}" within ${this.opt.liveAckMs} ms`);
+        } finally {
+          ack.cancel();
+        }
+      }
+      throw new Error('live update: not acknowledged');
+    });
+  }
+
+  // Wait for the mode to say it holds this program ("@@prog ..."): hooked before anything is sent, so that
+  // a quick answer is not missed; the time is counted from wait().
+  expectProg(wanted) {
+    let resolve;
+    const promise = new Promise((r) => { resolve = r; });
+    let timer = 0;
+    const hook = (line) => { const ev = parseRobotLine(line); if (ev?.type === 'prog' && ev.program === wanted) resolve(true); };
+    this.lineHooks.add(hook);
+    return {
+      wait: (ms) => { timer = setTimeout(() => resolve(false), ms); return promise; },
+      cancel: () => { clearTimeout(timer); this.lineHooks.delete(hook); },
+    };
   }
 
   play(program) { return this.run(program, { autoplay: true }); }

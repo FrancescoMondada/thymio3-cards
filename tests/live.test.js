@@ -10,14 +10,15 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { RobotBackendCore, SELF_TEST_SCRIPT } from '../src/robot/robot-backend-core.js';
+import { RobotBackendCore, SELF_TEST_SCRIPT, isLinkError } from '../src/robot/robot-backend-core.js';
 import { RobotSync } from '../src/robot/sync.js';
-import { buildScriptFrom, buildModuleFrom, launcherFor, moduleNameFor } from '../src/script-core.js';
+import { buildScriptFrom, buildModuleFrom, launcherFor, moduleNameFor, LiveReceiver, liveNibbles } from '../src/script-core.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = fs.readFileSync(path.join(here, '..', 'src', 'py', 'sequence_mode.py'), 'utf8');
 const MODULE_TEXT = buildModuleFrom(SOURCE);
 const MODULE = { name: moduleNameFor(MODULE_TEXT), text: MODULE_TEXT };
+const LIGHTS = fs.readFileSync(path.join(here, '..', 'src', 'py', 'lights.py'), 'utf8');
 const EV = { connected: 'c', manualReconnect: 'm', stdout: 'out', pyStatus: 'py', pyLoad: 'ld' };
 const tick = () => new Promise((r) => setImmediate(r));
 const until = async (cond, ms = 5000) => {
@@ -49,7 +50,7 @@ function pythonStdout(script, files) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-function setup({ silent = false, failUpload = false, extraLines = [], helloTimeoutMs = 2000, moduleHelloTimeoutMs = 2000, firmware = 'now', firmwareTimeoutMs = 6000, files = [], withModule = false, brokenImport = false, running = false, noFiles = false, stopFails = 0, hangUpload = false, launchLinkError = false, noStopStatus = false, uploadDelay = 0 } = {}) {
+function setup({ silent = false, failUpload = false, extraLines = [], helloTimeoutMs = 2000, moduleHelloTimeoutMs = 2000, firmware = 'now', firmwareTimeoutMs = 6000, files = [], withModule = false, brokenImport = false, running = false, noFiles = false, stopFails = 0, hangUpload = false, launchLinkError = false, noStopStatus = false, uploadDelay = 0, withLights = false, live = 'ok', liveDropMessages = 0, liveAckMs = 80 } = {}) {
   const doc = new EventTarget();
   const win = new EventTarget();
   const fire = (type, detail) => doc.dispatchEvent(new CustomEvent(type, { detail }));
@@ -58,8 +59,9 @@ function setup({ silent = false, failUpload = false, extraLines = [], helloTimeo
   let ram = '';
   let robotRuns = running;                  // the robot still runs a script of a previous page
   let stopsToFail = stopFails;
+  const liveRx = new LiveReceiver();
   const fake = {
-    script: '', files: stored, calls,
+    script: '', files: stored, calls, actuators: [],
     isConnected: () => true,
     disconnect: async () => { calls.push('disconnect'); },
     requestAndConnect: async () => { fire(EV.connected, true); },
@@ -85,10 +87,10 @@ function setup({ silent = false, failUpload = false, extraLines = [], helloTimeo
     },
     async executeLoadedScript() {
       calls.push('exec');
-      if (launchLinkError && /^import cards_/.test(fake.script)) throw Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NotSupportedError' });
+      if (launchLinkError && /^import cards_/m.test(fake.script)) throw Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NotSupportedError' });
       if (silent) return;
       let lines;
-      if (brokenImport && /^import cards_/.test(fake.script)) {
+      if (brokenImport && /^import cards_/m.test(fake.script)) {
         lines = ['Traceback (most recent call last):', '  File "mp_script", line 1, in <module>', "ImportError: no module named 'cards_x'"];
       } else {
         lines = [...pythonStdout(fake.script, stored), ...extraLines];
@@ -97,8 +99,21 @@ function setup({ silent = false, failUpload = false, extraLines = [], helloTimeo
       robotRuns = true;
       (async () => {
         for (let i = 0; i < text.length; i += 11) { fire(EV.stdout, text.slice(i, i + 11)); await tick(); }
-        if (text.includes('@@test done') || brokenImport && /^import cards_/.test(fake.script)) { robotRuns = false; fire(EV.pyStatus, false); }
+        if (text.includes('@@test done') || brokenImport && /^import cards_/m.test(fake.script)) { robotRuns = false; fire(EV.pyStatus, false); }
       })();
+    },
+    // the Bluetooth command: the mode reads the frames back from the LEDs (same receiver as the demo robot)
+    async setActuatorState(data) {
+      calls.push('actuators');
+      fake.actuators.push(data);
+      if (live === 'throw') throw Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NotSupportedError' });
+      if (live === 'silent' || !robotRuns) return;
+      const n = liveNibbles(data);
+      if (live === 'garble') n[5] = (n[5] + 1) & 15;
+      if (fake.firstMsg === undefined) fake.firstMsg = n[0];
+      if (liveDropMessages > 0 && n[0] === fake.firstMsg) return;                  // the first message never arrived
+      const program = liveRx.push(n);
+      if (program !== null) fire(EV.stdout, `@@prog ${program || '-'}${' '.repeat(Math.max(0, 93 - program.length))}\x1e`);
     },
     async stopScriptExecution() {
       calls.push('stop');
@@ -116,9 +131,9 @@ function setup({ silent = false, failUpload = false, extraLines = [], helloTimeo
   const events = [];
   const log = [];
   const backend = new RobotBackendCore((e) => events.push(e), {
-    thymio: fake, events: EV, doc, win, helloTimeoutMs, moduleHelloTimeoutMs, haltTimeoutMs: 500, firmwareTimeoutMs, unknownHaltMs: 40, uploadTimeoutMs: hangUpload ? 60 : 30000,
+    thymio: fake, events: EV, doc, win, helloTimeoutMs, moduleHelloTimeoutMs, haltTimeoutMs: 500, liveAckMs, firmwareTimeoutMs, unknownHaltMs: 40, uploadTimeoutMs: hangUpload ? 60 : 30000,
     buildScript: (p, o) => buildScriptFrom(SOURCE, p, o),
-    launcher: (name, p, o) => launcherFor(name, p, o),
+    launcher: (name, p, o) => launcherFor(name, p, { ...o, lights: withLights ? LIGHTS : '' }),
     module: withModule ? MODULE : null,
     onLog: (kind, text) => { log.push({ kind, text }); if (process.env.DBG) console.error(`[${Date.now() % 100000}] ${kind} ${text.slice(0, 120)}`); },
   });
@@ -269,7 +284,7 @@ test('a run through the module plays the program like the whole mode does', asyn
   const { backend, fake, events } = setup({ withModule: true });
   await backend.connect();
   await backend.play('FRF');
-  assert.match(fake.script, /^import cards_/);
+  assert.match(fake.script, /^import cards_/m);
   await until(() => events.some((e) => e.type === 'end'));
   assert.deepEqual(events.filter((e) => e.type === 'step').map((e) => e.code), ['F', 'R', 'F']);
 });
@@ -464,8 +479,9 @@ test('the first start does not wait for the robot to be quiet or for anything th
   assert.deepEqual(calls.filter((c) => /^(streamOff|stop|list|send|exec)$/.test(c)), ['streamOff', 'stop', 'list', 'send', 'exec']);
 });
 
-test('cards added after the connection: one start each, no reset in between', async () => {
-  const { backend, sync, calls, events } = withSync();
+test('cards added after the connection, for a robot that cannot take them live: one start each, no reset in between', async () => {
+  const { backend, sync, calls, events, fake } = withSync();
+  delete fake.setActuatorState;                                         // (an API without the command: the mode is started again)
   sync.update({ program: 'F', live: true, busy: false });
   await backend.connect();
   await until(() => events.filter((e) => e.type === 'prog').length === 1, 3000);
@@ -475,4 +491,119 @@ test('cards added after the connection: one start each, no reset in between', as
     await new Promise((r) => setTimeout(r, 150));                       // long enough for a (wrong) second start
   }
   assert.equal(calls.filter((c) => c === 'send').length, 3, `one launcher per program: ${calls.join(', ')}`);
+});
+
+test('cards added after the connection are written into the running mode: one start in all, no reset', async () => {
+  const { backend, sync, calls, events } = withSync();
+  sync.update({ program: 'F', live: true, busy: false });
+  await backend.connect();
+  await until(() => events.some((e) => e.type === 'state'), 3000);      // the start-up is over
+  await tick();
+  for (const program of ['FL', 'FLF', '']) {
+    sync.update({ program, live: true, busy: false });
+    await until(() => events.filter((e) => e.type === 'prog').some((e, i, all) => e.program === program && i > 0), 3000);
+    await new Promise((r) => setTimeout(r, 150));                       // long enough for a (wrong) restart
+  }
+  assert.equal(calls.filter((c) => c === 'send').length, 1, `the launcher of the first start only: ${calls.join(', ')}`);
+  assert.equal(calls.filter((c) => c === 'stop').length, 1, 'and the one stop of the preparation');
+  assert.ok(calls.filter((c) => c === 'actuators').length >= 3, 'the rest went through the LEDs');
+  assert.equal(events.filter((e) => e.type === 'hello').length, 1, 'the mode said hello once');
+  assert.deepEqual(events.filter((e) => e.type === 'prog').map((e) => e.program), ['F', 'FL', 'FLF', ''], 'the robot always holds the cards');
+});
+
+test('a start that waits runs through the lights and the module like one without them', async () => {
+  const { backend, fake, events } = setup({ withModule: true, withLights: true });
+  await backend.connect();
+  await backend.idle('FRF');
+  // the lights come first, then the two lines
+  assert.match(fake.script, /^import thymio as t\n/);
+  assert.match(fake.script, /^import cards_\w+\ncards_\w+\.run\("FRF", 0(, \d+)?\)\n$/m);
+  assert.ok(Buffer.byteLength(fake.script) <= 990, `two packets at the usual MTU (501 bytes of script in the first, 508 in the next): ${Buffer.byteLength(fake.script)} bytes`);
+  await until(() => events.some((e) => e.type === 'hello') && events.some((e) => e.type === 'prog'));
+  assert.ok(events.some((e) => e.type === 'prog' && e.program === 'FRF'), 'the mode holds the cards');
+  assert.ok(!events.some((e) => e.type === 'step'), 'and waits');
+  // a run (Go) is not given the lights: the mode plays at once
+  await backend.play('FRF');
+  assert.ok(!/import thymio as t/.test(fake.script), 'no lights before a run');
+});
+
+// ---- live update: the cards of the running mode, without restarting it ----------------------------------
+async function modeWaiting(opts = {}, program = 'FL') {
+  const t = setup({ withModule: true, ...opts });
+  await t.backend.connect();
+  await t.backend.idle(program);
+  await until(() => t.events.some((e) => e.type === 'state'));         // the last line of the start-up
+  await tick();
+  t.calls.length = 0;
+  t.events.length = 0;
+  t.log.length = 0;
+  return t;
+}
+
+test('live update: the program goes to the running mode in the LEDs, and the mode answers, with no restart', async () => {
+  const { backend, calls, events, fake, log } = await modeWaiting();
+  const ms = await backend.live('FLRB');
+  assert.ok(ms >= 0);
+  assert.deepEqual(calls, ['actuators'], 'one frame, and nothing was stopped, sent or started');
+  assert.ok(events.some((e) => e.type === 'prog' && e.program === 'FLRB'), 'the mode answered with its program');
+  const a = fake.actuators[0];
+  // what the command carries besides the frame: nothing that moves, no sound, the ring and the Lego LEDs as they are
+  assert.deepEqual([a.motorLeft, a.motorRight, a.sound, a.receiverLED, a.microphoneLED], [0, 0, 0, 0, false]);
+  assert.deepEqual(a.frontLegoLEDs, [0, 0, 0, 0, 15, 15, 15, 15], 'four steps on the Lego LEDs');
+  assert.ok(a.circleLEDs.length === 8 && a.circleLEDs.every((v) => Number.isInteger(v) && v >= 0 && v <= 15));
+  for (const c of [a.flRGB, a.frRGB, a.blRGB, a.brRGB]) for (const v of [c.r, c.g, c.b]) assert.ok(Number.isInteger(v) && v >= 0 && v <= 15, 'Bluetooth LEDs are 4 bits');
+  assert.equal(a.flRGB.g, 15, 'the marker');
+  assert.ok(log.some((l) => l.kind === 'out' && /live update "FLRB": 1 frame, message \d+/.test(l.text)));
+  assert.ok(log.some((l) => l.kind === 'in' && /live update acknowledged after \d+ ms/.test(l.text)));
+});
+
+test('live update: 50 steps take four frames, an empty program one', async () => {
+  const t = await modeWaiting();
+  const big = 'FLRB'.repeat(12) + 'FL';
+  await t.backend.live(big);
+  assert.equal(t.calls.filter((c) => c === 'actuators').length, 4);
+  assert.ok(t.events.some((e) => e.type === 'prog' && e.program === big));
+  t.calls.length = 0; t.events.length = 0;
+  await t.backend.live('');
+  assert.equal(t.calls.filter((c) => c === 'actuators').length, 1);
+  assert.ok(t.events.some((e) => e.type === 'prog' && e.program === ''), 'the mode says "-": no cards');
+});
+
+test('live update: a message that was lost is sent again, with another number', async () => {
+  const t = await modeWaiting({ liveDropMessages: 1 });
+  await t.backend.live('FFR');
+  assert.equal(t.calls.filter((c) => c === 'actuators').length, 2, 'the same frame, twice');
+  const numbers = t.fake.actuators.map((a) => a.flRGB.r);
+  assert.notEqual(numbers[0], numbers[1], 'a new message number');
+  assert.ok(t.log.some((l) => /\(again\)/.test(l.text)));
+  assert.ok(t.log.some((l) => l.kind === 'err' && /no "@@prog FFR" within/.test(l.text)));
+  assert.ok(t.events.some((e) => e.type === 'prog' && e.program === 'FFR'));
+});
+
+test('live update: a robot that does not answer makes it fail, after two tries, so that the mode can be restarted', async () => {
+  for (const live of ['silent', 'garble']) {
+    const t = await modeWaiting({ live });
+    await assert.rejects(() => t.backend.live('FL'), /not acknowledged/);
+    assert.equal(t.calls.filter((c) => c === 'actuators').length, 2, live);
+    assert.ok(!t.calls.includes('send') && !t.calls.includes('stop'), 'it does not restart anything itself');
+  }
+});
+
+test('live update: a link error is not retried and goes up as it is', async () => {
+  const t = await modeWaiting({ live: 'throw' });
+  await assert.rejects(() => t.backend.live('FL'), (e) => isLinkError(e));
+  assert.equal(t.calls.filter((c) => c === 'actuators').length, 1);
+});
+
+test('live update: an API that cannot write the LEDs fails at once', async () => {
+  const t = await modeWaiting();
+  delete t.fake.setActuatorState;
+  await assert.rejects(() => t.backend.live('FL'), /cannot write the LEDs/);
+});
+
+test('live updates wait for each other, in order', async () => {
+  const t = await modeWaiting();
+  await Promise.all([t.backend.live('FFF'), t.backend.live('FFFB')]);
+  const progs = t.events.filter((e) => e.type === 'prog').map((e) => e.program);
+  assert.deepEqual(progs, ['FFF', 'FFFB']);
 });

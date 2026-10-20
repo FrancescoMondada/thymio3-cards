@@ -34,6 +34,13 @@ class LedBank:
         self.v = [0] * n
 
 
+# what the sensor reads over each colour (hue 0..360, saturation 0..100, value 0..100; the firmware's thresholds
+# are in ground_color() of the mode), and over a floor that is none of them
+GROUND_HSV = {"r": (3, 90, 70), "y": (20, 90, 70), "g": (55, 90, 70), "c": (150, 90, 70), "b": (235, 90, 70),
+              "p": (300, 90, 70), "w": (0, 5, 90), "k": (0, 30, 10)}
+UNKNOWN_HSV = (0, 5, 55)
+
+
 class VirtualRobot:
     def __init__(self, mismatch=0.0, gyro_bias_dps=0.0, dur_fw=FACTORY_15CM, dur_bw=FACTORY_15CM,
                  rot_factor=0):
@@ -78,6 +85,9 @@ class VirtualRobot:
         self._next_fw = 20000
         self.hooks = []                      # callables(t_ms) run at every 2 ms step
         self.stop_at_ms = None
+        self.floor = {}                      # (cell x, cell y) -> a colour letter of the floor, cells of 15 cm, x right, y up
+        self.hsv_fn = None                   # a test can give the colour sensor's readings: callable(robot) -> (h, s, v)
+        self.sound_call_ms = 0               # virtual time one play_onboard() call takes (the audio pipeline starting)
         self.cpu_ms_per_poll = 0             # virtual time one get_status() call costs (a slow interpreter)
 
     # ---- physics ---------------------------------------------------------------------
@@ -86,6 +96,16 @@ class VirtualRobot:
 
     def heading_deg(self):
         return math.degrees(self.theta)
+
+    def cell(self):
+        # the floor cell the robot stands on (the start cell is 0, 0), as the mode's simulator computes it
+        return (int(math.floor(self.x / 150.0 + 0.5)), int(math.floor(self.y / 150.0 + 0.5)))
+
+    def ground_hsv(self):
+        """What the colour sensor under the robot reads: the hue, saturation and value of its cell."""
+        if self.hsv_fn:
+            return self.hsv_fn(self)
+        return GROUND_HSV.get(self.floor.get(self.cell()), UNKNOWN_HSV)
 
     def _fw_task(self):
         # AngleController_Update(), 50 Hz in the behavior task
@@ -230,6 +250,12 @@ def make_modules(robot):
 
         def play_onboard(self, i):
             robot.sounds.append((robot.now_ms(), i))
+            if robot.sound_call_ms:                # a call into the audio pipeline that takes its time
+                robot.advance_ms(robot.sound_call_ms)
+
+    class ColorSensor:
+        def get_hsv(self):
+            return robot.ground_hsv()
 
     class Rc5:
         def get_command(self):
@@ -241,6 +267,9 @@ def make_modules(robot):
             if not all(isinstance(v, int) and 0 <= v <= 16 for v in (r, g, b)):
                 raise ValueError("RGB out of range %r" % ((r, g, b),))
             robot.rgb[self.i] = (r, g, b)
+        def get_intensity_red(self): return robot.rgb[self.i][0]
+        def get_intensity_green(self): return robot.rgb[self.i][1]
+        def get_intensity_blue(self): return robot.rgb[self.i][2]
 
     class Led:
         def __init__(self, bank, i): self.bank, self.i = bank, i
@@ -260,6 +289,8 @@ def make_modules(robot):
     th.BUTTONS = Buttons
     th.SOUND = Sound
     th.RC5 = Rc5
+    if not getattr(robot, "no_color_sensor", False):
+        th.COLOR_SENSOR = ColorSensor      # (a firmware without it: the mode must still run the other cards)
     th.LEDS_RGB = Rgb
     th.LEDS_CIRCLE = lambda i: Led(robot.circle, i)
     th.LEDS_LEGO_FRONT = lambda i: Led(robot.lego_f, i)

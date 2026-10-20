@@ -1,7 +1,9 @@
 import React, { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { layout } from '../program.js';
 import { FOLLOW_CELLS, edgePointer, toScreen, toWorld, viewBox, worldMatrix, zoomFor } from '../camera.js';
-import { ArrowIcon, ArrowRightIcon, BluetoothOffIcon, FlagIcon, RobotIcon, StarIcon, WarnIcon } from '../icons.jsx';
+import { ArrowIcon, ArrowRightIcon, BluetoothOffIcon, BrushIcon, FlagIcon, RobotIcon, StarIcon, WarnIcon } from '../icons.jsx';
+import { COLOR_CODES } from '../spec.js';
+import { GROUND_CSS } from '../colors.js';
 
 // The floor mat seen from above: one square = one straight step (15 cm). Coordinates here are in
 // cells with y up; the SVG is y down, hence the sign in P().
@@ -72,7 +74,7 @@ function FinishFlag() {
 // `api.setPose({ x, y, th }, leds)` moves the mat under the robot, and lights its LEDs, without
 // re-rendering the whole tree. A touch on the mat sets the target flag there (onTarget), or removes
 // it when it is touched again; the flag is only to be seen.
-export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind }) {
+export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, advanced, brush, onBrush, onFloor }) {
   const wrap = useRef(null);
   const svg = useRef(null);
   const world = useRef(null);
@@ -85,7 +87,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
   const zoom = useRef({ cells: FOLLOW_CELLS, at: 0 });
   const [aspect, setAspect] = useState(1.2);
 
-  const { start, poses } = useMemo(() => layout(program), [program]);
+  const { start, poses, steps } = useMemo(() => layout(program, (x, y) => floor[`${x},${y}`]), [program, floor]);
   const latest = useRef({});
   latest.current = { aspect, showPath, target, points: [start, ...poses, ...(target ? [target] : [])] };
 
@@ -151,10 +153,12 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
     if (!m) return;
     const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());   // where, in the robot's frame
     const w = toWorld(at.x, at.y, pose.current);
-    onTarget?.({ x: Math.round(w.x), y: Math.round(w.y) });
+    const cell = { x: Math.round(w.x), y: Math.round(w.y) };
+    if (advanced && brush) onFloor?.(cell);              // the brush paints the floor...
+    else onTarget?.(cell);                               // ...otherwise a touch plants the flag
   };
 
-  const prevOf = (i) => (i === 0 ? start : poses[i - 1]);
+  const prevOf = (k) => (k === 0 ? start : poses[k - 1]);
   const stateOf = (i) => (i <= doneUpTo ? 'done' : i === cursor ? 'active' : 'todo');
 
   return (
@@ -168,12 +172,16 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
         <g ref={world}>
           <rect className="floor" x="-200" y="-200" width="400" height="400" />
           <rect x="-200" y="-200" width="400" height="400" fill="url(#cell)" />
+          {Object.entries(floor).map(([key, c]) => {
+            const [x, y] = key.split(',').map(Number);
+            return <rect key={key} className="floor-tile" x={x - 0.5} y={-y - 0.5} width="1" height="1" rx="0.07" fill={GROUND_CSS[c]} />;
+          })}
           <g className="start-tile">
             <rect x="-0.46" y="-0.46" width="0.92" height="0.92" rx="0.12" />
             <g transform="translate(-0.44 -0.02) scale(0.0072)" className="flag"><FlagIconShape /></g>
           </g>
-          {showPath && poses.map((p, i) => (program[i] === 'F' || program[i] === 'B')
-            ? <Segment key={`s${i}`} from={prevOf(i)} to={p} kind={program[i]} state={stateOf(i)} />
+          {showPath && poses.map((p, k) => (steps[k].code === 'F' || steps[k].code === 'B')
+            ? <Segment key={`s${k}`} from={prevOf(k)} to={p} kind={steps[k].code} state={stateOf(steps[k].index)} />
             : null)}
           {target && (
             <g className="target" transform={`translate(${target.x} ${-target.y})`}>
@@ -189,6 +197,19 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
         </g>
         <Robot innerRef={robot} dots={dots} />
       </svg>
+      {advanced && (
+        <div className="brushbar" onClick={(e) => e.stopPropagation()}>
+          <button className={`brush ${brush ? 'on' : ''}`} aria-pressed={Boolean(brush)} aria-label={t.floor.paint} onClick={() => onBrush(brush ? null : 'r')}><BrushIcon /></button>
+          {brush && (
+            <div className="swatches" role="group" aria-label={t.floor.paint}>
+              {COLOR_CODES.map((c) => (
+                <button key={c} className={`swatch ${brush === c ? 'on' : ''}`} aria-label={t.colors[c]} aria-pressed={brush === c} onClick={() => onBrush(c)}><i style={{ background: GROUND_CSS[c] }} /></button>
+              ))}
+              <button className={`swatch none ${brush === 'erase' ? 'on' : ''}`} aria-label={t.floor.erase} aria-pressed={brush === 'erase'} onClick={() => onBrush('erase')}><i /></button>
+            </div>
+          )}
+        </div>
+      )}
       {overlay && <Note kind={overlay.kind} key={overlay.key} />}
       {celebrate ? <Celebrate key={celebrate} /> : null}
     </div>

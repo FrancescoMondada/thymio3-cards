@@ -1,17 +1,21 @@
 import React, { useRef, useState } from 'react';
 import { ArrowIcon, EraserIcon, PlayIcon, StopIcon, TrashIcon } from '../icons.jsx';
-import { STEP_CODES } from '../spec.js';
+import { STEP_CODES, cardClass } from '../spec.js';
+import { cardLabel } from '../labels.js';
 
-export function Palette({ onPointerDown, onKeyTap, t, disabled }) {
+// The advanced cards of the palette, each with the value it starts with (the cards are changed when selected).
+export const ADVANCED_PALETTE = ['(', ')', '2', 'r'];
+
+export function Palette({ onPointerDown, onKeyTap, t, disabled, advanced }) {
   return (
     <div className="palette" role="group" aria-label={t.title}>
-      {STEP_CODES.map((code) => (
+      {[...STEP_CODES, ...(advanced ? ADVANCED_PALETTE : [])].map((code) => (
         <button
           key={code}
-          className={`pcard c-${code}`}
+          className={`pcard ${cardClass(code)}`}
           disabled={disabled}
           style={{ touchAction: 'none' }}
-          aria-label={t.card[code]}
+          aria-label={cardLabel(t, code)}
           onPointerDown={(e) => onPointerDown(e, { kind: 'new', code })}
           onClick={(e) => { if (e.detail === 0) onKeyTap(code); }}
           onContextMenu={(e) => e.preventDefault()}

@@ -1,4 +1,4 @@
-import { layout } from '../program.js';
+import { applyStep } from '../lang.js';
 import { TICKS_PER_MS } from '../spec.js';
 
 const TURN_MS = 1500;                      // a 90 degree turn of the firmware angle controller
@@ -38,14 +38,16 @@ export class Homing {
 // A real robot does not tell where it is, only which step it started and when its motion ended
 // ("@@step", "@@moved"). The mat shows the ideal movement of that step, timed like the robot's:
 // a straight step lasts what the 15 cm calibration says, a turn about a second and a half. When
-// the robot says it is done the avatar is at the end of the step, early or late.
+// the robot says it is done the avatar is at the end of the step, early or late. The pose is the sum of
+// the steps the robot says it takes (not a place in the program: with repeats and ifs a card is done
+// several times, or not at all).
 export class PoseAnimator {
   constructor() { this.reset('', null); }
 
   reset(program, cal) {
-    this.program = program;
-    this.path = layout(program);
     this.cal = cal || { fw: 9000000, bw: 9000000 };
+    this.from = { x: 0, y: 0, h: 0 };
+    this.to = this.from;
     this.index = -1;
     this.code = '';
     this.t0 = 0;
@@ -58,7 +60,11 @@ export class PoseAnimator {
 
   begin(now) { this.startedAt = now; }
 
-  onStep(index, code, now) { this.index = index; this.code = code; this.t0 = now; this.moved = false; }
+  onStep(index, code, now) {
+    this.from = this.to;                   // the step before is over, whether or not its "moved" arrived
+    this.to = applyStep(this.from, code);
+    this.index = index; this.code = code; this.t0 = now; this.moved = false;
+  }
 
   onMoved(index) { if (index === this.index) this.moved = true; }
 
@@ -71,13 +77,10 @@ export class PoseAnimator {
   }
 
   pose(now) {
-    const { start, poses } = this.path;
-    if (this.index < 0) return { x: start.x, y: start.y, th: start.h * 90 };
-    const to = poses[Math.min(this.index, poses.length - 1)];
-    const from = this.index === 0 ? start : poses[this.index - 1];
+    if (this.index < 0) return { x: 0, y: 0, th: 0 };
     let p = this.moved ? 1 : Math.min(0.985, (now - this.t0) / this.duration());
     if (this.code === 'L' || this.code === 'R') p = ease(p);
-    return { x: lerp(from.x, to.x, p), y: lerp(from.y, to.y, p), th: lerp(from.h, to.h, p) * 90 };
+    return { x: lerp(this.from.x, this.to.x, p), y: lerp(this.from.y, this.to.y, p), th: lerp(this.from.h, this.to.h, p) * 90 };
   }
 
   // What the robot's LEDs show, as far as the interface can tell: the body pulses, and the

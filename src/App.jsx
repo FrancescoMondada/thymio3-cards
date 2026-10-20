@@ -6,7 +6,7 @@ import { Palette, Dock } from './components/Dock.jsx';
 import Panel from './components/Panel.jsx';
 import ConfirmDisconnect from './components/ConfirmDisconnect.jsx';
 import { I18N, detectLang } from './i18n.js';
-import { cleanProgram, MAX_STEPS } from './spec.js';
+import { cleanProgram, MAX_STEPS, isRepeat, isColor } from './spec.js';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
@@ -23,6 +23,7 @@ const toProgram = (cards) => cards.map((c) => c.code).join('');
 const load = (key, fallback) => { try { const v = localStorage.getItem(key); return v == null ? fallback : v; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
 
+const EMPTY_FLOOR = {};
 const reduceMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 export default function App() {
@@ -30,6 +31,10 @@ export default function App() {
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [speed, setSpeed] = useState(1);
+  const [advanced, setAdvanced] = useState(() => load('cards.advanced', '0') === '1');   // the advanced cards: groups, repeats, ifs on the ground colour
+  const [floor, setFloor] = useState(() => { try { return JSON.parse(load('cards.floor', '{}')) || {}; } catch { return {}; } });   // "x,y" -> colour letter: the floor of the virtual robot
+  const [brush, setBrush] = useState(null);             // painting the floor: null, a colour letter, or 'erase'
+  const [check, setCheck] = useState(null);             // what the last "if" saw: { index, taken, key }
   const [cards, setCards] = useState(() => toCards(load('cards.program', '')));
   const [selected, setSelected] = useState(null);
   const [phase, setPhase] = useState('idle');           // idle | sending | playing
@@ -50,6 +55,7 @@ export default function App() {
   const [doneNote, setDoneNote] = useState(false);     // "Bravo!" / "put the robot back"
   const [syncing, setSyncing] = useState(false);       // the robot is being given the cards' program
   const [modeUp, setModeUp] = useState(false);         // the mode runs on the robot
+  const [startFailed, setStartFailed] = useState(false); // the mode could not be started on the robot that was just connected
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [target, setTarget] = useState(null);           // a flag on the mat, only to be seen
 
@@ -70,9 +76,12 @@ export default function App() {
   const sync = useRef(null);                // keeps the robot's program equal to the cards (robot/sync.js)
   const syncCallbacks = useRef({});
   const S = useRef({});
-  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp };
+  const activeFloor = useMemo(() => (advanced ? floor : EMPTY_FLOOR), [advanced, floor]);
+  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, brush };
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
+  useEffect(() => { save('cards.advanced', advanced ? '1' : '0'); if (!advanced) setBrush(null); }, [advanced]);
+  useEffect(() => { save('cards.floor', JSON.stringify(floor)); }, [floor]);
   useEffect(() => { save('cards.lang', lang); document.documentElement.lang = lang; document.title = t.title; }, [lang, t.title]);
   useEffect(() => { save('cards.program', program); }, [program]);
 
@@ -134,10 +143,20 @@ export default function App() {
         break;
       case 'step':
         setCursor(e.index);
+        setDoneUpTo((d) => (e.index <= d ? e.index - 1 : d));        // a card done again (a repeat): not done any more
         anim.current.onStep(e.index, e.code, performance.now());
         sfx('pick', e.code);
         break;
       case 'moved': setDoneUpTo(e.index); anim.current.onMoved(e.index); break;
+      case 'sense':                                                   // an "if" is looking at the ground
+        setCursor(e.index);
+        setDoneUpTo((d) => (e.index <= d ? e.index - 1 : d));
+        break;
+      case 'if':                                                      // the ground was read: the card is done (it has no "moved"), not active
+        setCheck({ index: e.index, taken: e.taken, key: Date.now() });
+        setCursor(-1);
+        setDoneUpTo((d) => Math.max(d, e.index));
+        break;
       case 'end': anim.current.onEnd(); finish(true); break;
       case 'bye': case 'script-ended': case 'exit':
         // while a script is being replaced ('sending') the old one ending is expected
@@ -191,7 +210,7 @@ export default function App() {
     robot.current.attach();
     sync.current = new RobotSync({
       backend: robot.current,
-      onState: ({ syncing: on, modeUp: up }) => { setSyncing(on); setModeUp(up); },
+      onState: ({ syncing: on, modeUp: up, failed }) => { setSyncing(on); setModeUp(up); setStartFailed(Boolean(failed)); },
       onAdopt: (program) => syncCallbacks.current.adopt(program),
       onError: (err) => syncCallbacks.current.failed(err),
       onLog: (kind, text) => addLogRef.current(kind, text),
@@ -252,11 +271,11 @@ export default function App() {
   }, []);
 
   // ---- editing the program ---------------------------------------------------------------------
-  const edited = useCallback(() => {
+  const edited = useCallback((keepSelection) => {
     setDoneNote(false);
     setDoneUpTo(-1);
     setCursor(-1);
-    setSelected(null);
+    if (keepSelection !== true) setSelected(null);
     home.current = true;
   }, []);
 
@@ -269,10 +288,32 @@ export default function App() {
 
   const insert = useCallback((code, at) => {
     if (S.current.cards.length >= MAX_STEPS) { refuseWhenFull(); return; }
+    const where = Math.max(0, Math.min(S.current.cards.length, at ?? S.current.cards.length));
     setCards((cs) => { const i = Math.max(0, Math.min(cs.length, at ?? cs.length)); return [...cs.slice(0, i), mk(code), ...cs.slice(i)]; });
     sfx('drop', code);
     edited();
+    if (isRepeat(code) || isColor(code)) setSelected(where);      // a card with a value: its choices are there at once
   }, [edited, refuseWhenFull]);
+
+  // The value of a repeat ("2".."9") or of an "if" (a colour) card: the card stays selected, to be changed again.
+  const setCode = useCallback((i, code) => {
+    setCards((cs) => cs.map((c, k) => (k === i ? { ...c, code } : c)));
+    sfx('pick', code);
+    edited(true);
+  }, [edited]);
+
+  // The brush: a touch on the mat paints that cell of the virtual floor, or clears it (the same colour again, or the eraser).
+  const paintFloor = useCallback((cell) => {
+    const b = S.current.brush;
+    if (!b) return;
+    sfx('pick', 'F');
+    setFloor((f) => {
+      const key = `${cell.x},${cell.y}`;
+      const next = { ...f };
+      if (b === 'erase' || f[key] === b) delete next[key]; else next[key] = b;
+      return next;
+    });
+  }, []);
 
   const append = useCallback((code) => insert(code, undefined), [insert]);
 
@@ -295,6 +336,15 @@ export default function App() {
     edited();
   }, [edited]);
 
+  // The two shortcuts that have no button on the main screen (the keys D and R, and the buttons of the
+  // settings page, for a smartphone without a keyboard): show or hide the path, robot back to the start.
+  const togglePath = useCallback(() => setShowPath((v) => !v), []);
+  const resetRobot = useCallback(() => {
+    if (S.current.phase !== 'idle') return;
+    edited();
+    sfx('pick', 'L');
+  }, [edited]);
+
   const eraseLast = useCallback(() => {
     if (!S.current.cards.length) return;
     removeAt(S.current.cards.length - 1);
@@ -307,8 +357,9 @@ export default function App() {
     edited();
   }, [edited]);
 
-  const loadExample = useCallback((p) => {
-    setCards(toCards(p));
+  const loadExample = useCallback((ex) => {
+    setCards(toCards(ex.program));
+    if (ex.floor) setFloor(Object.fromEntries(ex.floor.map(([x, y, c]) => [`${x},${y}`, c])));     // the floor the example is made for
     edited();
     setPanel(false);
     sfx('go');
@@ -339,7 +390,7 @@ export default function App() {
     } else {
       home.current = false;
       setPhase('playing');
-      sim.current.play(s.program);
+      sim.current.play(s.program, (x, y) => s.floor[`${x},${y}`]);
     }
   }, [cal, note, t]);
 
@@ -387,15 +438,15 @@ export default function App() {
       if (map[e.key]) { if (S.current.phase === 'idle') { e.preventDefault(); append(map[e.key]); } }
       else if (e.key === 'Enter' && !onButton) { e.preventDefault(); go(); }
       else if ((e.key === 'Backspace' || e.key === 'Delete') && S.current.phase === 'idle') { e.preventDefault(); eraseLast(); }
-      else if (e.key === 'd' || e.key === 'D') { setShowPath((v) => !v); }
-      else if ((e.key === 'r' || e.key === 'R') && S.current.phase === 'idle') { edited(); sfx('pick', 'L'); }      // the robot is back on the start square
+      else if (e.key === 'd' || e.key === 'D') togglePath();
+      else if (e.key === 'r' || e.key === 'R') resetRobot();
       else if (e.key === 'Escape') stop();
     };
-    const onDown = (e) => { if (!e.target.closest?.('.slot')) setSelected(null); };
+    const onDown = (e) => { if (!e.target.closest?.('.slot, .picker')) setSelected(null); };
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onDown);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onDown); };
-  }, [panel, confirmDisc, append, go, stop, eraseLast, edited]);
+  }, [panel, confirmDisc, append, go, stop, eraseLast, togglePath, resetRobot]);
 
   // ---- what the stage says ---------------------------------------------------------------------
   const finished = phase === 'idle' && cards.length > 0 && doneUpTo === cards.length - 1;
@@ -423,7 +474,7 @@ export default function App() {
 
   return (
     <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'}`}>
-      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} onConnect={connect} onPanel={() => setPanel(true)} />
+      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} />
       <main className="board">
         <section className="left">
           <Stage
@@ -431,16 +482,17 @@ export default function App() {
             showPath={showPath} target={target} canPlace={phase === 'idle' && !panel && !confirmDisc}
             onTarget={(cell) => setTarget((cur) => (cur && cur.x === cell.x && cur.y === cell.y ? null : cell))}
             overlay={overlay} celebrate={celebrate && finished ? celebrate : 0} t={t} kind={live ? 'live' : 'sim'}
+            floor={activeFloor} advanced={advanced} brush={brush} onBrush={setBrush} onFloor={paintFloor}
           />
         </section>
         <section className="right">
           <Track
             ref={trackRef} cards={cards} cursor={cursor} doneUpTo={doneUpTo} selected={selected} phase={phase}
             dragFrom={drag?.kind === 'move' ? drag.from : null} dropIndex={drag ? drag.target : null}
-            onPointerDown={onPointerDown} onRemove={removeAt} t={t} shake={shake}
+            onPointerDown={onPointerDown} onRemove={removeAt} onSetCode={setCode} check={check} t={t} shake={shake}
           />
           <div className="dock">
-            <Palette onPointerDown={onPointerDown} onKeyTap={append} t={t} disabled={!enabled} />
+            <Palette onPointerDown={onPointerDown} onKeyTap={append} t={t} disabled={!enabled} advanced={advanced} />
             <Dock
               eraserRef={eraserRef} canErase={enabled && cards.length > 0} running={phase !== 'idle'} canGo={cards.length > 0 && phase === 'idle'}
               eraserActive={Boolean(drag?.eraser)} onEraseLast={eraseLast} onClear={clearAll}
@@ -461,6 +513,7 @@ export default function App() {
           t={t} lang={lang} onLang={setLang} sound={sound} onSound={setSound} speed={speed} onSpeed={setSpeed}
           live={live} bluetooth={bluetooth} conn={conn} cal={cal} program={program} lastError={lastError}
           log={log} onClearLog={() => setLog([])} onTest={testRobot} testing={testing} canTest={live && phase === 'idle'}
+          showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} advanced={advanced} onAdvanced={setAdvanced}
           onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}

@@ -7,7 +7,7 @@
 //
 // Inputs: update({ program, live, busy }) whenever the cards, the connection or the busy flag
 // (a run is being sent or played) change; onEvent(e) for what the robot says; play(program).
-// Outputs: onState({ syncing, modeUp }), onAdopt(program) when the robot changed its own program,
+// Outputs: onState({ syncing, modeUp, failed }), onAdopt(program) when the robot changed its own program,
 // onError(err) when it could not be given the cards.
 const SHORT_LIFE_MS = 3000;     // a mode that stops by itself within this time of its hello did not really start
 
@@ -37,11 +37,35 @@ export class RobotSync {
     this.kind = 'wait';       // what the script being started does: 'wait' or 'play'
     this.helloAt = 0;         // when the mode last said hello
     this.shortLives = 0;      // how many times in a row the mode ended soon after starting
+    this.liveFails = 0;       // live updates that failed in a row
+    this.liveBroken = false;  // given up for this connection
+  }
+
+  // The cards are written into the mode that runs, which answers with its program (see backend.live):
+  // no restart. It is for a mode that is up and whose program is known; anything else, or any failure,
+  // is the restart. Two failures in a row and it is not tried again until the next connection.
+  async tryLive(sent) {
+    if (this.liveBroken || !this.modeUp || this.known === null || typeof this.backend.live !== 'function') return false;
+    try {
+      const ms = await this.backend.live(sent);
+      this.liveFails = 0;
+      this.log(`live update: the running mode holds ${sent || '(no cards)'} (${ms} ms, not restarted)`);
+      return true;
+    } catch (err) {
+      this.liveFails += 1;
+      this.log(`live update failed (${err?.message || err}): starting the mode again instead`);
+      if (this.liveFails >= 2) {
+        this.liveBroken = true;
+        this.log('live update failed twice in a row: not tried again until the robot is connected again');
+      }
+      return false;
+    }
   }
 
   get pending() { return Boolean(this.timer); }
 
-  notify() { this.onState({ syncing: this.syncing, modeUp: this.modeUp }); }
+  // `failed`: the robot could not be given its mode (nothing is known of it, and the start was given up)
+  notify() { this.onState({ syncing: this.syncing, modeUp: this.modeUp, failed: this.known === null && this.hold !== null && !this.syncing }); }
 
   cancelTimer() {
     if (this.timer) this.clearTimer(this.timer);
@@ -82,9 +106,9 @@ export class RobotSync {
     this.syncing = true;
     this.notify();
     try {
-      await this.backend.idle(sent);
-      // the mode started with `sent` (it said hello): that is what the robot holds, whether or not its
-      // "@@prog" has arrived yet
+      if (!(await this.tryLive(sent))) await this.backend.idle(sent);
+      // the mode started with `sent` (it said hello), or took it (it answered): that is what the robot
+      // holds, whether or not its "@@prog" has arrived yet
       this.known = sent;
       this.modeUp = true;
     } catch (err) {
@@ -164,6 +188,7 @@ export class RobotSync {
       case 'error':
         this.hold = this.program;
         this.cancelTimer();
+        this.notify();
         break;
       case 'conn':
         if (e.status === 'disconnected') {
@@ -172,6 +197,8 @@ export class RobotSync {
           this.modeUp = false;
           this.syncing = false;
           this.hold = null;
+          this.liveFails = 0;
+          this.liveBroken = false;
           this.notify();
         }
         break;

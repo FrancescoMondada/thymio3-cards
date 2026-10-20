@@ -33,6 +33,52 @@ test('the main screen has no text at all, in every language', async () => {
   delete globalThis.localStorage;
 });
 
+test('advanced mode: the cards, the palette and the brush are pictograms, still no text, in every language', async () => {
+  const { default: App } = await load('/src/App.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const lang of Object.keys(I18N)) {
+    const store = { 'cards.lang': lang, 'cards.advanced': '1', 'cards.program': '4(FR)3Fk(B)E(F)', 'cards.floor': '{"0,2":"r","1,1":"g"}' };
+    globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop };
+    const markup = renderToStaticMarkup(h(App));
+    assert.equal(textOf(markup), '', `text on the main screen (${lang}): ${textOf(markup)}`);
+    assert.equal((markup.match(/class="slot/g) || []).length, 15, 'the fifteen cards are there');
+    for (const kind of ['c-repeat', 'c-open', 'c-close', 'c-if', 'c-F', 'c-R', 'c-B']) assert.ok(markup.includes(kind), `a ${kind} card (${lang})`);
+    assert.equal((markup.match(/class="pcard /g) || []).length, 8, `four steps and four advanced cards in the palette (${lang})`);
+    assert.ok(markup.includes('class="brushbar"'), 'the brush');
+    assert.equal((markup.match(/class="floor-tile"/g) || []).length, 2, 'the painted floor is drawn');
+    const t = I18N[lang];
+    assert.ok(markup.includes(`aria-label="${t.card.open}"`) && markup.includes(`aria-label="${t.floor.paint}"`), `with their names for screen readers (${lang})`);
+    assert.ok(markup.includes(`aria-label="${t.card.while} — ${t.colors.r}"`), `the loop card with a colour is named for what it does (${lang})`);
+  }
+  // not in the basic mode: four cards in the palette, no brush, no floor
+  globalThis.localStorage = { getItem: (k) => ({ 'cards.advanced': '0', 'cards.floor': '{"0,2":"r"}' })[k] ?? null, setItem: noop };
+  const basic = renderToStaticMarkup(h(App));
+  assert.equal((basic.match(/class="pcard /g) || []).length, 4);
+  assert.ok(!basic.includes('brushbar') && !basic.includes('floor-tile'));
+  delete globalThis.localStorage;
+});
+
+test('the settings: the advanced mode switch, and its examples only when it is on', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, advanced: false, onAdvanced: noop,
+    };
+    const off = renderToStaticMarkup(h(Panel, base));
+    const on = renderToStaticMarkup(h(Panel, { ...base, advanced: true }));
+    assert.ok(off.includes(t.panel.advanced) && off.includes(t.panel.advancedHint), `the switch and what it does (${lang})`);
+    assert.ok(off.indexOf(t.panel.quick) < off.indexOf(t.panel.advanced), `after the shortcuts (${lang})`);
+    assert.ok(!off.includes(t.examples.loopSquare), `no advanced example in the basic mode (${lang})`);
+    for (const id of ['loopSquare', 'zigzag', 'turnOnRed', 'backOnGreen', 'alongRed']) assert.ok(on.includes(t.examples[id]), `${id} (${lang})`);
+    assert.equal((on.match(/class="mini"/g) || []).length, 11, `eleven examples (${lang})`);
+    assert.equal((off.match(/class="mini"/g) || []).length, 6);
+  }
+});
+
 test('the settings page renders in every language, connected or not, with a journal', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { I18N } = await load('/src/i18n.js');
@@ -79,22 +125,71 @@ test('without Web Bluetooth the settings page says what to use, Bluefy on an iPh
   }
 });
 
+test('the keys D and R have buttons in the settings, after the sound, in every language', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop,
+    };
+    const idle = renderToStaticMarkup(h(Panel, base));
+    assert.ok(idle.includes(t.panel.quick) && idle.includes(t.panel.pathBtn) && idle.includes(t.panel.resetBtn), `labels (${lang})`);
+    assert.ok(idle.indexOf(t.panel.sound) < idle.indexOf(t.panel.quick), `after the sound (${lang})`);
+    assert.ok(idle.indexOf(t.panel.quick) < idle.indexOf(t.panel.examples), `and before the examples (${lang})`);
+    assert.match(idle, /aria-pressed="false"/, `the path is hidden (${lang})`);
+    assert.ok(!/class="tile-btn reset"[^>]*disabled/.test(idle), `reset is available when nothing runs (${lang})`);
+    const shown = renderToStaticMarkup(h(Panel, { ...base, showPath: true }));
+    assert.match(shown, /aria-pressed="true"/, `the path is shown (${lang})`);
+    assert.match(shown, /class="tile-btn on"/, `and the button says so (${lang})`);
+    const running = renderToStaticMarkup(h(Panel, { ...base, canReset: false }));
+    assert.match(running, /class="tile-btn reset"[^>]*disabled/, `no reset while the robot plays (${lang})`);
+  }
+});
+
+test('live update is not an option: nothing about it in the settings, in any language', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    assert.ok(!('liveUpdate' in t.panel) && !('liveHint' in t.panel), `no words for it (${lang})`);
+    const markup = renderToStaticMarkup(h(Panel, {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop,
+    }));
+    assert.ok(!markup.includes('live-row') && !/xp[eé]riment/i.test(markup), `and no row for it (${lang})`);
+  }
+});
+
 test('the connect button shows its states: grey, connecting, in sync, on, standby, unavailable', async () => {
   const { default: TopBar } = await load('/src/components/TopBar.jsx');
   const { I18N } = await load('/src/i18n.js');
   const t = I18N.fr;
-  const render = (conn, live, bluetooth, extra = {}) => renderToStaticMarkup(h(TopBar, { t, conn, live, bluetooth, busy: false, syncing: false, modeUp: false, onConnect: noop, onPanel: noop, ...extra }));
+  const render = (conn, live, bluetooth, extra = {}) => renderToStaticMarkup(h(TopBar, { t, conn, live, bluetooth, busy: false, syncing: false, modeUp: false, failed: false, onConnect: noop, onPanel: noop, ...extra }));
   const off = render({ status: 'disconnected' }, false, true);
   const wait = render({ status: 'connecting' }, false, true);
+  const starting = render({ status: 'connected', device: 'THYMIO-1', battery: 0 }, true, true);
+  const failed = render({ status: 'connected', device: 'THYMIO-1', battery: 0 }, true, true, { failed: true });
   const on = render({ status: 'connected', device: 'THYMIO-1', battery: 4.0 }, true, true, { modeUp: true });
-  const sync = render({ status: 'connected', device: 'THYMIO-1' }, true, true, { modeUp: true, syncing: true });
-  const standby = render({ status: 'connected', device: 'THYMIO-1' }, true, true, { modeUp: false });
+  const sync = render({ status: 'connected', device: 'THYMIO-1', battery: 4.0 }, true, true, { modeUp: true, syncing: true });
+  const standby = render({ status: 'connected', device: 'THYMIO-1', battery: 4.0 }, true, true, { modeUp: false });
   const no = render({ status: 'disconnected' }, false, false);
   assert.match(off, /conn-icon off/); assert.match(wait, /conn-icon wait/); assert.match(on, /conn-icon on/);
   assert.match(sync, /conn-icon sync/); assert.match(standby, /conn-icon standby/); assert.match(no, /conn-icon no/);
-  for (const m of [on, sync, standby]) assert.ok(m.includes('class="tick"'), 'a tick when connected');
-  assert.ok(!off.includes('class="tick"'));
-  for (const m of [off, wait, on, sync, standby, no]) assert.equal(textOf(m), '');
+  for (const m of [on, sync, standby]) { assert.ok(m.includes('class="tick"'), 'a tick when the robot is ready'); assert.ok(m.includes('class="bat"'), 'and its battery, with it'); assert.ok(m.includes('live'), 'and the green button'); }
+  for (const m of [off, wait]) assert.ok(!m.includes('class="tick"'));
+  // Reached over Bluetooth but not ready yet: still waiting (the waves move), with neither tick, battery nor green
+  assert.match(starting, /conn-icon wait/);
+  for (const m of [starting, failed]) { assert.ok(!m.includes('class="tick"'), 'no tick before the robot is ready'); assert.ok(!m.includes('class="bat"'), 'no battery either'); assert.ok(!/robot-btn [a-z]+ live/.test(m), 'and the button is not green'); }
+  // a start that failed does not wait for ever: the waves stop
+  assert.match(failed, /conn-icon standby/);
+  assert.ok(starting.includes(t.robot.connecting) && !starting.includes(t.robot.connected), 'named as still connecting');
+  // the tick and the battery always go together
+  for (const m of [off, wait, starting, failed, on, sync, standby]) assert.equal(m.includes('class="tick"'), m.includes('class="bat"'), 'tick and battery come together');
+  for (const m of [off, wait, starting, failed, on, sync, standby, no]) assert.equal(textOf(m), '');
 });
 
 test('the top left logo opens the settings, and there is no other settings button', async () => {

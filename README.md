@@ -63,6 +63,66 @@ Non reproduit : la détection d'obstacle de `sequence.c` est entièrement commen
 (`CheckCollisionStatus`), elle ne l'est pas ici non plus ; deux flèches pressées dans le même
 instant ne créent pas de pas « double ».
 
+## Mode avancé : groupes, répétitions et couleur du sol
+
+Réglages (icône du robot orange) → **Mode avancé** (sur Non au départ, retenu par l'appareil). Quatre
+cartes s'ajoutent à la palette, et le tapis reçoit un pinceau :
+
+| Carte | Ce qu'elle fait |
+| --- | --- |
+| `(` `)` | un **groupe** : les cartes entre les deux comptent pour une seule |
+| répéter ×N (2 à 9) | fait **la carte suivante, ou le groupe suivant**, N fois ; les répétitions s'emboîtent |
+| répéter, avec une **couleur** au milieu de la boucle | « tant que » : refait la carte (ou le groupe) **tant que le sol est de cette couleur**, en regardant le sol avant chaque tour |
+| si le sol est… (8 couleurs) | **lit la couleur du sol** sous le robot, et fait la carte suivante (ou le groupe suivant) seulement si c'est celle-là ; sinon la saute |
+
+Les huit couleurs sont celles du capteur du robot (`color_sensor.h` : rouge, jaune, vert, cyan, bleu,
+violet, blanc, noir). Une carte ajoutée à la palette part avec une valeur (×2, rouge) et reste
+sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pour la répétition : les
+  chiffres 2 à 9, **ou** les huit couleurs de la boucle « tant que » ; pour le « si » : les huit couleurs).
+
+- **Une carte, un caractère** : un programme reste une chaîne. `F B L R` (les pas), `( )`, `2`…`9`
+  (répéter), `r y g c b p w k` (si rouge, jaune, vert, cyan, bleu, violet, blanc, noir) et
+  `E Y G C U P W K` (la boucle « tant que » avec la même couleur, dans le même ordre : des majuscules,
+  sauf R et B qui sont des pas, d'où E pour le rouge et U pour le bleu). `4(FR)` est un carré ;
+  `5(FrL)` avance cinq fois et tourne à gauche chaque fois que le sol est rouge ; `E(F)` avance tant
+  que le sol est rouge.
+- **Une carte « si » n'attend jamais** : si le sol n'est pas de la bonne couleur, elle saute la carte
+  (ou le groupe) qui la suit et le programme continue aussitôt, après les 100 ms de lecture du sol.
+  Seule la boucle avec une couleur recommence, et elle regarde le sol avant chaque tour.
+- **Tout programme veut dire quelque chose** (lecture indulgente) : un groupe non fermé se ferme à la
+  fin, une `)` sans `(` est ignorée, un « répéter », un « si » ou un « tant que » sans carte après lui (en
+  fin de programme, ou juste avant `)`), ou dont la carte ne fait rien (un groupe vide), ne fait
+  rien : jamais de boucle qui regarde le sol sans fin sur une carte oubliée. Un « si » dans une boucle est évalué à chaque tour, au
+  point où le robot se trouve.
+- **Le robot lit le sol à l'arrêt**, après la pause qui suit un déplacement, sur 5 ticks (100 ms) : la
+  couleur vue le plus souvent compte (à égalité, la première de `rygcbpwk`). Le mode classe les
+  valeurs TSV du capteur (`COLOR_SENSOR().get_hsv()`) comme `UpdateColor()` de `main/color_sensor.c`
+  (saturation < 12 et valeur > 65 : blanc ; valeur ≤ 20 : noir ; sinon la teinte : rouge ≤ 10 ou
+  > 350, jaune ≤ 30, vert ≤ 80, cyan ≤ 210, bleu ≤ 260, violet ≤ 350), sauf un point : le micrologiciel
+  appelle « inconnu » un sol gris et sombre, ici un sol sombre et gris (valeur ≤ 20) est noir. Le
+  capteur est créé à la première lecture : un micrologiciel qui n'en a pas fait quand même tourner les
+  autres cartes (un « si » ne voit alors aucune couleur).
+- **Ce que le robot dit** en plus : `@@sense i` (il regarde le sol pour la carte `i`) et `@@if i 1|0 c`
+  (le test, et la couleur vue ou `?`). Sur l'écran, la carte active suit le déroulement (une carte
+  refaite dans une boucle redevient « à faire » puis active) et la carte « si » **clignote en vert
+  (vrai) ou en rouge (faux)**. Le chemin affiché (touche **D**) est celui que le robot suivrait sur le
+  sol peint. La position du vrai robot est la somme des pas qu'il annonce, pas une place dans le
+  programme : avec des boucles une carte se fait plusieurs fois, ou pas du tout.
+- **Le sol du robot virtuel** se peint avec le pinceau (en haut à gauche du tapis) : choisir une couleur,
+  toucher une case ; la même couleur à nouveau (ou la gomme) l'efface ; pinceau fermé, un toucher plante
+  le drapeau comme avant. Le sol est retenu par l'appareil, et n'existe qu'en mode avancé. Les exemples
+  « Tourner sur le rouge », « Reculer sur le vert » et « Avancer sur le rouge » apportent le sol qui va avec. Un vrai robot lit,
+  lui, le vrai sol (des feuilles de couleur sur la table) : le sol peint ne sert alors qu'à prévoir.
+- **Mise à jour en direct** : cinq bits par carte quand il y a des cartes avancées (deux bits pour les
+  quatre pas seuls, comme avant), jusqu'à 49 cartes avancées en huit trames (au-delà, le mode est
+  relancé).
+- Ce qui est vérifié sans robot : le compilateur JavaScript et celui du mode Python donnent la même chose
+  pour 400 programmes tirés au hasard ; le simulateur de l'interface suit le mode Python à la
+  milliseconde pour huit programmes avancés posés sur un sol (dates des pas, des lectures du sol et des
+  décisions) ; les trames de mise à jour en direct de 600 programmes sont relues à l'identique par les
+  deux côtés. **Pas encore essayé sur un vrai robot** : surtout les seuils du capteur sur de vraies
+  surfaces (noir, blanc, couleurs du papier) et sa mise à l'arrêt.
+
 ## Comment ça marche avec un vrai robot
 
 Le **mouvement est conduit en Python, sur le robot** : [`src/py/sequence_mode.py`](src/py/sequence_mode.py)
@@ -81,15 +141,16 @@ pilote jamais les moteurs.
 
 **L'interface et le robot portent le même programme à tout moment.**
 
-- **Interface → robot** : un script qui tourne ne peut rien recevoir par Bluetooth (l'API Python et
-  l'API fichiers sont servies par la même tâche MicroPython que celle qui exécute le script, et
-  `stdin` n'est alimenté que par l'USB et l'UART). Le programme du robot est donc remplacé en
-  **relançant le mode** avec le nouveau programme, 0,45 s après la dernière modification des
-  cartes (ajout, suppression, déplacement, tout effacer, exemple). Le robot montre aussitôt le
-  nombre de pas par ses LED Lego. C'est **C'est parti !** qui relance avec lecture immédiate.
-  Chaque relance arrête le script, envoie le lanceur et redémarre le mode : on l'entend (le firmware
-  joue son petit son de chargement à chaque envoi) et on le voit (les LED repartent de zéro). Elle
-  n'a lieu qu'une fois par modification : le robot est considéré comme à jour dès que le mode dit
+- **Interface → robot** : un script qui tourne ne peut rien recevoir par les services Bluetooth Python
+  et fichiers (ils sont servis par la même tâche MicroPython que celle qui exécute le script, qui ne
+  les traite qu'entre deux scripts, et `stdin` n'est alimenté que par l'USB et l'UART). Le programme
+  du robot est donc changé par la **mise à jour en direct** (décrite plus bas), 0,45 s après la dernière
+  modification des cartes (ajout, suppression, déplacement, tout effacer, exemple), et, quand elle ne
+  peut pas avoir lieu (premier démarrage d'un robot, mode quitté, échec), en **relançant le mode** avec
+  le nouveau programme. Le robot montre aussitôt le nombre de pas par ses LED Lego. C'est **C'est
+  parti !** qui relance avec lecture immédiate. Chaque relance arrête le script, envoie le lanceur et
+  redémarre le mode : on l'entend (le firmware joue son petit son de chargement à chaque envoi) et on
+  le voit (les LED repartent de zéro). Elle n'a lieu qu'une fois par modification : le robot est considéré comme à jour dès que le mode dit
   `hello` avec le programme envoyé, sans attendre son `@@prog`, et un « script terminé » de l'API,
   qui peut arriver en retard, ne dit rien du mode (seuls ses propres `@@bye` / `@@exit` comptent).
   Un arrêt est confirmé par la notification de l'API, ou par les dernières paroles du script
@@ -99,13 +160,60 @@ pilote jamais les moteurs.
   leur phase sur une horloge commune (`pulsePhase`, en ticks de 20 ms, avec 0,45 s d'avance pour
   le démarrage) et la donne au lanceur (`cards_xxx.run("FFLR", 0, 213)`), le mode allume les LED
   au tout premier tick, avant même de dire `hello`, et l'arrêt n'attend que 40 ms après le
-  `@@bye`. Restent inévitables : le firmware éteint les LED et les moteurs à la fin de chaque script
+  `@@bye`. Et ce n'est pas seulement le mode : le **lanceur allume lui-même les LED** (le pouls du
+  corps, la lumière du cercle, le nombre de pas sur les LED Lego) **avant d'importer le mode**
+  ([`src/py/lights.py`](src/py/lights.py), ≈ 600 octets, deux paquets Bluetooth), car importer les
+  15 Ko du mode (compilés à chaque fois) prend au robot 0,3 à 0,8 s pendant lesquelles les LED
+  resteraient éteintes. Un test compare ces lumières à celles du premier tick du mode (126 programmes
+  et phases). Pas pour « C'est parti » (le mode joue aussitôt) ni pour un programme de 50 pas (le mode
+  montre alors son animation de mémoire pleine). Restent inévitables : le firmware éteint les LED et les moteurs à la fin de chaque script
   (`turnOffAllSensors()`), un bref noir ; et le petit son de chargement à chaque envoi.
 - **Garde-fous** : si le mode s'arrête de lui-même peu après son `hello`, deux fois de suite, il
   n'est plus relancé (on ne tourne pas en boucle sur une erreur) ; il redémarre à la modification
   suivante des cartes ou avec **C'est parti !**. Toutes les secondes, tant qu'un robot est
   connecté, la décision « le robot a-t-il les cartes ? » est reprise (elle ne fait rien quand tout
   est à jour) : un démarrage manqué serait rattrapé.
+- **Mise à jour en direct** : changer les cartes **sans relancer le mode** (la voie normale ; la relance est son
+  repli). Un seul
+  chemin entre le navigateur et un script qui tourne a été trouvé dans le firmware : la commande
+  Bluetooth des actionneurs (`setActuatorState` de l'API, celle du cockpit). Elle est traitée par sa
+  propre tâche (`bt_rx_tx_task`, toutes les 20 ms), quel que soit le script qui tourne, et écrit entre
+  autres l'intensité des quatre LED RGB du corps, que le firmware **mémorise telle quelle** et que
+  MicroPython **relit** (`LEDS_RGB(i).get_intensity_red/green/blue()`, qui lisent `Leds_GetBrightness`).
+  Les cartes passent donc dans ces LED :
+  - **une trame** = douze valeurs de 4 bits (3 canaux × 4 LED) : n° du message, un marqueur à 15 (le
+    mode n'écrit jamais 15 sur ce canal, quelle que soit sa lumière), drapeau de dernière trame + n° de
+    trame, huit demi-octets de message, somme de contrôle. Le message : le nombre de pas (deux demi-octets)
+    puis les pas, 2 bits chacun. 1 trame pour 12 pas, 4 pour 50
+    ([`liveFrames`](src/script-core.js) d'un côté, `rx_poll` dans [`sequence_mode.py`](src/py/sequence_mode.py)
+    de l'autre) ;
+  - le mode lit le canal marqueur à chaque tick, **assemble**, applique, et **répond par la ligne
+    `@@prog` habituelle** : c'est l'accusé de réception, vérifié par l'interface ;
+  - **un message peut se perdre** (le firmware ne garde qu'une commande à la fois : deux écrites en
+    moins de 20 ms, la première disparaît). L'interface attend l'accusé 0,7 s, **renvoie une fois** avec
+    un autre numéro de message, puis **relance le mode** (le repli). Après **deux échecs de suite**, elle
+    ne réessaie plus jusqu'à la prochaine connexion ;
+  - la commande écrit aussi le cercle et les LED Lego (remis tels qu'ils sont : nombre de pas, cercle à
+    l'endroit estimé), les moteurs (à 0), un son (aucun) ; le mode remet ses propres lumières au tick
+    suivant, **au plus 20 ms plus tard** : un éclair possible des LED du corps, au lieu du noir d'une
+    relance. Un Bluetooth à 4 bits ne dit pas 16 (la pleine luminosité du mode) : 15 ;
+  - **le robot fait un petit clic** à chaque vraie modification (le son embarqué n° 12, « flèches »,
+    `SND_UPDATE` dans `sequence_mode.py`, `-1` pour aucun ; le n° 55 « rond » ou le n° 3 « beep » sont
+    d'autres sons courts), comme pour un bouton : plus de son de chargement puisque rien n'est envoyé.
+    Pas pour un message renvoyé ni pour les mêmes cartes. **L'accusé part avant le son** : démarrer le
+    lecteur audio peut prendre du temps, et un accusé en retard ferait renvoyer les cartes puis relancer
+    le mode, avec le bip de chargement du firmware (un test le garantit). Le clic décodé comme le fait
+    le robot : 88 ms de silence, puis ≈ 24 ms de claquement net, puis un reste très faible ;
+  - seulement quand le mode **attend des cartes** (pas pendant une lecture, pas en effaçant), et
+    jamais pour le premier démarrage d'un robot ni quand le mode a été quitté ;
+  - le journal de la connexion dit ce qui se passe : `live update "FLR": 1 frame`, `live update
+    acknowledged after 100 ms`, ou `live update failed …: starting the mode again instead`. Avec
+    `?fakerobot`, `window.fakeRobot.flags.live = 'drop'` (trames perdues) ou `'garble'` (une valeur
+    fausse) fait passer le robot de démonstration par le repli.
+  **Essayé sur un vrai robot (octobre 2026) : ça marche.** Les tests vérifient en plus, sans robot, que
+  le mode Python décode les trames écrites par le vrai encodeur JavaScript (40 programmes tirés au
+  hasard compris), ignore les trames fausses ou incomplètes, supporte une trame perdue suivie d'un
+  renvoi, et joue son clic une fois par changement.
 - **Pourquoi c'est rapide** : envoyer le mode entier (≈ 15 Ko) prenait ≈ 5 s à chaque fois (mesuré
   sur un vrai robot, 510 octets par paquet). Il est maintenant **installé une seule fois sur le robot**
   comme module (`cards_<empreinte>.py`, conservé dans sa mémoire ; l'empreinte du contenu fait
@@ -124,13 +232,15 @@ pilote jamais les moteurs.
 - **À la connexion** : l'interface arrête ce que le robot pourrait encore exécuter (la page
   précédente), vérifie ou installe le module, puis démarre le mode : le robot montre ses couleurs
   magenta et cyan qui pulsent et son cercle de LED qui tourne. L'icône du robot, en haut à droite :
-  gris aux LED éteintes (pas connecté), ondes bleues qui clignotent (connexion), vert avec une
-  coche (connecté, mode en marche), vert aux ondes qui bougent (le robot reçoit les cartes), vert
-  aux LED éteintes (connecté, mode pas en marche), croix rouge (ce navigateur ne sait pas se
-  connecter). Un appui sur l'icône d'un robot connecté demande confirmation avant de déconnecter
-  (✕ reste connecté, ✓ déconnecte ; la page de l'adulte a aussi son bouton). « Connecté » s'affiche
-  dès que le Bluetooth l'annonce, sans attendre la version du micrologiciel (`getFirmwareInfo()` n'a
-  pas de délai maximum dans l'API).
+  gris aux LED éteintes (pas connecté), ondes bleues qui clignotent (connexion, puis démarrage du mode
+  sur le robot), puis, **quand le robot est prêt, la coche verte et la batterie apparaissent ensemble**
+  (la coche ne dit pas seulement que le Bluetooth répond : le mode tourne et le robot a donné sa batterie ;
+  jusque-là le bouton n'est pas vert), vert aux ondes qui bougent (le robot reçoit les cartes), vert
+  aux LED éteintes (prêt, mode pas en marche), croix rouge (ce navigateur ne sait pas se connecter).
+  Si le mode n'a pas pu démarrer, les ondes s'arrêtent, sans coche ni batterie. Un appui sur l'icône d'un robot connecté demande confirmation avant de déconnecter
+  (✕ reste connecté, ✓ déconnecte ; la page de l'adulte a aussi son bouton). La version du
+  micrologiciel est lue en parallèle, sans que le reste l'attende (`getFirmwareInfo()` n'a pas de
+  délai maximum dans l'API).
 - **Stop** arrête le script ; le mode redémarre aussitôt pour que le robot reste en phase. Le bouton
   central du robot quitte le mode comme dans le firmware ; il ne redémarre alors qu'à la
   modification suivante des cartes ou à **C'est parti !**.
@@ -141,9 +251,9 @@ pilote jamais les moteurs.
 Le script complet, avec le programme en cours, s'affiche et se télécharge dans le panneau « Pour les
 grands » (l'icône du robot orange, en haut à gauche) : il tourne tel quel dans n'importe quel outil MicroPython pour Thymio 3.
 
-> Avec un canal vers le script en cours (par exemple une caractéristique BLE qui alimente
-> `stdin_ringbuf` côté firmware), le programme pourrait être mis à jour sans relancer le mode.
-> Seul `RobotBackend.idle()` serait à changer.
+> Un canal plus large vers le script en cours (par exemple une caractéristique BLE qui alimente
+> `stdin_ringbuf` côté firmware) remplacerait les LED de la mise à jour en direct : seuls
+> `RobotBackend.live()` et `rx_poll` seraient à changer.
 
 ## Déboguer la connexion
 
@@ -211,7 +321,8 @@ cette interface.
 ## Statut — à lire
 
 **Essayé sur un vrai robot Thymio 3 (octobre 2026) : tout fonctionne** : connexion, installation du
-module, cartes, relance à chaque modification, lecture, arrêt, et programme identique des deux côtés.
+module, cartes, mise à jour en direct des cartes sans relancer le mode (avec un petit clic sur le robot),
+relance quand il le faut, lecture, arrêt, et programme identique des deux côtés.
 Les durées relevées dans le journal de la connexion : module installé une seule fois en ≈ 5 s
 (15 Ko, paquets de 510 octets), puis lanceur envoyé en 50 à 200 ms et `hello` du mode au bout de
 0,3 à 0,8 s. Les problèmes rencontrés pendant cet essai (liaison encombrée par les flux de capteurs
@@ -235,7 +346,8 @@ Ce qui est vérifié en plus, sans robot, par les tests :
 
 Pas encore vérifié : la précision des 15 cm et des 90° mesurée à la règle sur le sol (les tests la
 mesurent sur le robot virtuel, l'essai réel n'a montré aucun défaut visible), d'autres versions du
-micrologiciel que celle essayée, et l'iPhone / l'iPad avec Bluefy (voir plus haut).
+micrologiciel que celle essayée, l'iPhone / l'iPad avec Bluefy (voir plus haut), et le mode avancé
+sur un vrai robot (voir « Mode avancé »).
 
 ## Organisation
 
@@ -248,7 +360,9 @@ micrologiciel que celle essayée, et l'iPhone / l'iPad avec Bluefy (voir plus ha
 | `src/dev/fake-thymio.js`, `src/api.js` | Robot de démonstration avec l'interface de l'API (`?fakerobot`) ; `api.js` choisit le vrai ou le faux |
 | `src/robot/pose-anim.js` | Position estimée du vrai robot sur le tapis, d'après `@@step` / `@@moved` |
 | `src/sim/physics.js`, `mode.js`, `sim-backend.js` | Robot virtuel et port JavaScript du mode, mêmes événements |
-| `src/spec.js`, `src/program.js` | Constantes du mode, chemin idéal d'un programme, exemples |
+| `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
+| `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
+| `src/colors.js`, `src/labels.js` | Les huit couleurs du sol, les noms des cartes pour les lecteurs d'écran |
 | `src/camera.js` | Le tapis tourne sous le robot : repères, zoom (fixe, ou adapté au chemin), flèche vers le drapeau |
 | `src/useDrag.js` | Glisser-déposer au doigt (appui long pour soulever une carte de la piste) |
 | `src/components/*` | Tapis, piste de cartes, palette et boutons, barre du haut, panneau adulte (réglages, journal) |
@@ -276,17 +390,19 @@ changements.
 - **Un drapeau d'arrivée** se pose en touchant une case du tapis (un drapeau à damier dans une case
   rose) ; le toucher à nouveau l'enlève. Il ne sert qu'à être vu : le robot n'en tient pas compte.
   Hors de l'écran, une flèche au bord de l'écran, qui tourne avec le tapis, indique sa direction.
-- **Remettre le robot au départ** : la touche **R** ramène le robot sur la case de départ, direction
+- **Remettre le robot au départ** : la touche **R** (ou le bouton « Robot au départ » des réglages, pour un smartphone sans clavier) ramène le robot sur la case de départ, direction
   haut (cela se fait aussi tout seul à chaque modification des cartes et à chaque départ). **Le
   retour se voit** : le tapis glisse et tourne en sens inverse sous le robot (0,45 à 0,95 s, plus
   long si le chemin est long, virage par le plus court côté), puis le robot fait un petit bond en
   arrivant ; rien ne bouge s'il est déjà sur la case départ, ni si le système demande de réduire
   les animations. Avec un vrai robot, le remettre à la main sur la case départ avant de recommencer.
 - **Le chemin du robot n'est pas dessiné par défaut** : l'enfant l'imagine. Le tapis ne montre que
-  le robot, à zoom fixe sans tenir compte du programme (cadrer le trajet le révélerait). La touche **D** affiche le chemin prévu et la trace déjà parcourue, et cadre tout
-  le trajet (le zoom s'adapte pour qu'il reste entier dans l'écran) ; une seconde pression le cache. Il n'y a pas de bouton à l'écran, et le choix n'est
-  pas mémorisé : chaque ouverture repart sans chemin. La touche est documentée dans les réglages
-  (icône du robot orange → raccourcis clavier). Sur une tablette sans clavier elle n'est pas disponible.
+  le robot, à zoom fixe sans tenir compte du programme (cadrer le trajet le révélerait). La touche **D** (ou le bouton « Chemin du robot » des réglages) affiche le chemin prévu et la trace déjà parcourue, et cadre tout
+  le trajet (le zoom s'adapte pour qu'il reste entier dans l'écran) ; une seconde pression le cache. Il n'y a pas de bouton sur l'écran principal (il ne montre aucun
+  texte), mais les réglages ont un bouton « Chemin du robot » (et « Robot au départ » pour la touche R),
+  juste après le réglage des sons : un smartphone ou une tablette sans clavier y a accès aussi. Le choix
+  n'est pas mémorisé : chaque ouverture repart sans chemin. Les touches sont documentées dans les
+  réglages (icône du robot orange → raccourcis clavier).
 - Toucher une carte de la palette l'ajoute à la fin ; la glisser l'insère où on la dépose ; glisser
   une carte de la piste la déplace ; la déposer sur la gomme la supprime ; toucher une carte fait
   apparaître sa croix. Sur tablette, une carte de la piste se soulève en la gardant appuyée un

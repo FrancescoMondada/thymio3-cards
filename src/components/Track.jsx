@@ -1,11 +1,13 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
-import { ArrowIcon, ChevronDownIcon, CloseIcon, FlagIcon, PlusIcon } from '../icons.jsx';
-import { MAX_STEPS } from '../spec.js';
+import { ArrowIcon, ChevronDownIcon, CloseIcon, FlagIcon, PlusIcon, digitPath } from '../icons.jsx';
+import { MAX_STEPS, REPEAT_CODES, COLOR_CODES, WHILE_CODES, WHILE_COLOR, cardClass, isRepeat, isColor, isWhile } from '../spec.js';
+import { GROUND_CSS } from '../colors.js';
+import { cardLabel } from '../labels.js';
 
 // One card of a program, or of the palette.
 export function CardFace({ code, label }) {
   return (
-    <div className={`card c-${code}`} role="img" aria-label={label}>
+    <div className={`card ${cardClass(code)}`} role="img" aria-label={label}>
       <ArrowIcon code={code} />
     </div>
   );
@@ -14,10 +16,13 @@ export function CardFace({ code, label }) {
 // The program: the start flag, then the cards in the order the robot will play them. A touch
 // drags a card by holding it first, so a swipe still scrolls a long program.
 export default function Track({
-  ref, cards, cursor, doneUpTo, selected, dragFrom, dropIndex, onPointerDown, onRemove, t, phase, shake,
+  ref, cards, cursor, doneUpTo, selected, dragFrom, dropIndex, onPointerDown, onRemove, onSetCode, check, t, phase, shake,
 }) {
   const ol = useRef(null);
   const bar = useRef(null);
+  const pick = useRef(null);
+  const chosen = selected != null ? cards[selected] : null;
+  const picking = phase === 'idle' && chosen && (isRepeat(chosen.code) || isWhile(chosen.code) || isColor(chosen.code));
   const count = cards.length;
 
   // The drop mark floats over the list; it never changes the layout, so the card under the finger
@@ -37,6 +42,16 @@ export default function Track({
     b.style.top = `${el.offsetTop}px`;
     b.style.height = `${el.offsetHeight}px`;
     b.dataset.side = String(side);
+  });
+
+  // The picker of a repeat or an "if" card: a bar under the card, over what follows.
+  useLayoutEffect(() => {
+    const p = pick.current, list = ol.current;
+    if (!p || !list || selected == null) return;
+    const el = list.querySelector(`[data-card="${selected}"]`);
+    if (!el) return;
+    p.style.top = `${el.offsetTop + el.offsetHeight + 8}px`;
+    p.scrollIntoView?.({ block: 'nearest' });
   });
 
   // Follow the card the robot is playing; show the new card that was just added.
@@ -67,7 +82,8 @@ export default function Track({
               onPointerDown={(e) => onPointerDown(e, { kind: 'move', code: c.code, index: i })}
               onContextMenu={(e) => e.preventDefault()}
             >
-              <CardFace code={c.code} label={t.card[c.code]} />
+              <CardFace code={c.code} label={cardLabel(t, c.code)} />
+              {check && check.index === i && <span key={check.key} className={`flash ${check.taken ? 'yes' : 'no'}`} aria-hidden="true" />}
               {selected === i && phase === 'idle' && (
                 <button
                   className="x" aria-label={t.remove}
@@ -79,6 +95,23 @@ export default function Track({
           );
         })}
         {count === 0 && <li className="empty-hint" aria-hidden="true"><span className="ghost-slot"><PlusIcon /></span></li>}
+        {picking && (
+          <div className="picker" ref={pick} role="group" aria-label={cardLabel(t, chosen.code)}>
+            {(isColor(chosen.code) ? [COLOR_CODES] : [REPEAT_CODES, WHILE_CODES]).map((row, r) => (
+              <div className="pick-row" key={r}>
+                {row.map((v) => (
+                  <button
+                    key={v} className={`pick ${cardClass(v)} ${v === chosen.code ? 'on' : ''}`} aria-pressed={v === chosen.code}
+                    aria-label={cardLabel(t, v)}
+                    onClick={(e) => { e.stopPropagation(); onSetCode(selected, v); }}
+                  >{isRepeat(v)
+                    ? <svg viewBox="-11 -17 22 34" aria-hidden="true"><path d={digitPath(v)} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    : <svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="9.5" fill={GROUND_CSS[isWhile(v) ? WHILE_COLOR[v] : v]} stroke="currentColor" strokeWidth="2.6" /></svg>}</button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="drop-bar" ref={bar} style={{ display: 'none' }} />
       </ol>
       {count === 0 && <div className="hint-arrow" aria-hidden="true"><ChevronDownIcon /></div>}
