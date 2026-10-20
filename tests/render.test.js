@@ -260,3 +260,85 @@ test('if the interface fails, the screen shows a warning and a reload button ins
   assert.ok(markup.includes('class="crash"') && markup.includes('class="again"'));
   assert.equal(textOf(markup), '', 'no words there either');
 });
+
+test('a picture under the mat: laid under the grid over its squares; placing the robot adds two buttons, still no text', async () => {
+  const { default: Stage } = await load('/src/components/Stage.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const props = {
+      program: 'FF', cursor: -1, doneUpTo: -1, showPath: false, target: null, onTarget: noop, canPlace: true, overlay: null, celebrate: 0, t, kind: 'sim',
+      floor: { '1,0': 'r' }, advanced: true, picture: { url: 'blob:x', cols: 4, rows: 3, sx: 2, sy: 1 },
+    };
+    const m = renderToStaticMarkup(h(Stage, props));
+    const image = m.match(/<image [^>]*>/)?.[0] || '';
+    assert.match(image, /class="map-image"/, `the picture (${lang})`);
+    assert.match(image, /href="blob:x"/);
+    // the robot starts on the square (2, 1) of 4 x 3: the picture's corner is 2.5 squares left of it and 1.5 above it (y is down in SVG, up in the cells)
+    assert.match(image, /x="-2\.5"/); assert.match(image, /y="-1\.5"/); assert.match(image, /width="4"/); assert.match(image, /height="3"/);
+    assert.ok(m.indexOf('<image') < m.indexOf('fill="url(#cell)"') && m.indexOf('<image') < m.indexOf('class="floor-tile"'), 'under the grid lines and the painted squares');
+    assert.ok(m.includes('has-map'));
+    assert.ok(!m.includes('placebar') && m.includes('brushbar'), 'the robot is not being placed: no buttons, the brush stays');
+
+    const placing = renderToStaticMarkup(h(Stage, { ...props, placing: true, onPlace: noop, onPlaced: noop, onRecentre: noop }));
+    assert.ok(placing.includes(`aria-label="${t.map.recentre}"`) && placing.includes(`aria-label="${t.map.done}"`), `recentre and confirm (${lang})`);
+    assert.ok(placing.includes('place-ring') && placing.includes('xMidYMid meet') && !placing.includes('brushbar'));
+    const read = renderToStaticMarkup(h(Stage, { ...props, picture: { ...props.picture, cells: { '2,1': 'r', '0,2': 'b' } }, placing: true, onPlace: noop, onPlaced: noop, onRecentre: noop }));
+    assert.equal((read.match(/class="read-dot"/g) || []).length, 2, `a dot for each square the robot reads a colour on (${lang})`);
+    assert.match(read, /<circle class="read-dot" cx="0" cy="0" r="0.13" fill="#ef4444"/, 'on the start square, in the robot\'s frame');
+    assert.match(read, /cx="-2" cy="-1" r="0.13" fill="#3b82f6"/);
+    assert.ok(!m.includes('read-dot') && !placing.includes('read-dot'), 'the dots are for placing the robot, and only when there is something read');
+    assert.equal(textOf(placing), '', `no text while placing (${lang})`);
+  }
+  const none = renderToStaticMarkup(h(Stage, { program: 'F', cursor: -1, doneUpTo: -1, onTarget: noop, canPlace: true, t: I18N.en, kind: 'sim', placing: true }));
+  assert.ok(!none.includes('<image') && !none.includes('placebar') && !none.includes('has-map'), 'no picture: nothing to place the robot on');
+});
+
+test('the settings: choose a picture, then its size and the three buttons', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, advanced: false, onAdvanced: noop,
+      picture: null, mapImage: null, mapKind: 'none', onMapDefault: noop, canPlace: true, onMapFile: noop, onMapSize: noop, onMapRatio: noop, onMapPlace: noop, onMapRecentre: noop, onMapRemove: noop,
+    };
+    const none = renderToStaticMarkup(h(Panel, base));
+    assert.ok(none.includes(t.map.title) && none.includes(t.map.hint) && none.includes(t.map.choose) && none.includes(t.map.builtin), `choose a picture, or the Thymio map (${lang})`);
+    assert.ok(!none.includes(t.map.place) && !none.includes(t.map.remove), 'nothing to place or remove yet');
+    assert.match(none, /<input[^>]*type="file"[^>]*accept="image\/\*"/);
+
+    const picture = { url: 'blob:x', cols: 5, rows: 4, sx: 2, sy: 2 };
+    const has = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'custom', mapImage: { url: 'blob:x', w: 800, h: 600 } }));
+    assert.ok(has.includes(t.map.change) && !has.includes(`>${t.map.choose}<`) && has.includes(t.map.builtin), `change it, or go back to the Thymio map (${lang})`);
+    const builtin = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'default', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
+    assert.ok(builtin.includes(t.map.choose) && !builtin.includes(`>${t.map.builtin}<`) && builtin.includes(t.map.place) && builtin.includes(t.map.remove), `the Thymio map is already there: choose another, place, remove (${lang})`);
+    for (const k of ['size', 'ratio', 'place', 'recentre', 'remove']) assert.ok(has.includes(t.map[k]), `${k} (${lang})`);
+    assert.ok(has.includes(`aria-label="${t.map.cols}" value="5"`) && has.includes(`aria-label="${t.map.rows}" value="4"`), `the size (${lang})`);
+    assert.ok(has.includes('class="map-thumb"'));
+    assert.ok(!has.includes(t.map.virtualOnly), 'no note while the robot is virtual');
+    assert.ok(renderToStaticMarkup(h(Panel, { ...base, live: true, canPlace: false, picture, mapImage: { url: 'blob:x', w: 8, h: 6 } })).includes(t.map.virtualOnly), `a real robot is connected: the picture is hidden (${lang})`);
+    assert.match(renderToStaticMarkup(h(Panel, { ...base, picture, mapImage: { url: 'blob:x', w: 8, h: 6 }, canPlace: false })), /<button[^>]*disabled=""[^>]*><svg[^>]*>.*?<\/svg><span>[^<]*<\/span><\/button>/, 'placing is not offered while the robot runs');
+  }
+});
+
+test('the Thymio map is under the mat from the start; a plain mat when it was removed; a picture that is gone means the map', async () => {
+  const { default: App } = await load('/src/App.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
+  const first = render({});
+  const image = first.match(/<image [^>]*>/)?.[0] || '';
+  assert.match(image, /class="map-image"/);
+  assert.match(image, /href="[^"]*Tapis_Thymio[^"]*\.jpg"/, 'the map of the town');
+  assert.match(image, /x="-2\.5"/); assert.match(image, /y="-1\.5"/); assert.match(image, /width="4"/); assert.match(image, /height="4"/);
+  assert.equal(textOf(first), '', 'still no text on the main screen');
+  // a "null" left by an older version of the page does not mean "no picture"
+  assert.ok(render({ 'cards.map': 'null' }).includes('class="map-image"'));
+  // moved to another square
+  assert.match(render({ 'cards.map': JSON.stringify({ cols: 4, rows: 4, sx: 0, sy: 3 }) }).match(/<image [^>]*>/)[0], /x="-0\.5"/);
+  assert.ok(!render({ 'cards.mapkind': 'none' }).includes('map-image'), 'removed: a plain mat');
+  assert.ok(!render({ 'cards.mapkind': 'custom' }).includes('map-image'), 'a picture of the adult is not there until it is read back from the browser');
+  delete globalThis.localStorage;
+  assert.ok(Object.keys(I18N).every((l) => I18N[l].map.builtin), 'named in every language');
+});

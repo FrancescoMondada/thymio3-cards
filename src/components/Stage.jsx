@@ -1,9 +1,10 @@
 import React, { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { layout } from '../program.js';
 import { FOLLOW_CELLS, edgePointer, toScreen, toWorld, viewBox, worldMatrix, zoomFor } from '../camera.js';
-import { ArrowIcon, ArrowRightIcon, BluetoothOffIcon, BrushIcon, FlagIcon, RobotIcon, StarIcon, WarnIcon } from '../icons.jsx';
+import { ArrowIcon, ArrowRightIcon, BluetoothOffIcon, BrushIcon, CheckIcon, FlagIcon, RobotIcon, StarIcon, TargetIcon, WarnIcon } from '../icons.jsx';
 import { COLOR_CODES } from '../spec.js';
 import { GROUND_CSS } from '../colors.js';
+import { cellUnder, mapRect, viewForMap } from '../worldmap.js';
 
 // The floor mat seen from above: one square = one straight step (15 cm). Coordinates here are in
 // cells with y up; the SVG is y down, hence the sign in P().
@@ -74,7 +75,11 @@ function FinishFlag() {
 // `api.setPose({ x, y, th }, leds)` moves the mat under the robot, and lights its LEDs, without
 // re-rendering the whole tree. A touch on the mat sets the target flag there (onTarget), or removes
 // it when it is touched again; the flag is only to be seen.
-export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, advanced, brush, onBrush, onFloor }) {
+//
+// A `picture` (url, cols, rows and the square the robot starts on) is laid under the grid. While the
+// robot is being `placing`, the mat does not follow it: the whole picture is shown, north up, and the
+// robot is dragged to its start square (onPlace) with a check to finish and a target to recentre it.
+export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, colourAt, advanced, brush, onBrush, onFloor, picture, placing, onPlace, onPlaced, onRecentre }) {
   const wrap = useRef(null);
   const svg = useRef(null);
   const world = useRef(null);
@@ -86,15 +91,25 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
   const pose = useRef({ x: 0, y: 0, th: 0 });
   const zoom = useRef({ cells: FOLLOW_CELLS, at: 0 });
   const [aspect, setAspect] = useState(1.2);
+  const dragging = useRef(false);
 
-  const { start, poses, steps } = useMemo(() => layout(program, (x, y) => floor[`${x},${y}`]), [program, floor]);
+  const { start, poses, steps } = useMemo(() => layout(program, colourAt || ((x, y) => floor[`${x},${y}`])), [program, floor, colourAt]);
   const latest = useRef({});
-  latest.current = { aspect, showPath, target, points: [start, ...poses, ...(target ? [target] : [])] };
+  latest.current = { aspect, showPath, target, placing: Boolean(placing && picture), picture, points: [start, ...poses, ...(target ? [target] : [])] };
 
   // Put the mat where it has to be for this pose: turned so that the robot faces up, the zoom
   // slid towards its goal, the pointer to the target on the edge when the flag is out of sight.
   const frame = (p) => {
     const L = latest.current, now = performance.now();
+    if (L.placing) {                                      // the whole picture, north up, and the robot on its start square
+      const v = viewForMap(L.picture);
+      svg.current?.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+      world.current?.setAttribute('transform', 'matrix(1 0 0 1 0 0)');
+      flagUp.current?.setAttribute('transform', 'rotate(0)');
+      hud.current?.setAttribute('display', 'none');
+      zoom.current.at = now;
+      return;
+    }
     const dt = Math.min(0.1, (now - zoom.current.at) / 1000);
     zoom.current.at = now;
     const want = zoomFor({ pose: p, points: L.points, aspect: L.aspect, showPath: L.showPath });
@@ -148,7 +163,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
   }), []);
 
   const touch = (e) => {
-    if (!canPlace || !svg.current) return;
+    if (placing || !canPlace || !svg.current) return;
     const m = svg.current.getScreenCTM();
     if (!m) return;
     const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());   // where, in the robot's frame
@@ -158,19 +173,37 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
     else onTarget?.(cell);                               // ...otherwise a touch plants the flag
   };
 
+  // Placing the robot: the square of the picture under the finger is its start square.
+  const placeAt = (e) => {
+    const m = svg.current?.getScreenCTM();
+    if (!m || !picture) return;
+    const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    const cell = cellUnder({ x: at.x, y: -at.y }, picture);
+    if (cell.sx !== picture.sx || cell.sy !== picture.sy) onPlace?.(cell);
+  };
+  const placeDown = (e) => { if (!placing || !picture) return; e.currentTarget.setPointerCapture?.(e.pointerId); dragging.current = true; placeAt(e); };
+  const placeMove = (e) => { if (placing && dragging.current) placeAt(e); };
+  const placeUp = () => { dragging.current = false; };
+
   const prevOf = (k) => (k === 0 ? start : poses[k - 1]);
   const stateOf = (i) => (i <= doneUpTo ? 'done' : i === cursor ? 'active' : 'todo');
 
   return (
-    <div className={`stage ${kind}`} ref={wrap} role="img" aria-label={t.stage} onClick={touch}>
-      <svg ref={svg} className="mat" preserveAspectRatio="xMidYMid slice">
+    <div className={`stage ${kind} ${placing && picture ? 'placing' : ''}`} ref={wrap} role="img" aria-label={t.stage} onClick={touch}
+      onPointerDown={placeDown} onPointerMove={placeMove} onPointerUp={placeUp} onPointerCancel={placeUp}>
+      <svg ref={svg} className={`mat ${picture ? 'has-map' : ''}`} preserveAspectRatio={placing && picture ? 'xMidYMid meet' : 'xMidYMid slice'}>
         <defs>
           <pattern id="cell" width="1" height="1" patternUnits="userSpaceOnUse" x="-0.5" y="-0.5">
+            <path d="M1 0 V1 M0 1 H1" className="gridhalo" />
             <path d="M1 0 V1 M0 1 H1" className="gridline" />
           </pattern>
         </defs>
         <g ref={world}>
           <rect className="floor" x="-200" y="-200" width="400" height="400" />
+          {picture && (() => {
+            const r = mapRect(picture);
+            return <image className="map-image" href={picture.url} x={r.x0} y={-r.y1} width={picture.cols} height={picture.rows} preserveAspectRatio="none" />;
+          })()}
           <rect x="-200" y="-200" width="400" height="400" fill="url(#cell)" />
           {Object.entries(floor).map(([key, c]) => {
             const [x, y] = key.split(',').map(Number);
@@ -195,9 +228,20 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
           <circle r="0.38" />
           <g transform="translate(0 0.1) scale(0.5)"><FinishFlag /></g>
         </g>
+        {placing && picture && picture.cells && Object.entries(picture.cells).map(([key, c]) => {      // what the robot reads on each square
+          const [px, py] = key.split(',').map(Number);
+          return <circle key={key} className="read-dot" cx={px - picture.sx} cy={-(py - picture.sy)} r="0.13" fill={GROUND_CSS[c]} />;
+        })}
+        {placing && picture && <circle className="place-ring" r="0.62" />}
         <Robot innerRef={robot} dots={dots} />
       </svg>
-      {advanced && (
+      {placing && picture && (
+        <div className="placebar" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <button className="recentre" aria-label={t.map.recentre} onClick={onRecentre}><TargetIcon /></button>
+          <button className="validate" aria-label={t.map.done} onClick={onPlaced}><CheckIcon /></button>
+        </div>
+      )}
+      {advanced && !placing && (
         <div className="brushbar" onClick={(e) => e.stopPropagation()}>
           <button className={`brush ${brush ? 'on' : ''}`} aria-pressed={Boolean(brush)} aria-label={t.floor.paint} onClick={() => onBrush(brush ? null : 'r')}><BrushIcon /></button>
           {brush && (

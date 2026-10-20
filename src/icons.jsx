@@ -192,3 +192,18 @@ export const RefreshIcon = () => (
     <path d="M52 32 A20 20 0 1 1 44 16" /><path d="M46 6 V18 H34" />
   </svg>
 );
+
+export const MapIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="6" y="10" width="52" height="44" rx="7" />
+    <circle cx="21" cy="25" r="5" fill="currentColor" />
+    <path d="M8 48 L24 33 L34 42 L42 34 L56 48" />
+  </svg>
+);
+export const TargetIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round">
+    <circle cx="32" cy="32" r="14" />
+    <circle cx="32" cy="32" r="3" fill="currentColor" />
+    <path d="M32 6 V16 M32 48 V58 M6 32 H16 M48 32 H58" />
+  </svg>
+);

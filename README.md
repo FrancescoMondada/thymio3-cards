@@ -123,6 +123,105 @@ sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pou
   deux côtés. **Pas encore essayé sur un vrai robot** : surtout les seuils du capteur sur de vraies
   surfaces (noir, blanc, couleurs du papier) et sa mise à l'arrêt.
 
+### Exemples de programmes
+
+Un programme s'écrit avec **un caractère par carte** (`F B L R`, `( )`, `2`…`9`, `r y g c b p w k`,
+`E Y G C U P W K`, voir ci-dessus). Chaque image montre **les cartes**, telles qu'elles sont dans
+l'application, puis **le tapis vu de dessus** : le robot part de la case entourée de tirets, en
+regardant vers le haut ; les cases colorées sont le sol ; les flèches vertes sont des pas en avant, les
+bleues des pas en arrière ; le robot est dessiné là où il s'arrête (son avant est le côté arrondi). Un
+sol se décrit aussi par ses cases `(x, y)` : `x` vers la droite, `y` vers le haut, départ en `(0, 0)`.
+Les résultats sont calculés par l'interpréteur de `src/lang.js` (le même langage que sur le robot) et
+vérifiés par `tests/readme-examples.test.js`, qui contrôle aussi les images (`npm run docs:examples`
+les redessine). Pour les essayer : réglages → mode avancé, puis peindre le sol avec le pinceau, ou
+prendre l'un des exemples des réglages, qui apportent leur sol.
+
+**Répétitions et groupes**
+
+| Cartes et parcours | Programme | Ce que fait le robot |
+| --- | --- | --- |
+| ![rep-3f](docs/examples/rep-3f.svg) | `3F` | répéter 3 fois : avance. Avance de trois cases (comme `FFF`), arrive en `(0, 3)`. |
+| ![rep-square](docs/examples/rep-square.svg) | `4(FR)` | répéter 4 fois le groupe « avance, tourne à droite ». Dessine un carré et revient au départ, tourné vers le haut. |
+| ![rep-stairs](docs/examples/rep-stairs.svg) | `3(FRFL)` | répéter 3 fois « avance, droite, avance, gauche ». Monte un escalier vers la droite, arrive en `(3, 3)`. |
+| ![rep-nested](docs/examples/rep-nested.svg) | `2(F2(L)B)` | répéter 2 fois : avance, (répéter 2 fois gauche : un demi-tour), recule. Une répétition dans une répétition : `FLLBFLLB`, revient en `(0, 0)`. |
+| ![group](docs/examples/group.svg) | `(FF)R(FF)` | un groupe seul ne change rien. `FFRFF` : arrive en `(2, 2)`, tourné vers la droite. |
+
+**La carte « si » : faire la carte (ou le groupe) suivante seulement si le sol a cette couleur**
+
+| Cartes et parcours | Programme | Ce que fait le robot |
+| --- | --- | --- |
+| ![if-on](docs/examples/if-on.svg) | `rF`<br>sol : rouge en `(0, 0)` | si le sol est rouge, avance. Le robot est sur du rouge : il avance d'une case. |
+| ![if-off](docs/examples/if-off.svg) | `rF`<br>sol : pas de rouge | l'avance est **sautée**, le programme finit aussitôt : le robot ne bouge pas, et n'attend rien. |
+| ![if-group-true](docs/examples/if-group-true.svg) | `Fr(BB)F`<br>sol : rouge en `(0, 1)` | avance ; si rouge, (recule deux fois) ; avance. `FBBF` : avance sur le rouge, recule de deux cases, avance : revient en `(0, 0)`. |
+| ![if-group-false](docs/examples/if-group-false.svg) | `Fr(BB)F`<br>sol : pas de rouge | le groupe est sauté : `FF`, arrive en `(0, 2)` sans attendre. |
+| ![if-turn-red](docs/examples/if-turn-red.svg) | `5(FrL)`<br>sol : rouge en `(0, 2)` | 5 fois : avance ; si rouge, tourne à gauche. Avance de deux cases, tourne à gauche sur le rouge, continue vers la gauche : arrive en `(-3, 2)`. |
+| ![if-green-back](docs/examples/if-green-back.svg) | `2(Fg(BB))`<br>sol : vert en `(0, 1)` | 2 fois : avance ; si vert, (recule deux fois). Premier tour : sur le vert, il recule de deux cases ; second tour : la case n'est pas verte, le groupe est sauté. Arrive en `(0, 0)`. |
+| ![if-two](docs/examples/if-two.svg) | `rF gF`<br>sol : rouge en `(0, 0)` | deux « si » côte à côte, chacun avec sa carte. `F` : le premier est vrai, le second est faux. |
+| ![if-never](docs/examples/if-never.svg) | `rgF`<br>sol : rouge en `(0, 0)` | si rouge, (si vert, avance). Ne fait **jamais** rien : une case n'a qu'une couleur. |
+
+**La répétition avec une couleur (« tant que ») : recommence tant que le sol a cette couleur**
+
+| Cartes et parcours | Programme | Ce que fait le robot |
+| --- | --- | --- |
+| ![while-red](docs/examples/while-red.svg) | `E(F)`<br>sol : rouge en `(0, 0)`, `(0, 1)`, `(0, 2)` | tant que le sol est rouge, avance. Suit la bande rouge et s'arrête sur la première case qui n'est pas rouge : `(0, 3)`. |
+| ![while-none](docs/examples/while-none.svg) | `E(F)`<br>sol : pas de rouge | ne bouge pas : le sol n'est pas rouge dès le départ. |
+| ![while-yellow](docs/examples/while-yellow.svg) | `Y(FL)`<br>sol : jaune en `(0, 0)`, `(0, 1)`, `(-1, 1)` | tant que jaune : avance, tourne à gauche. `FLFLFL` : tourne autour des cases jaunes, s'arrête en `(-1, 0)` (pas jaune), tourné vers la droite. |
+| ![while-in-loop](docs/examples/while-in-loop.svg) | `3(F E(F))`<br>sol : rouge en `(0, 1)`, `(0, 2)` | 3 fois : avance, puis tant que rouge avance. `FFFFF` : au premier tour la boucle suit la bande rouge jusqu'en `(0, 3)`, aux autres le sol n'est pas rouge : arrive en `(0, 5)`. |
+| ![while-forever](docs/examples/while-forever.svg) | `E(R)`<br>sol : rouge en `(0, 0)` | tant que le sol est rouge, tourne à droite. **Ne s'arrête jamais** : le sol sous le robot reste rouge. Appuyer sur **Stop**. L'action d'une boucle « tant que » doit pouvoir changer ce que voit le robot. |
+
+**Programmes incomplets : ils veulent dire quelque chose quand même**
+
+| Cartes | Programme | Pourquoi, et ce que fait le robot |
+| --- | --- | --- |
+| ![bad-repeat](docs/examples/bad-repeat.svg) | `F3` | une répétition sans carte après elle est ignorée. `F`. |
+| ![bad-open](docs/examples/bad-open.svg) | `(F` | un groupe non fermé se ferme à la fin. `F`. |
+| ![bad-close](docs/examples/bad-close.svg) | `F)B` | une `)` sans `(` est ignorée. `FB`. |
+| ![bad-empty-repeat](docs/examples/bad-empty-repeat.svg) | `3(2)F` | une répétition dont la carte est vide ne fait rien. `F`. |
+| ![bad-empty-while](docs/examples/bad-empty-while.svg) | `E()F` | un « tant que » sur un groupe vide ne fait rien (pas de boucle sans fin sur une carte oubliée). `F`. |
+
+## Une image sous le tapis
+
+Dans les réglages (le logo en haut à gauche), « **Image sous le tapis** » pose une image sous la grille
+de 15 cm, pour y faire évoluer le robot sur une vraie carte (un plan de ville, un parcours dessiné,
+une photo de la salle). **Par défaut, c'est la carte de la ville Thymio, 4 × 4 carrés**
+([`docs/Tapis_Thymio.png`](docs/Tapis_Thymio.png), 3000 × 3000 pixels, 33 Mo) : l'application en embarque une version
+de 1280 pixels (650 Ko, `src/assets/Tapis_Thymio.jpg`), refaite avec
+`sips -s format jpeg -s formatOptions 86 -z 1280 1280 docs/Tapis_Thymio.png --out src/assets/Tapis_Thymio.jpg`.
+Le robot y part du carré du milieu (colonne C, ligne 2 : le zoo).
+
+1. **Choisir une image** (n'importe quel format que le navigateur lit). Elle est réduite à 2048 pixels
+   au plus, gardée par le navigateur (IndexedDB, au même endroit que le reste, sur l'appareil seulement) et
+   revient au rechargement de la page.
+2. **Dire combien de carrés elle couvre** : colonnes × lignes (de 1 à 40 ; par exemple 4 × 4). À
+   l'ouverture, 4 colonnes et le nombre de lignes qui garde les proportions de l'image ; le bouton
+   « Proportions de l'image » les rétablit après un changement de colonnes. L'image est étirée sur la
+   grille, jamais rognée.
+3. **Placer le robot** : le tapis cesse de suivre le robot et montre toute l'image, le haut vers le haut ;
+   on **glisse le robot** sur sa case de départ (les cartes sont grisées). La coche verte valide (ou
+   Entrée / Échap), la cible recentre le robot au milieu de l'image. « Recentrer le robot » fait la même
+   chose depuis les réglages, « Retirer l'image » laisse un tapis uni, « Carte Thymio 4 × 4 » remet la carte par défaut (et sa case de départ).
+
+Le robot part par défaut du carré du milieu (le carré à droite et au-dessus du milieu quand le nombre
+est pair), toujours **tourné vers le haut de l'image**. Le repère du programme reste celui du robot (sa
+case de départ est `(0, 0)`, comme dans les exemples et dans le mode Python) : c'est l'image qui bouge
+sous lui. Quand la case de départ change, ce qui est peint ou planté (le sol coloré du mode avancé, le
+drapeau) est déplacé dans l'autre sens, pour rester sur la même case de l'image.
+
+**L'image est le sol du robot virtuel.** Au centre de chaque carré, le robot virtuel lit la couleur
+que vous voyez (sur la carte Thymio : blanc à la maison, jaune au supermarché, rouge au restaurant,
+chez les pompiers et à l'école, bleu à la police, cyan à la piscine, rien sur les routes grises), ramenée à l'une des huit couleurs des cartes « si » et « tant que » (`src/picturecolor.js`) :
+la couleur qui occupe le plus le milieu du carré l'emporte (un trait ou une étiquette n'y change
+rien) ; un gris, un carré transparent ou hors de l'image n'ont pas de couleur ; un clair sans teinte
+est du blanc, un très sombre du noir. Les teintes sont rangées par **secteurs autour de chaque couleur**
+(rouge, jaune, vert, cyan, bleu, violet), et non avec les seuils du capteur du robot : ceux-ci sont
+ceux de la teinte du capteur, où le vert d'un écran (teinte 120) serait cyan et son jaune (60) vert. Le pinceau du
+mode avancé passe avant l'image, case par case ; le chemin prévu (touche **D**) suit aussi l'image. En
+plaçant le robot, un point de la couleur lue s'affiche au centre de chaque carré, pour voir ce
+que le robot comprend d'un dégradé ou d'une photo : des aplats de couleur franche marchent le mieux.
+
+**Avec un vrai robot connecté, l'image est cachée** (et le placement impossible) : il lit le vrai sol,
+et l'image ne doit pas pouvoir être prise pour le sien. Elle revient à la déconnexion.
+
 ## Comment ça marche avec un vrai robot
 
 Le **mouvement est conduit en Python, sur le robot** : [`src/py/sequence_mode.py`](src/py/sequence_mode.py)
@@ -363,6 +462,8 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
 | `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
 | `src/colors.js`, `src/labels.js` | Les huit couleurs du sol, les noms des cartes pour les lecteurs d'écran |
+| `src/worldmap.js`, `src/mapStore.js` | L'image sous le tapis : rectangle de l'image dans le repère du robot, case de départ, déplacement du sol peint ; stockage de l'image (IndexedDB) et réduction |
+| `src/picturecolor.js` | Les couleurs que le robot virtuel lit dans l'image : pixel → une des huit couleurs, carré par carré, et sol « pinceau d'abord, image ensuite » |
 | `src/camera.js` | Le tapis tourne sous le robot : repères, zoom (fixe, ou adapté au chemin), flèche vers le drapeau |
 | `src/useDrag.js` | Glisser-déposer au doigt (appui long pour soulever une carte de la piste) |
 | `src/components/*` | Tapis, piste de cartes, palette et boutons, barre du haut, panneau adulte (réglages, journal) |

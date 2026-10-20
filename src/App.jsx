@@ -14,6 +14,10 @@ import { Homing, PoseAnimator, homePose } from './robot/pose-anim.js';
 import { supportsBluetooth } from './api.js';
 import { play as sfx, setSoundEnabled } from './sound.js';
 import { useDrag } from './useDrag.js';
+import { DEFAULT_MAP, centerCell, cleanMap, shiftCells, shiftPoint, suggestRows } from './worldmap.js';
+import defaultMapUrl from './assets/Tapis_Thymio.jpg';
+import { groundAt } from './picturecolor.js';
+import { clearImage, loadImage, prepareImage, saveImage, scanPicture } from './mapStore.js';
 
 let nextId = 1;
 const mk = (code) => ({ id: nextId++, code });
@@ -24,6 +28,7 @@ const load = (key, fallback) => { try { const v = localStorage.getItem(key); ret
 const save = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
 
 const EMPTY_FLOOR = {};
+const BUILTIN_MAP_IMAGE = { url: defaultMapUrl, w: 1280, h: 1280 };     // the map of the Thymio town, under the mat unless another picture is chosen
 const reduceMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 export default function App() {
@@ -58,6 +63,12 @@ export default function App() {
   const [startFailed, setStartFailed] = useState(false); // the mode could not be started on the robot that was just connected
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [target, setTarget] = useState(null);           // a flag on the mat, only to be seen
+  const [map, setMap] = useState(() => { try { return cleanMap(JSON.parse(load('cards.map', 'null'))) || DEFAULT_MAP; } catch { return DEFAULT_MAP; } });   // the picture under the grid: squares covered, and the start square on it
+  const [mapKind, setMapKind] = useState(() => { const k = load('cards.mapkind', 'default'); return k === 'custom' || k === 'none' ? k : 'default'; });   // the Thymio map, a picture the adult chose, or none
+  const [custom, setCustom] = useState(null);           // the picture the adult chose, kept in IndexedDB: { url, w, h }
+  const mapImage = mapKind === 'default' ? BUILTIN_MAP_IMAGE : mapKind === 'custom' ? custom : null;
+  const [placing, setPlacing] = useState(false);        // the robot is being dragged to its start square on the picture
+  const [scan, setScan] = useState(null);               // the colour of each square of the picture, as the virtual robot reads it: { url, cols, rows, cells }
 
   const live = conn.status === 'connected';
   const bluetooth = supportsBluetooth();
@@ -77,11 +88,49 @@ export default function App() {
   const syncCallbacks = useRef({});
   const S = useRef({});
   const activeFloor = useMemo(() => (advanced ? floor : EMPTY_FLOOR), [advanced, floor]);
-  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, brush };
+  // The picture is the ground of the virtual robot only: with a real robot connected (which reads the real ground)
+  // it is not shown and not read, so that it cannot be taken for the robot's own.
+  const cells = scan && map && mapImage && scan.url === mapImage.url && scan.cols === map.cols && scan.rows === map.rows ? scan.cells : null;
+  const mapPicture = useMemo(() => (map && mapImage ? { url: mapImage.url, ...map, cells } : null), [map, mapImage, cells]);
+  const picture = live ? null : mapPicture;
+  // The colour of the ground at a cell of the robot's frame: what the brush painted, else what the picture has there.
+  const colourAt = useMemo(() => {
+    if (!advanced) return null;
+    return groundAt(activeFloor, live ? null : cells, map ? map.sx : 0, map ? map.sy : 0);
+  }, [advanced, activeFloor, live, cells, map]);
+  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing };
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
   useEffect(() => { save('cards.advanced', advanced ? '1' : '0'); if (!advanced) setBrush(null); }, [advanced]);
   useEffect(() => { save('cards.floor', JSON.stringify(floor)); }, [floor]);
+  useEffect(() => { save('cards.map', JSON.stringify(map)); }, [map]);
+  useEffect(() => { save('cards.mapkind', mapKind); }, [mapKind]);
+  useEffect(() => { if (phase !== 'idle' || live) setPlacing(false); }, [phase, live]);
+
+  // A picture the adult chose comes back from the browser's storage; without it, the Thymio map.
+  useEffect(() => {
+    if (mapKind !== 'custom') return undefined;
+    let alive = true, url = null;
+    loadImage().then((rec) => {
+      if (!alive) return;
+      if (!rec) { setMapKind('default'); setMap(DEFAULT_MAP); return; }
+      url = URL.createObjectURL(rec.blob);
+      setCustom({ url, w: rec.w, h: rec.h });
+    });
+    return () => { alive = false; if (url) URL.revokeObjectURL(url); };
+  }, []);
+
+  // What the picture is made of, square by square, again when the picture or the squares it covers change.
+  const mapUrl = mapImage ? mapImage.url : null, mapCols = map ? map.cols : 0, mapRows = map ? map.rows : 0;
+  useEffect(() => {
+    if (!mapUrl || !mapCols) { setScan(null); return undefined; }
+    let alive = true;
+    scanPicture(mapUrl, mapCols, mapRows).then(
+      (found) => { if (alive) setScan({ url: mapUrl, cols: mapCols, rows: mapRows, cells: found }); },
+      () => { if (alive) setScan(null); },
+    );
+    return () => { alive = false; };
+  }, [mapUrl, mapCols, mapRows]);
   useEffect(() => { save('cards.lang', lang); document.documentElement.lang = lang; document.title = t.title; }, [lang, t.title]);
   useEffect(() => { save('cards.program', program); }, [program]);
 
@@ -315,6 +364,56 @@ export default function App() {
     });
   }, []);
 
+  // The picture under the grid. The robot's own frame stays the frame of the program (its start square is
+  // (0, 0)), so when the start square moves on the picture, what was painted or planted is moved the other
+  // way: it stays on the same square of the picture.
+  const changeMap = useCallback((patch) => {
+    const cur = S.current.map;
+    const next = cleanMap({ ...cur, ...patch });
+    setMap(next);
+    if (cur && (next.sx !== cur.sx || next.sy !== cur.sy)) {
+      setFloor((f) => shiftCells(f, cur.sx - next.sx, cur.sy - next.sy));
+      setTarget((tg) => shiftPoint(tg, cur.sx - next.sx, cur.sy - next.sy));
+      edited();
+    }
+  }, [edited]);
+
+  const pickMapFile = useCallback(async (file) => {
+    const prepared = await prepareImage(file);                       // rejects when the file is not a picture
+    const rec = { blob: prepared.blob, w: prepared.w, h: prepared.h };
+    await saveImage(rec);
+    const url = URL.createObjectURL(rec.blob);
+    setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return { url, w: rec.w, h: rec.h }; });
+    setMapKind('custom');
+    const cols = S.current.map.cols;
+    const rows = suggestRows(cols, rec.w, rec.h);
+    setMap(cleanMap({ cols, rows, ...centerCell(cols, rows) }));      // a new picture: the robot in the middle of it; the floor and the flag stay where they are around the robot
+    setPlacing(false);
+  }, []);
+
+  const sizeMap = useCallback((patch) => changeMap(patch), [changeMap]);
+  const keepProportions = useCallback(() => {
+    const img = mapImage, cur = S.current.map;
+    if (img && cur) changeMap({ rows: suggestRows(cur.cols, img.w, img.h) });
+  }, [mapImage, changeMap]);
+  const recentreRobot = useCallback(() => {
+    const cur = S.current.map;
+    if (cur) changeMap(centerCell(cur.cols, cur.rows));
+  }, [changeMap]);
+  const forgetCustom = useCallback(() => {
+    clearImage();
+    setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; });
+    setPlacing(false);
+  }, []);
+  const removeMap = useCallback(() => { forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
+  const defaultMap = useCallback(() => { forgetCustom(); setMapKind('default'); setMap(DEFAULT_MAP); }, [forgetCustom]);   // the Thymio map again
+  const startPlacing = useCallback(() => {
+    if (S.current.phase !== 'idle' || S.current.live || S.current.mapKind === 'none') return;
+    setPanel(false);
+    setBrush(null);
+    setPlacing(true);
+  }, []);
+
   const append = useCallback((code) => insert(code, undefined), [insert]);
 
   const removeAt = useCallback((i) => {
@@ -390,7 +489,7 @@ export default function App() {
     } else {
       home.current = false;
       setPhase('playing');
-      sim.current.play(s.program, (x, y) => s.floor[`${x},${y}`]);
+      sim.current.play(s.program, s.colourAt || (() => undefined));
     }
   }, [cal, note, t]);
 
@@ -420,7 +519,7 @@ export default function App() {
   }, [note]);
 
   // ---- drag and drop, keyboard -----------------------------------------------------------------
-  const enabled = phase === 'idle' && !panel;
+  const enabled = phase === 'idle' && !panel && !placing;
   const { drag, onPointerDown } = useDrag({
     trackRef, eraserRef, enabled,
     onTapNew: append,
@@ -433,6 +532,10 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (panel || confirmDisc || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (S.current.placing) {                       // the robot is being placed: Enter or Esc is done, nothing else
+        if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); setPlacing(false); }
+        return;
+      }
       const onButton = e.target?.tagName === 'BUTTON';
       const map = { ArrowUp: 'F', ArrowDown: 'B', ArrowLeft: 'L', ArrowRight: 'R' };
       if (map[e.key]) { if (S.current.phase === 'idle') { e.preventDefault(); append(map[e.key]); } }
@@ -473,7 +576,7 @@ export default function App() {
   }, [t.eraseAllHint]);
 
   return (
-    <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'}`}>
+    <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'} ${placing ? 'placing' : ''}`}>
       <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} />
       <main className="board">
         <section className="left">
@@ -482,7 +585,8 @@ export default function App() {
             showPath={showPath} target={target} canPlace={phase === 'idle' && !panel && !confirmDisc}
             onTarget={(cell) => setTarget((cur) => (cur && cur.x === cell.x && cur.y === cell.y ? null : cell))}
             overlay={overlay} celebrate={celebrate && finished ? celebrate : 0} t={t} kind={live ? 'live' : 'sim'}
-            floor={activeFloor} advanced={advanced} brush={brush} onBrush={setBrush} onFloor={paintFloor}
+            floor={activeFloor} colourAt={colourAt} advanced={advanced} brush={brush} onBrush={setBrush} onFloor={paintFloor}
+            picture={picture} placing={placing} onPlace={changeMap} onPlaced={() => setPlacing(false)} onRecentre={recentreRobot}
           />
         </section>
         <section className="right">
@@ -494,7 +598,7 @@ export default function App() {
           <div className="dock">
             <Palette onPointerDown={onPointerDown} onKeyTap={append} t={t} disabled={!enabled} advanced={advanced} />
             <Dock
-              eraserRef={eraserRef} canErase={enabled && cards.length > 0} running={phase !== 'idle'} canGo={cards.length > 0 && phase === 'idle'}
+              eraserRef={eraserRef} canErase={enabled && cards.length > 0} running={phase !== 'idle'} canGo={cards.length > 0 && phase === 'idle' && !placing}
               eraserActive={Boolean(drag?.eraser)} onEraseLast={eraseLast} onClear={clearAll}
               onClearHint={hintTrash} wobble={trashWobble} onGo={go} onStop={stop} t={t}
             />
@@ -514,6 +618,8 @@ export default function App() {
           live={live} bluetooth={bluetooth} conn={conn} cal={cal} program={program} lastError={lastError}
           log={log} onClearLog={() => setLog([])} onTest={testRobot} testing={testing} canTest={live && phase === 'idle'}
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} advanced={advanced} onAdvanced={setAdvanced}
+          picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapDefault={defaultMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
+          onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
           onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}

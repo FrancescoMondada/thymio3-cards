@@ -100,8 +100,8 @@ function startMode(program, autoplay, phase = 0) {
 }
 
 function execute(script) {
-  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwk]*)", (\d)(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
-  const whole = /^PROGRAM = "([FBLR()2-9rygcbpwk]*)"/m.exec(script);
+  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
+  const whole = /^PROGRAM = "([FBLR()2-9rygcbpwkEYGCUPWK]*)"/m.exec(script);
   if (launcher) {
     if (![...files.keys()].includes(`${launcher[1]}.py`)) {
       print(`Traceback (most recent call last):\r\n  File "mp_script", line 1, in <module>\r\nImportError: no module named '${launcher[1]}'\r\n`, true);

@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test tests/*.test.js && python3 -I tests/test_sequence_mode.py",
-    "api:update": "npm update thymio3-ts-api"
+    "api:update": "npm update thymio3-ts-api",
+    "docs:examples": "node scripts/make-example-images.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

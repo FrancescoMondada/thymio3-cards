@@ -402,3 +402,24 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .crash .sign svg { width: 110px; height: 110px; }
 .crash .again { width: 120px; height: 120px; border-radius: 50%; background: var(--go); color: #fff; display: grid; place-items: center; box-shadow: 0 8px 0 var(--go-d); }
 .crash .again svg { width: 64px; height: 64px; }
+
+/* ---- a picture under the grid, and the robot being placed on it ------------------------------ */
+.gridhalo { stroke: none; fill: none; }
+.has-map .gridhalo { stroke: rgba(255, 255, 255, .55); stroke-width: .09; fill: none; }
+.has-map .gridline { stroke: rgba(42, 43, 68, .6); }
+.map-image { pointer-events: none; }
+.stage.placing { cursor: grab; touch-action: none; }
+.stage.placing:active { cursor: grabbing; }
+.place-ring { fill: rgba(255, 255, 255, .35); stroke: var(--pink); stroke-width: .07; stroke-dasharray: .16 .12; pointer-events: none; animation: ring 1.1s ease-in-out infinite alternate; }
+@keyframes ring { from { opacity: .5; } to { opacity: 1; } }
+.placebar { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; gap: 8px; }
+.placebar button { width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--line); display: grid; place-items: center; color: var(--ink); }
+.placebar .validate { background: #22c55e; border-color: #15803d; box-shadow: 0 3px 0 #15803d; color: #fff; }
+.placebar svg { width: 26px; height: 26px; }
+.app.placing .right { opacity: .35; pointer-events: none; }
+.map-box { display: grid; gap: 10px; }
+.map-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.map-thumb { width: 96px; height: 72px; object-fit: cover; border-radius: 12px; border: 2px solid #ece6f8; background: #faf7ff; }
+.size { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; flex-wrap: wrap; }
+.size input { width: 62px; padding: 9px 8px; border-radius: 12px; border: 2px solid #e2dcf2; background: #fff; font: 800 15px var(--font); text-align: center; color: var(--ink); }
+.read-dot { stroke: #fff; stroke-width: .045; pointer-events: none; opacity: .95; }

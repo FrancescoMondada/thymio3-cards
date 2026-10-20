@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BluetoothOffIcon, CloseIcon, FlagIcon, PathIcon } from '../icons.jsx';
+import { BluetoothOffIcon, CloseIcon, FlagIcon, MapIcon, PathIcon, TargetIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { cardClass } from '../spec.js';
@@ -7,12 +7,26 @@ import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
 const SPEEDS = [1, 2, 4];
+
+// A number of squares: it can be emptied while typing, and goes back to the real value when left.
+function SizeField({ value, label, onCommit }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+  return (
+    <input
+      type="text" inputMode="numeric" pattern="[0-9]*" aria-label={label} value={text}
+      onChange={(e) => { setText(e.target.value); const n = parseInt(e.target.value, 10); if (n >= 1) onCommit(n); }}
+      onBlur={() => setText(String(value))}
+    />
+  );
+}
 const BLUEFY_URL = 'https://apps.apple.com/app/id1492822055';   // a browser with Web Bluetooth, for iPhone and iPad
 
 // The page for the adult: language, sounds, the robot, examples, and the Python that runs.
 export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, advanced, onAdvanced,
+  picture, mapImage, mapKind, onMapDefault, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
   log, onClearLog, onTest, testing, canTest, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
@@ -25,6 +39,15 @@ export default function Panel({
   const logBox = useRef(null);
   useEffect(() => { if (logBox.current) logBox.current.scrollTop = logBox.current.scrollHeight; }, [logText]);
   const [logCopied, setLogCopied] = useState(false);
+  const [mapBad, setMapBad] = useState(false);
+  const fileInput = useRef(null);
+  const chooseFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';                                  // the same file can be chosen again
+    if (!file) return;
+    setMapBad(false);
+    try { await onMapFile(file); } catch { setMapBad(true); }
+  };
   const copyLog = async () => {
     try { await navigator.clipboard.writeText(logText); setLogCopied(true); setTimeout(() => setLogCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
@@ -107,6 +130,37 @@ export default function Panel({
                 {SPEEDS.map((s) => <button key={s} className={speed === s ? 'on' : ''} onClick={() => onSpeed(s)}>×{s}</button>)}
               </div>
             </div>
+          )}
+        </div>
+
+        <h3>{t.map.title}</h3>
+        <p className="hint">{t.map.hint}</p>
+        <div className="map-box">
+          <div className="map-top">
+            {picture && mapImage && <img className="map-thumb" src={mapImage.url} alt="" />}
+            <input ref={fileInput} type="file" accept="image/*" hidden onChange={chooseFile} />
+            <button className="tile-btn" onClick={() => fileInput.current?.click()}><MapIcon /><span>{mapKind === 'custom' ? t.map.change : t.map.choose}</span></button>
+            {mapKind !== 'default' && <button className="tile-btn" onClick={onMapDefault}><MapIcon /><span>{t.map.builtin}</span></button>}
+          </div>
+          {mapBad && <p className="warn" role="alert">{t.map.bad}</p>}
+          {picture && (
+            <>
+              <div className="row">
+                <label>{t.map.size}</label>
+                <div className="size">
+                  <SizeField value={picture.cols} label={t.map.cols} onCommit={(n) => onMapSize({ cols: n })} />
+                  <span aria-hidden="true">×</span>
+                  <SizeField value={picture.rows} label={t.map.rows} onCommit={(n) => onMapSize({ rows: n })} />
+                  <button className="plain" onClick={onMapRatio}>{t.map.ratio}</button>
+                </div>
+              </div>
+              {live && <p className="hint">{t.map.virtualOnly}</p>}
+              <div className="quick">
+                <button className="tile-btn" disabled={!canPlace} onClick={onMapPlace}><TargetIcon /><span>{t.map.place}</span></button>
+                <button className="tile-btn" onClick={onMapRecentre}><FlagIcon /><span>{t.map.recentre}</span></button>
+                <button className="tile-btn" onClick={onMapRemove}><CloseIcon /><span>{t.map.remove}</span></button>
+              </div>
+            </>
           )}
         </div>
 
