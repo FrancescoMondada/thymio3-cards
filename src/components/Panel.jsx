@@ -26,7 +26,7 @@ const BLUEFY_URL = 'https://apps.apple.com/app/id1492822055';   // a browser wit
 export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, advanced, onAdvanced,
-  picture, mapImage, mapKind, onMapDefault, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
+  picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
   log, onClearLog, onTest, testing, canTest, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
@@ -140,7 +140,7 @@ export default function Panel({
             {picture && mapImage && <img className="map-thumb" src={mapImage.url} alt="" />}
             <input ref={fileInput} type="file" accept="image/*" hidden onChange={chooseFile} />
             <button className="tile-btn" onClick={() => fileInput.current?.click()}><MapIcon /><span>{mapKind === 'custom' ? t.map.change : t.map.choose}</span></button>
-            {mapKind !== 'default' && <button className="tile-btn" onClick={onMapDefault}><MapIcon /><span>{t.map.builtin}</span></button>}
+            {mapKind !== 'builtin' && <button className="tile-btn" onClick={onMapThymio}><MapIcon /><span>{t.map.builtin}</span></button>}
           </div>
           {mapBad && <p className="warn" role="alert">{t.map.bad}</p>}
           {picture && (

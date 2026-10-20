@@ -183,7 +183,8 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 
 Dans les réglages (le logo en haut à gauche), « **Image sous le tapis** » pose une image sous la grille
 de 15 cm, pour y faire évoluer le robot sur une vraie carte (un plan de ville, un parcours dessiné,
-une photo de la salle). **Par défaut, c'est la carte de la ville Thymio, 4 × 4 carrés**
+une photo de la salle). **Au départ, le tapis est uni** (une image
+chargée de dessins fins rend la grille difficile à lire) ; le bouton « **Carte Thymio 4 × 4** » pose la carte de la ville Thymio
 ([`docs/Tapis_Thymio.png`](docs/Tapis_Thymio.png), 3000 × 3000 pixels, 33 Mo) : l'application en embarque une version
 de 1280 pixels (650 Ko, `src/assets/Tapis_Thymio.jpg`), refaite avec
 `sips -s format jpeg -s formatOptions 86 -z 1280 1280 docs/Tapis_Thymio.png --out src/assets/Tapis_Thymio.jpg`.
@@ -199,7 +200,7 @@ Le robot y part du carré du milieu (colonne C, ligne 2 : le zoo).
 3. **Placer le robot** : le tapis cesse de suivre le robot et montre toute l'image, le haut vers le haut ;
    on **glisse le robot** sur sa case de départ (les cartes sont grisées). La coche verte valide (ou
    Entrée / Échap), la cible recentre le robot au milieu de l'image. « Recentrer le robot » fait la même
-   chose depuis les réglages, « Retirer l'image » laisse un tapis uni, « Carte Thymio 4 × 4 » remet la carte par défaut (et sa case de départ).
+   chose depuis les réglages, « Retirer l'image » laisse un tapis uni, « Carte Thymio 4 × 4 » pose la carte de la ville (et sa case de départ).
 
 Le robot part par défaut du carré du milieu (le carré à droite et au-dessus du milieu quand le nombre
 est pair), toujours **tourné vers le haut de l'image**. Le repère du programme reste celui du robot (sa

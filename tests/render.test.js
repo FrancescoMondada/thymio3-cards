@@ -302,7 +302,7 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
       conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
       log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
       showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, advanced: false, onAdvanced: noop,
-      picture: null, mapImage: null, mapKind: 'none', onMapDefault: noop, canPlace: true, onMapFile: noop, onMapSize: noop, onMapRatio: noop, onMapPlace: noop, onMapRecentre: noop, onMapRemove: noop,
+      picture: null, mapImage: null, mapKind: 'none', onMapThymio: noop, canPlace: true, onMapFile: noop, onMapSize: noop, onMapRatio: noop, onMapPlace: noop, onMapRecentre: noop, onMapRemove: noop,
     };
     const none = renderToStaticMarkup(h(Panel, base));
     assert.ok(none.includes(t.map.title) && none.includes(t.map.hint) && none.includes(t.map.choose) && none.includes(t.map.builtin), `choose a picture, or the Thymio map (${lang})`);
@@ -312,8 +312,8 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
     const picture = { url: 'blob:x', cols: 5, rows: 4, sx: 2, sy: 2 };
     const has = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'custom', mapImage: { url: 'blob:x', w: 800, h: 600 } }));
     assert.ok(has.includes(t.map.change) && !has.includes(`>${t.map.choose}<`) && has.includes(t.map.builtin), `change it, or go back to the Thymio map (${lang})`);
-    const builtin = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'default', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
-    assert.ok(builtin.includes(t.map.choose) && !builtin.includes(`>${t.map.builtin}<`) && builtin.includes(t.map.place) && builtin.includes(t.map.remove), `the Thymio map is already there: choose another, place, remove (${lang})`);
+    const builtin = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'builtin', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
+    assert.ok(builtin.includes(t.map.choose) && !builtin.includes(`>${t.map.builtin}<`) && builtin.includes(t.map.place) && builtin.includes(t.map.remove), `the Thymio map is chosen: choose another, place, remove (${lang})`);
     for (const k of ['size', 'ratio', 'place', 'recentre', 'remove']) assert.ok(has.includes(t.map[k]), `${k} (${lang})`);
     assert.ok(has.includes(`aria-label="${t.map.cols}" value="5"`) && has.includes(`aria-label="${t.map.rows}" value="4"`), `the size (${lang})`);
     assert.ok(has.includes('class="map-thumb"'));
@@ -323,22 +323,22 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
   }
 });
 
-test('the Thymio map is under the mat from the start; a plain mat when it was removed; a picture that is gone means the map', async () => {
+test('the mat is plain from the start; the Thymio map or a picture of the adult only when chosen', async () => {
   const { default: App } = await load('/src/App.jsx');
   const { I18N } = await load('/src/i18n.js');
   const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
-  const first = render({});
+  assert.ok(!render({}).includes('map-image'), 'no picture to start with');
+  assert.ok(!render({ 'cards.mapkind': 'default' }).includes('map-image'), 'the "default" kept by the first version of this page does not bring the map back');
+  assert.ok(!render({ 'cards.map': 'null' }).includes('map-image'));
+  assert.ok(!render({ 'cards.mapkind': 'custom' }).includes('map-image'), 'a picture of the adult is not there until it is read back from the browser');
+  const first = render({ 'cards.mapkind': 'builtin' });
   const image = first.match(/<image [^>]*>/)?.[0] || '';
   assert.match(image, /class="map-image"/);
   assert.match(image, /href="[^"]*Tapis_Thymio[^"]*\.jpg"/, 'the map of the town');
   assert.match(image, /x="-2\.5"/); assert.match(image, /y="-1\.5"/); assert.match(image, /width="4"/); assert.match(image, /height="4"/);
   assert.equal(textOf(first), '', 'still no text on the main screen');
-  // a "null" left by an older version of the page does not mean "no picture"
-  assert.ok(render({ 'cards.map': 'null' }).includes('class="map-image"'));
   // moved to another square
-  assert.match(render({ 'cards.map': JSON.stringify({ cols: 4, rows: 4, sx: 0, sy: 3 }) }).match(/<image [^>]*>/)[0], /x="-0\.5"/);
-  assert.ok(!render({ 'cards.mapkind': 'none' }).includes('map-image'), 'removed: a plain mat');
-  assert.ok(!render({ 'cards.mapkind': 'custom' }).includes('map-image'), 'a picture of the adult is not there until it is read back from the browser');
+  assert.match(render({ 'cards.mapkind': 'builtin', 'cards.map': JSON.stringify({ cols: 4, rows: 4, sx: 0, sy: 3 }) }).match(/<image [^>]*>/)[0], /x="-0\.5"/);
   delete globalThis.localStorage;
   assert.ok(Object.keys(I18N).every((l) => I18N[l].map.builtin), 'named in every language');
 });

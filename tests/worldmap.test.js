@@ -1,7 +1,7 @@
 // The picture under the mat: where it is in the robot's frame, and what follows the robot when its start is moved.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_CELLS, DEFAULT_MAP, fitWithin, clampSize, centerCell, clampStart, suggestRows, mapRect, cellUnder, viewForMap, shiftCells, shiftPoint, cleanMap } from '../src/worldmap.js';
+import { MAX_CELLS, THYMIO_MAP, fitWithin, clampSize, centerCell, clampStart, suggestRows, mapRect, cellUnder, viewForMap, shiftCells, shiftPoint, cleanMap } from '../src/worldmap.js';
 
 test('sizes are whole numbers of squares, from 1 to the largest', () => {
   assert.equal(clampSize(4), 4);
@@ -82,8 +82,8 @@ test('a big picture is kept smaller, a small one as it is', () => {
   assert.deepEqual(fitWithin(0, 0, 2048), { width: 1, height: 1, scaled: false });
 });
 
-test('the picture under the mat by default: 4 x 4 squares, the robot on the one in the middle', () => {
-  assert.deepEqual(DEFAULT_MAP, { cols: 4, rows: 4, sx: 2, sy: 2 });
-  assert.deepEqual(cleanMap(DEFAULT_MAP), DEFAULT_MAP, 'valid as it is');
-  assert.deepEqual(mapRect(DEFAULT_MAP), { x0: -2.5, y0: -2.5, x1: 1.5, y1: 1.5 });
+test('the map of the Thymio town: 4 x 4 squares, the robot on the one in the middle', () => {
+  assert.deepEqual(THYMIO_MAP, { cols: 4, rows: 4, sx: 2, sy: 2 });
+  assert.deepEqual(cleanMap(THYMIO_MAP), THYMIO_MAP, 'valid as it is');
+  assert.deepEqual(mapRect(THYMIO_MAP), { x0: -2.5, y0: -2.5, x1: 1.5, y1: 1.5 });
 });

@@ -14,7 +14,7 @@ import { Homing, PoseAnimator, homePose } from './robot/pose-anim.js';
 import { supportsBluetooth } from './api.js';
 import { play as sfx, setSoundEnabled } from './sound.js';
 import { useDrag } from './useDrag.js';
-import { DEFAULT_MAP, centerCell, cleanMap, shiftCells, shiftPoint, suggestRows } from './worldmap.js';
+import { THYMIO_MAP, centerCell, cleanMap, shiftCells, shiftPoint, suggestRows } from './worldmap.js';
 import defaultMapUrl from './assets/Tapis_Thymio.jpg';
 import { groundAt } from './picturecolor.js';
 import { clearImage, loadImage, prepareImage, saveImage, scanPicture } from './mapStore.js';
@@ -28,7 +28,7 @@ const load = (key, fallback) => { try { const v = localStorage.getItem(key); ret
 const save = (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
 
 const EMPTY_FLOOR = {};
-const BUILTIN_MAP_IMAGE = { url: defaultMapUrl, w: 1280, h: 1280 };     // the map of the Thymio town, under the mat unless another picture is chosen
+const BUILTIN_MAP_IMAGE = { url: defaultMapUrl, w: 1280, h: 1280 };     // the map of the Thymio town, offered in the settings
 const reduceMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 export default function App() {
@@ -63,10 +63,10 @@ export default function App() {
   const [startFailed, setStartFailed] = useState(false); // the mode could not be started on the robot that was just connected
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [target, setTarget] = useState(null);           // a flag on the mat, only to be seen
-  const [map, setMap] = useState(() => { try { return cleanMap(JSON.parse(load('cards.map', 'null'))) || DEFAULT_MAP; } catch { return DEFAULT_MAP; } });   // the picture under the grid: squares covered, and the start square on it
-  const [mapKind, setMapKind] = useState(() => { const k = load('cards.mapkind', 'default'); return k === 'custom' || k === 'none' ? k : 'default'; });   // the Thymio map, a picture the adult chose, or none
+  const [map, setMap] = useState(() => { try { return cleanMap(JSON.parse(load('cards.map', 'null'))) || THYMIO_MAP; } catch { return THYMIO_MAP; } });   // the picture under the grid: squares covered, and the start square on it
+  const [mapKind, setMapKind] = useState(() => { const k = load('cards.mapkind', 'none'); return k === 'custom' || k === 'builtin' ? k : 'none'; });   // a plain mat (the start), the Thymio map, or a picture the adult chose
   const [custom, setCustom] = useState(null);           // the picture the adult chose, kept in IndexedDB: { url, w, h }
-  const mapImage = mapKind === 'default' ? BUILTIN_MAP_IMAGE : mapKind === 'custom' ? custom : null;
+  const mapImage = mapKind === 'builtin' ? BUILTIN_MAP_IMAGE : mapKind === 'custom' ? custom : null;
   const [placing, setPlacing] = useState(false);        // the robot is being dragged to its start square on the picture
   const [scan, setScan] = useState(null);               // the colour of each square of the picture, as the virtual robot reads it: { url, cols, rows, cells }
 
@@ -107,13 +107,13 @@ export default function App() {
   useEffect(() => { save('cards.mapkind', mapKind); }, [mapKind]);
   useEffect(() => { if (phase !== 'idle' || live) setPlacing(false); }, [phase, live]);
 
-  // A picture the adult chose comes back from the browser's storage; without it, the Thymio map.
+  // A picture the adult chose comes back from the browser's storage; without it, a plain mat.
   useEffect(() => {
     if (mapKind !== 'custom') return undefined;
     let alive = true, url = null;
     loadImage().then((rec) => {
       if (!alive) return;
-      if (!rec) { setMapKind('default'); setMap(DEFAULT_MAP); return; }
+      if (!rec) { setMapKind('none'); return; }
       url = URL.createObjectURL(rec.blob);
       setCustom({ url, w: rec.w, h: rec.h });
     });
@@ -406,7 +406,7 @@ export default function App() {
     setPlacing(false);
   }, []);
   const removeMap = useCallback(() => { forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
-  const defaultMap = useCallback(() => { forgetCustom(); setMapKind('default'); setMap(DEFAULT_MAP); }, [forgetCustom]);   // the Thymio map again
+  const thymioMap = useCallback(() => { forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   const startPlacing = useCallback(() => {
     if (S.current.phase !== 'idle' || S.current.live || S.current.mapKind === 'none') return;
     setPanel(false);
@@ -618,7 +618,7 @@ export default function App() {
           live={live} bluetooth={bluetooth} conn={conn} cal={cal} program={program} lastError={lastError}
           log={log} onClearLog={() => setLog([])} onTest={testRobot} testing={testing} canTest={live && phase === 'idle'}
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} advanced={advanced} onAdvanced={setAdvanced}
-          picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapDefault={defaultMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
+          picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
           onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />

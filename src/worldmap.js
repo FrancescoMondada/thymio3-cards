@@ -28,9 +28,9 @@ export function cellUnder(w, map) {
   return clampStart({ sx: map.sx + w.x, sy: map.sy + w.y }, map.cols, map.rows);
 }
 
-// The picture that is under the mat until another one is chosen: the map of the Thymio town, 4 x 4 squares
-// (src/assets/Tapis_Thymio.jpg, made from docs/Tapis_Thymio.png), the robot on the square in the middle.
-export const DEFAULT_MAP = { cols: 4, rows: 4, ...centerCell(4, 4) };
+// The map of the Thymio town that the settings offer: 4 x 4 squares (src/assets/Tapis_Thymio.jpg, made from
+// docs/Tapis_Thymio.png), the robot on the square in the middle. It is not under the mat unless it is chosen.
+export const THYMIO_MAP = { cols: 4, rows: 4, ...centerCell(4, 4) };
 
 // What the stage shows while the robot is being placed: the whole picture, a little margin around it
 // (SVG units: y down).
