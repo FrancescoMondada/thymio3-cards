@@ -8,6 +8,9 @@ import ConfirmDisconnect from './components/ConfirmDisconnect.jsx';
 import { I18N, detectLang } from './i18n.js';
 import { cleanProgram, MAX_STEPS, isRepeat, isColor, isWhile } from './spec.js';
 import { MODES, cardsOf, cleanCustom, hasGround, paletteCodes, toggleKind } from './modes.js';
+import { decodeConfig, encodeConfig, mapPlan } from './share.js';
+import QrShow from './components/QrShow.jsx';
+import QrScan from './components/QrScan.jsx';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
@@ -74,6 +77,7 @@ export default function App() {
   const [custom, setCustom] = useState(null);           // the picture the adult chose, kept in IndexedDB: { url, w, h }
   const mapImage = mapKind === 'builtin' ? BUILTIN_MAP_IMAGE : mapKind === 'custom' ? custom : null;
   const [placing, setPlacing] = useState(false);        // the robot is being dragged to its start square on the picture
+  const [qr, setQr] = useState(null);                    // over the page: { show: the text of its QR code } or { scan: true }
   const [scan, setScan] = useState(null);               // the colour of each square of the picture, as the virtual robot reads it: { url, cols, rows, cells }
 
   const live = conn.status === 'connected';
@@ -104,7 +108,7 @@ export default function App() {
     if (!ground) return null;
     return groundAt(activeFloor, live ? null : cells, map ? map.sx : 0, map ? map.sy : 0);
   }, [ground, activeFloor, live, cells, map]);
-  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing, kinds };
+  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing, kinds, qr };
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
   useEffect(() => { save('cards.mode', mode); }, [mode]);
@@ -415,6 +419,35 @@ export default function App() {
   }, []);
   const removeMap = useCallback(() => { forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
   const thymioMap = useCallback(() => { forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
+  // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
+  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }) });
+  const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
+  const applyScanned = useCallback((text) => {
+    const cfg = decodeConfig(text);
+    if (!cfg || S.current.phase !== 'idle') { sfx('oops'); return false; }
+    if (cfg.lang) setLang(cfg.lang);
+    if (cfg.sound !== undefined) setSound(cfg.sound);
+    if (cfg.speed) setSpeed(cfg.speed);
+    if (cfg.mode) setMode(cfg.mode);
+    if (cfg.picked) setPicked(cfg.picked);
+    if (cfg.showPath !== undefined) setShowPath(cfg.showPath);
+    if (cfg.program !== undefined) setCards(toCards(cfg.program));
+    if (cfg.target !== undefined) setTarget(cfg.target);
+    if (cfg.floor) setFloor(cfg.floor);
+    const plan = mapPlan(cfg.map, S.current.mapKind);
+    if (plan) {
+      if (plan.kind === 'none') { clearImage(); setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; }); setMapKind('none'); }
+      else if (plan.kind === 'builtin') { clearImage(); setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; }); setMapKind('builtin'); setMap(plan.geometry ? cleanMap(plan.geometry) : THYMIO_MAP); }
+      else if (plan.geometry) setMap(cleanMap(plan.geometry));
+    }
+    setBrush(null);
+    setPlacing(false);
+    edited();
+    sfx('done');
+    setTimeout(() => setQr(null), 700);                   // the frame goes green for a moment
+    return true;
+  }, [edited]);
+
   const startPlacing = useCallback(() => {
     if (S.current.phase !== 'idle' || S.current.live || S.current.mapKind === 'none') return;
     setPanel(false);
@@ -539,6 +572,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e) => {
+      if (S.current.qr) { if (e.key === 'Escape') setQr(null); return; }
       if (panel || confirmDisc || e.metaKey || e.ctrlKey || e.altKey) return;
       if (S.current.placing) {                       // the robot is being placed: Enter or Esc is done, nothing else
         if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); setPlacing(false); }
@@ -585,7 +619,7 @@ export default function App() {
 
   return (
     <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'} ${placing ? 'placing' : ''}`}>
-      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} />
+      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} onShowQr={showQr} onScanQr={scanQr} canScan={phase === 'idle'} />
       <main className="board">
         <section className="left">
           <Stage
@@ -619,6 +653,8 @@ export default function App() {
           <CardFace code={drag.code} label="" />
         </div>
       )}
+      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} onClose={() => setQr(null)} />}
+      {qr && qr.scan && <QrScan t={t} onText={applyScanned} onClose={() => setQr(null)} />}
       {confirmDisc && <ConfirmDisconnect t={t} onYes={disconnect} onNo={() => setConfirmDisc(false)} />}
       {panel && (
         <Panel

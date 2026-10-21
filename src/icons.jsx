@@ -207,3 +207,31 @@ export const TargetIcon = () => (
     <path d="M32 6 V16 M32 48 V58 M6 32 H16 M48 32 H58" />
   </svg>
 );
+
+// A QR code, to show the page's code
+export const QrIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinejoin="round">
+    <rect x="7" y="7" width="20" height="20" rx="3" /><rect x="37" y="7" width="20" height="20" rx="3" /><rect x="7" y="37" width="20" height="20" rx="3" />
+    <rect x="13" y="13" width="8" height="8" fill="currentColor" stroke="none" /><rect x="43" y="13" width="8" height="8" fill="currentColor" stroke="none" /><rect x="13" y="43" width="8" height="8" fill="currentColor" stroke="none" />
+    <path d="M37 40 h7 M50 40 h7 M37 48 v9 M44 47 h6 M54 47 v10 M44 56 h4" strokeLinecap="round" />
+  </svg>
+);
+// A viewfinder around a line, to scan a code
+export const ScanIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 22 V12 a4 4 0 0 1 4-4 h10 M42 8 h10 a4 4 0 0 1 4 4 v10 M56 42 v10 a4 4 0 0 1-4 4 H42 M22 56 H12 a4 4 0 0 1-4-4 V42" />
+    <path d="M16 32 H48" strokeWidth="4" />
+  </svg>
+);
+export const CameraOffIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 20 h8 l4-6 h20 l4 6 h8 a4 4 0 0 1 4 4 v22 a4 4 0 0 1-4 4 H10 a4 4 0 0 1-4-4 V24 a4 4 0 0 1 4-4z" />
+    <circle cx="32" cy="35" r="9" />
+    <path d="M8 8 L56 56" stroke="#ef4444" strokeWidth="6" />
+  </svg>
+);
+export const ImageIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="7" y="10" width="50" height="44" rx="7" /><circle cx="22" cy="25" r="5" fill="currentColor" stroke="none" /><path d="M9 48 L25 33 L35 42 L43 34 L55 46" />
+  </svg>
+);

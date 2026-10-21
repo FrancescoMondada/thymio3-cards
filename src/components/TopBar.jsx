@@ -1,9 +1,10 @@
 import React from 'react';
-import { BatteryIcon, ConnectIcon, RobotIcon } from '../icons.jsx';
+import { BatteryIcon, ConnectIcon, QrIcon, RobotIcon, ScanIcon } from '../icons.jsx';
 
-// No words: the logo, which is also the way to the grown-ups' page (settings), and the robot (grey
+// No words: the logo, which is also the way to the grown-ups' page (settings), the two buttons next to it (show the
+// QR code of the page, scan the QR code of another), and the robot (grey
 // and waiting, in colour with a tick once it is connected, waves moving while it is given the cards).
-export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp, failed, onConnect, onPanel }) {
+export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp, failed, onConnect, onPanel, onShowQr, onScanQr, canScan }) {
   const connecting = conn.status === 'connecting';
   // One stage, not two: the tick and the battery come together, when the robot is ready (its mode runs
   // and has told its battery). Until then the robot is still being reached: the waves move.
@@ -21,6 +22,8 @@ export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp
   return (
     <header className="top">
       <button className="logo" onClick={onPanel} aria-label={t.panel.title}><RobotIcon /></button>
+      <button className="top-btn" onClick={onShowQr} aria-label={t.qr.show}><QrIcon /></button>
+      <button className="top-btn" onClick={onScanQr} disabled={!canScan} aria-label={t.qr.scan}><ScanIcon /></button>
       <div className="spacer" />
       <button
         className={`robot-btn ${state} ${ready ? 'live' : ''}`}

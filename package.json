@@ -13,6 +13,8 @@
     "docs:examples": "node scripts/make-example-images.mjs"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "thymio3-ts-api": "github:Mobsya/thymio3-ts-api#main"

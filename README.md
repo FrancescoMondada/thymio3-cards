@@ -199,6 +199,36 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 | ![bad-empty-repeat](docs/examples/bad-empty-repeat.svg) | `3(2)F` | une répétition dont la carte est vide ne fait rien. `F`. |
 | ![bad-empty-while](docs/examples/bad-empty-while.svg) | `E()F` | un « tant que » sur un groupe vide ne fait rien (pas de boucle sans fin sur une carte oubliée). `F`. |
 
+## Partager la configuration : le code QR
+
+Pour la classe : une page peut **afficher en grand le code QR de toute sa configuration**, et les autres
+pages le **scannent** pour être réglées à l'identique. Deux boutons, à côté du logo des réglages :
+
+- **le code QR** affiche le code par-dessus l'application, aussi grand que l'écran le permet (un
+  toucher ou Échap le ferme) ; c'est une image du moment, qui ne suit pas les changements d'après ;
+- **le viseur** ouvre la caméra pour scanner le code d'une autre page : le cadre devient vert et la
+  configuration est appliquée (un code d'ailleurs fait clignoter le cadre en rouge, sans rien changer). Si la caméra est
+  refusée ou absente, ou si le code arrive en image (une capture d'écran, une photo), le bouton « image » en bas du scanner lit un code
+  dans une photo. Le scan est impossible pendant que le robot joue.
+
+Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
+le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la
+**vitesse** du robot virtuel, le chemin affiché (D), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
+partent tels quels avec les carrés couverts et la case de départ ; une image choisie par l'adulte ne peut pas
+voyager dans un code, seuls ses carrés et la case de départ sont appliqués, et seulement sur une page qui a elle-même une image
+(sinon son tapis reste). La connexion au robot n'en fait pas partie.
+
+Le texte du code est court (une quarantaine de caractères pour un programme simple, un code de 45 modules, facile à scanner à
+travers une salle) :
+`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
+(format `T3C1`, des champs `lettre=valeur` dans n'importe quel ordre ; un champ absent laisse la page comme elle est, un champ
+invalide est écarté). Ce qui vient d'un code est lu comme une donnée, strictement (jamais exécuté) : un programme est
+nettoyé carte par carte, les nombres sont des entiers à moins de 99 cases du départ. Un sol peint partout (plus d'environ 400 cases)
+ne tient pas dans un code : l'écran le dit. La caméra demande une page en **https** (ou `localhost`) et l'autorisation du
+navigateur. Le code est dessiné avec [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (niveau de correction M) et lu avec
+[jsQR](https://github.com/cozmo/jsQR), chargé seulement au premier scan. Format et lecture : `src/share.js`, `src/qr.js` ;
+boutons : `src/components/TopBar.jsx` ; écrans : `QrShow.jsx` et `QrScan.jsx`.
+
 ## Une image sous le tapis
 
 Dans les réglages (le logo en haut à gauche), « **Image sous le tapis** » pose une image sous la grille
@@ -482,6 +512,7 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/sim/physics.js`, `mode.js`, `sim-backend.js` | Robot virtuel et port JavaScript du mode, mêmes événements |
 | `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
 | `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
+| `src/share.js`, `src/qr.js` | La configuration de la page en texte pour un code QR (écriture et lecture stricte), le dessin du code et sa lecture dans une image |
 | `src/modes.js` | Les cartes à disposition : modes normal, avancé et personnalisé, cartes de la palette, choix d'une carte sélectionnée, exemples compatibles |
 | `src/colors.js`, `src/labels.js` | Les huit couleurs du sol, les noms des cartes pour les lecteurs d'écran |
 | `src/worldmap.js`, `src/mapStore.js` | L'image sous le tapis : rectangle de l'image dans le repère du robot, case de départ, déplacement du sol peint ; stockage de l'image (IndexedDB) et réduction |

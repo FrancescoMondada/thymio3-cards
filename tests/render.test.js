@@ -230,7 +230,8 @@ test('the top left logo opens the settings, and there is no other settings butto
     assert.equal(logo.props['aria-label'], t.panel.title, `named for screen readers (${lang})`);
     logo.props.onClick();
     assert.equal(opened, 1, `and opens the settings (${lang})`);
-    assert.equal(buttons.length, 2, `the logo and the robot are the only buttons (${lang})`);
+    assert.equal(buttons.length, 4, `the logo, the QR code buttons (show, scan) and the robot are the only buttons (${lang})`);
+    assert.deepEqual(buttons.map((b) => b.props.className.split(' ')[0]), ['logo', 'top-btn', 'top-btn', 'robot-btn'], 'the two next to the settings, in that order');
     const markup = renderToStaticMarkup(h(TopBar, { t, conn: { status: 'disconnected' }, live: false, bluetooth: true, busy: false, syncing: false, modeUp: false, onConnect: noop, onPanel: noop }));
     assert.ok(!markup.includes('gear'), 'no gear any more');
     assert.equal(textOf(markup), '', 'still no text');
@@ -412,4 +413,50 @@ test('the choices of a repeat card follow the cards given: numbers, colours, or 
   assert.deepEqual([rows(render('r', ['F', 'if'])), picks(render('r', ['F', 'if']))], [1, 8], 'an "if" has its eight colours');
   assert.equal(rows(render('3', ['F', 'while'])), 2, 'a number that is in the program can still be seen, and changed for a colour');
   assert.doesNotThrow(() => render('3', undefined), 'no kinds given: does not break');
+});
+
+test('two buttons next to the settings: the QR code of the page and the scanner of another, pictograms only', async () => {
+  const { default: TopBar } = await load('/src/components/TopBar.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    for (const key of ['show', 'scan', 'close', 'bad', 'tooBig', 'denied', 'noCamera', 'fromImage', 'applied']) assert.ok(t.qr[key], `${key} (${lang})`);
+    const props = { t, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, live: false, bluetooth: true, busy: false, syncing: false, modeUp: false, failed: false, onConnect: noop, onPanel: noop, onShowQr: noop, onScanQr: noop, canScan: true };
+    const bar = renderToStaticMarkup(h(TopBar, props));
+    assert.equal(textOf(bar), '', `no text in the top bar (${lang})`);
+    assert.ok(bar.includes(`aria-label="${t.qr.show}"`) && bar.includes(`aria-label="${t.qr.scan}"`), `named for screen readers (${lang})`);
+    assert.ok(bar.indexOf('class="logo"') < bar.indexOf(t.qr.show) && bar.indexOf(t.qr.scan) < bar.indexOf('class="spacer"'), 'beside the settings, before the robot');
+    assert.ok(!/class="top-btn"[^>]*aria-label="[^"]*"[^>]*disabled/.test(bar.replace(/<button class="top-btn"[^>]*scan[^>]*>/, '')), 'the code can always be shown');
+    const busy = renderToStaticMarkup(h(TopBar, { ...props, busy: true, canScan: false }));
+    assert.match(busy, new RegExp(`class="top-btn"[^>]*disabled=""[^>]*aria-label="${t.qr.scan}"|class="top-btn"[^>]*aria-label="${t.qr.scan}"[^>]*disabled=""`), `no scanning while the robot plays (${lang})`);
+  }
+});
+
+test('the QR code over the page: as large as it can be, the code of the text, a warning when the text does not fit', async () => {
+  const { default: QrShow } = await load('/src/components/QrShow.jsx');
+  const { qrMatrix } = await load('/src/qr.js');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const text = 'T3C1;l=fr;p=FF(FR)3F;t=1,2';
+    const m = qrMatrix(text);
+    const shown = renderToStaticMarkup(h(QrShow, { text, t, onClose: noop }));
+    assert.ok(shown.includes('class="qr-back"') && shown.includes('aria-modal="true"'), 'over the page');
+    assert.ok(shown.includes(`viewBox="-4 -4 ${m.size + 8} ${m.size + 8}"`), `the code with its quiet zone of four modules (${lang})`);
+    assert.ok(shown.includes('fill="#fff"') && shown.includes('fill="#000"'), 'black on white, whatever the theme');
+    assert.ok(shown.includes(`aria-label="${t.qr.close}"`));
+    assert.equal(textOf(shown), '', `no text over a code that is shown (${lang})`);
+    const big = renderToStaticMarkup(h(QrShow, { text: 'x'.repeat(5000), t, onClose: noop }));
+    assert.ok(big.includes(t.qr.tooBig) && !big.includes('<svg class="qr-code"'), `too much: it says so (${lang})`);
+  }
+});
+
+test('the scanner: a viewfinder, a way to give a photo of the code, a way out', async () => {
+  const { default: QrScan } = await load('/src/components/QrScan.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const m = renderToStaticMarkup(h(QrScan, { t, onText: noop, onClose: noop }));
+    assert.ok(m.includes('<video') && /playsinline/i.test(m) && /muted/.test(m), 'the camera, inline on an iPhone');
+    assert.ok(m.includes('class="scan-frame"') && m.includes('type="file"') && m.includes('accept="image/*"'));
+    assert.ok(m.includes(`aria-label="${t.qr.fromImage}"`) && m.includes(`aria-label="${t.qr.close}"`), `(${lang})`);
+    assert.equal(textOf(m), '', `no text while the camera starts (${lang})`);
+  }
 });
