@@ -54,11 +54,10 @@ svg { display: block; }
 
 /* ---- top bar ------------------------------------------------------------------------ */
 .top {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px;
   padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
 }
-.top-left { display: flex; align-items: center; gap: 10px; }
-.top-right { display: flex; justify-content: flex-end; }
+.spacer { flex: 1; }
 .logo { width: 46px; height: 46px; border-radius: 15px; background: var(--L); color: var(--ink); display: grid; place-items: center; box-shadow: 0 4px 0 var(--L-d); }
 .logo svg { width: 32px; height: 32px; }
 .logo:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--L-d); }

@@ -1,8 +1,8 @@
 import React from 'react';
 import { BatteryIcon, ConnectIcon, QrIcon, RobotIcon, ScanIcon } from '../icons.jsx';
 
-// No words: on the left the logo, which is also the way to the grown-ups' page (settings), and the button that shows the
-// QR code of the page; in the middle, alone and blue, the one that scans the QR code of another page; on the right the robot (grey
+// No words: the logo, which is also the way to the grown-ups' page (settings), next to it the button that shows the QR code of
+// the page and the blue one that scans the QR code of another page, and on the right the robot (grey
 // and waiting, in colour with a tick once it is connected, waves moving while it is given the cards).
 export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp, failed, onConnect, onPanel, onShowQr, onScanQr, canScan }) {
   const connecting = conn.status === 'connecting';
@@ -21,22 +21,19 @@ export default function TopBar({ t, conn, live, bluetooth, busy, syncing, modeUp
   const level = conn.battery ? Math.max(0.1, Math.min(1, (conn.battery - 3.3) / 0.9)) : null;
   return (
     <header className="top">
-      <div className="top-left">
-        <button className="logo" onClick={onPanel} aria-label={t.panel.title}><RobotIcon /></button>
-        <button className="top-btn" onClick={onShowQr} aria-label={t.qr.show}><QrIcon /></button>
-      </div>
+      <button className="logo" onClick={onPanel} aria-label={t.panel.title}><RobotIcon /></button>
+      <button className="top-btn" onClick={onShowQr} aria-label={t.qr.show}><QrIcon /></button>
       <button className="top-btn scan" onClick={onScanQr} disabled={!canScan} aria-label={t.qr.scan}><ScanIcon /></button>
-      <div className="top-right">
-        <button
-          className={`robot-btn ${state} ${ready ? 'live' : ''}`}
-          onClick={onConnect}
-          disabled={connecting || busy}
-          aria-label={label}
-        >
-          <ConnectIcon state={state} tick={ready} />
-          {ready && level != null && <span className="bat"><BatteryIcon level={level} /></span>}
-        </button>
-      </div>
+      <div className="spacer" />
+      <button
+        className={`robot-btn ${state} ${ready ? 'live' : ''}`}
+        onClick={onConnect}
+        disabled={connecting || busy}
+        aria-label={label}
+      >
+        <ConnectIcon state={state} tick={ready} />
+        {ready && level != null && <span className="bat"><BatteryIcon level={level} /></span>}
+      </button>
     </header>
   );
 }

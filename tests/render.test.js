@@ -424,8 +424,7 @@ test('two buttons next to the settings: the QR code of the page and the scanner 
     const bar = renderToStaticMarkup(h(TopBar, props));
     assert.equal(textOf(bar), '', `no text in the top bar (${lang})`);
     assert.ok(bar.includes(`aria-label="${t.qr.show}"`) && bar.includes(`aria-label="${t.qr.scan}"`), `named for screen readers (${lang})`);
-    assert.ok(bar.indexOf('class="logo"') < bar.indexOf(t.qr.show) && bar.indexOf(t.qr.show) < bar.indexOf(t.qr.scan) && bar.indexOf(t.qr.scan) < bar.indexOf('class="robot-btn'), 'the code beside the settings, the scan, the robot');
-    assert.match(bar, /<header class="top"><div class="top-left"><button class="logo"[^>]*>.*?<\/button><button class="top-btn"[^>]*>.*?<\/button><\/div><button class="top-btn scan"[^>]*>.*?<\/button><div class="top-right"><button class="robot-btn/, `settings and code on the left, the scan alone in the middle, the robot on the right (${lang})`);
+    assert.ok(bar.indexOf('class="logo"') < bar.indexOf(t.qr.show) && bar.indexOf(t.qr.show) < bar.indexOf(t.qr.scan) && bar.indexOf(t.qr.scan) < bar.indexOf('class="spacer"') && bar.indexOf('class="spacer"') < bar.indexOf('class="robot-btn'), 'the settings, the code and the scan together on the left, the robot on the right');
     const buttonsOf = (markup) => [...markup.matchAll(/<button class="(top-btn[^"]*)"([^>]*)>/g)].map((m) => ({ classes: m[1].split(' '), attrs: m[2] }));
     const [show, scan] = buttonsOf(bar);
     assert.deepEqual([show.classes, scan.classes], [['top-btn'], ['top-btn', 'scan']], 'the scan button is the blue one');
