@@ -58,25 +58,49 @@ test('advanced mode: the cards, the palette and the brush are pictograms, still 
   delete globalThis.localStorage;
 });
 
-test('the settings: the advanced mode switch, and its examples only when it is on', async () => {
+test('the settings: the three modes, and the examples that the cards of the mode allow', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { I18N } = await load('/src/i18n.js');
+  const { CARD_KINDS, NORMAL_KINDS } = await load('/src/modes.js');
   for (const [lang, t] of Object.entries(I18N)) {
     const base = {
       t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
       conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
       log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
-      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, advanced: false, onAdvanced: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, mode: 'normal', onMode: noop, kinds: NORMAL_KINDS, custom: NORMAL_KINDS, onToggleCard: noop,
     };
-    const off = renderToStaticMarkup(h(Panel, base));
-    const on = renderToStaticMarkup(h(Panel, { ...base, advanced: true }));
-    assert.ok(off.includes(t.panel.advanced) && off.includes(t.panel.advancedHint), `the switch and what it does (${lang})`);
-    assert.ok(off.indexOf(t.panel.quick) < off.indexOf(t.panel.advanced), `after the shortcuts (${lang})`);
-    assert.ok(!off.includes(t.examples.loopSquare), `no advanced example in the basic mode (${lang})`);
-    for (const id of ['loopSquare', 'zigzag', 'turnOnRed', 'backOnGreen', 'alongRed']) assert.ok(on.includes(t.examples[id]), `${id} (${lang})`);
-    assert.equal((on.match(/class="mini"/g) || []).length, 11, `eleven examples (${lang})`);
-    assert.equal((off.match(/class="mini"/g) || []).length, 6);
+    const normal = renderToStaticMarkup(h(Panel, base));
+    const advanced = renderToStaticMarkup(h(Panel, { ...base, mode: 'advanced', kinds: CARD_KINDS }));
+    const custom = renderToStaticMarkup(h(Panel, { ...base, mode: 'custom', kinds: ['F', 'R', 'open', 'close', 'repeat'], custom: ['F', 'R', 'open', 'close', 'repeat'] }));
+    for (const m of ['normal', 'advanced', 'custom']) assert.ok(normal.includes(`>${t.panel.modes[m]}</button>`), `the ${m} mode is a button (${lang})`);
+    assert.ok(normal.includes(t.panel.mode) && normal.includes(t.panel.modeHints.normal), `the mode and what it does (${lang})`);
+    assert.ok(advanced.includes(t.panel.modeHints.advanced) && custom.includes(t.panel.modeHints.custom));
+    assert.ok(normal.indexOf(t.panel.quick) < normal.indexOf(t.panel.mode), `after the shortcuts (${lang})`);
+    assert.match(normal, /aria-pressed="true"[^>]*>Normal?[^<]*<|aria-pressed="true"[^>]*>[^<]*<\/button>/, 'the mode in use is pressed');
+    // the cards to give appear in the custom mode only
+    assert.ok(!normal.includes('custom-cards') && !advanced.includes('custom-cards'));
+    assert.equal((custom.match(/class="custom-card /g) || []).length, 9, `nine cards to give or take away (${lang})`);
+    assert.equal((custom.match(/class="custom-card [^"]*\bon\b/g) || []).length, 5, 'five are given');
+    assert.ok(custom.includes(`aria-label="${t.card.while}"`) && custom.includes(`aria-label="${t.card.if}"`), `named for what they do (${lang})`);
+    assert.ok(custom.includes(t.panel.customCards));
+    // the examples: those made of the cards of the mode
+    assert.ok(!normal.includes(t.examples.loopSquare), `no advanced example in the normal mode (${lang})`);
+    for (const id of ['loopSquare', 'zigzag', 'turnOnRed', 'backOnGreen', 'alongRed']) assert.ok(advanced.includes(t.examples[id]), `${id} (${lang})`);
+    assert.equal((advanced.match(/class="mini"/g) || []).length, 11, `eleven examples (${lang})`);
+    assert.equal((normal.match(/class="mini"/g) || []).length, 6);
+    assert.ok(custom.includes(t.examples.loopSquare), `4(FR) is made of the cards given (${lang})`);
+    assert.ok(!custom.includes(t.examples.zigzag), '3(FRFL) needs the turn to the left, which is not given');
+    assert.ok(!custom.includes(t.examples.turnOnRed) && !custom.includes(t.examples.alongRed), 'the ones that need an "if" or a colour are not');
+    assert.ok(custom.includes(t.examples.line) && custom.includes(t.examples.square), 'the ones of forward steps and right turns are');
+    assert.ok(!custom.includes(t.examples.back), 'the one that goes backward is not (the card is not given)');
   }
+  // the last card cannot be taken away
+  const { CARD_KINDS: kinds } = await load('/src/modes.js');
+  const { default: P } = await load('/src/components/Panel.jsx');
+  const t = I18N.en;
+  const one = renderToStaticMarkup(h(P, { t, lang: 'en', onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '', log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop, showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, mode: 'custom', onMode: noop, kinds: ['F'], custom: ['F'], onToggleCard: noop }));
+  assert.equal((one.match(/class="custom-card [^"]*"[^>]*disabled=""/g) || []).length, 1, 'the only card given cannot be taken away');
+  assert.equal(kinds.length, 9);
 });
 
 test('the settings page renders in every language, connected or not, with a journal', async () => {
@@ -267,7 +291,7 @@ test('a picture under the mat: laid under the grid over its squares; placing the
   for (const [lang, t] of Object.entries(I18N)) {
     const props = {
       program: 'FF', cursor: -1, doneUpTo: -1, showPath: false, target: null, onTarget: noop, canPlace: true, overlay: null, celebrate: 0, t, kind: 'sim',
-      floor: { '1,0': 'r' }, advanced: true, picture: { url: 'blob:x', cols: 4, rows: 3, sx: 2, sy: 1 },
+      floor: { '1,0': 'r' }, ground: true, picture: { url: 'blob:x', cols: 4, rows: 3, sx: 2, sy: 1 },
     };
     const m = renderToStaticMarkup(h(Stage, props));
     const image = m.match(/<image [^>]*>/)?.[0] || '';
@@ -301,7 +325,7 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
       t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
       conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
       log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
-      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, advanced: false, onAdvanced: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, mode: 'normal', onMode: noop, kinds: ['F', 'B', 'L', 'R'], custom: ['F', 'B', 'L', 'R'], onToggleCard: noop,
       picture: null, mapImage: null, mapKind: 'none', onMapThymio: noop, canPlace: true, onMapFile: noop, onMapSize: noop, onMapRatio: noop, onMapPlace: noop, onMapRecentre: noop, onMapRemove: noop,
     };
     const none = renderToStaticMarkup(h(Panel, base));
@@ -341,4 +365,51 @@ test('the mat is plain from the start; the Thymio map or a picture of the adult 
   assert.match(render({ 'cards.mapkind': 'builtin', 'cards.map': JSON.stringify({ cols: 4, rows: 4, sx: 0, sy: 3 }) }).match(/<image [^>]*>/)[0], /x="-0\.5"/);
   delete globalThis.localStorage;
   assert.ok(Object.keys(I18N).every((l) => I18N[l].map.builtin), 'named in every language');
+});
+
+test('the custom mode: the palette holds the cards that were given, the brush only if a card looks at the ground', async () => {
+  const { default: App } = await load('/src/App.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
+  const palette = (markup) => [...markup.matchAll(/class="pcard (c-\w+)"/g)].map((m) => m[1]);
+  for (const lang of Object.keys(I18N)) {
+    const turns = render({ 'cards.lang': lang, 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F', 'L', 'repeat']) });
+    assert.deepEqual(palette(turns), ['c-F', 'c-L', 'c-repeat'], `three cards (${lang})`);
+    assert.ok(turns.includes('--cols:4'));
+    assert.ok(!turns.includes('brushbar'), 'no card looks at the ground: no brush');
+    assert.equal(textOf(turns), '', `still no text on the main screen (${lang})`);
+    const ground = render({ 'cards.lang': lang, 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F', 'B', 'L', 'R', 'if']), 'cards.floor': '{"0,1":"r"}' });
+    assert.deepEqual(palette(ground), ['c-F', 'c-B', 'c-L', 'c-R', 'c-if']);
+    assert.ok(ground.includes('--cols:5'), 'five cards in one row');
+    assert.ok(ground.includes('brushbar') && ground.includes('floor-tile'), 'an "if" card is given: the brush and the painted floor');
+  }
+  const colourLoop = render({ 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F', 'while']) });
+  assert.deepEqual(palette(colourLoop), ['c-F', 'c-repeat'], 'a loop on a colour is a card of the repeat colour');
+  assert.ok(colourLoop.includes('brushbar'), 'a loop on a colour looks at the ground');
+  // from before the modes: the "advanced" key; once a mode is kept it wins
+  assert.equal(palette(render({ 'cards.advanced': '1' })).length, 8);
+  assert.equal(palette(render({ 'cards.advanced': '0' })).length, 4);
+  assert.equal(palette(render({ 'cards.mode': 'normal', 'cards.advanced': '1' })).length, 4);
+  assert.equal(palette(render({ 'cards.mode': 'advanced' })).length, 8);
+  assert.equal(palette(render({ 'cards.mode': 'custom' })).length, 4, 'nothing chosen yet: the four steps');
+  assert.equal(palette(render({ 'cards.mode': 'custom', 'cards.custom': 'garbage' })).length, 4);
+  assert.equal(palette(render({ 'cards.mode': 'whatever' })).length, 4);
+  // a card that the mode does not give stays in the program that has it
+  const kept = render({ 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F']), 'cards.program': 'F(F)3F' });
+  assert.equal((kept.match(/class="slot/g) || []).length, 6, 'the six cards of the program are there');
+  delete globalThis.localStorage;
+});
+
+test('the choices of a repeat card follow the cards given: numbers, colours, or both', async () => {
+  const { default: Track } = await load('/src/components/Track.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  const t = I18N.en;
+  const render = (code, kinds) => renderToStaticMarkup(h(Track, { cards: [{ id: 1, code }], cursor: -1, doneUpTo: -1, selected: 0, phase: 'idle', t, kinds, onPointerDown: noop, onRemove: noop, onSetCode: noop }));
+  const rows = (m) => (m.match(/class="pick-row"/g) || []).length, picks = (m) => (m.match(/class="pick /g) || []).length;
+  assert.deepEqual([rows(render('3', ['F', 'repeat'])), picks(render('3', ['F', 'repeat']))], [1, 8], 'numbers only');
+  assert.deepEqual([rows(render('E', ['F', 'while'])), picks(render('E', ['F', 'while']))], [1, 8], 'colours only');
+  assert.deepEqual([rows(render('3', ['F', 'repeat', 'while'])), picks(render('3', ['F', 'repeat', 'while']))], [2, 16], 'both');
+  assert.deepEqual([rows(render('r', ['F', 'if'])), picks(render('r', ['F', 'if']))], [1, 8], 'an "if" has its eight colours');
+  assert.equal(rows(render('3', ['F', 'while'])), 2, 'a number that is in the program can still be seen, and changed for a colour');
+  assert.doesNotThrow(() => render('3', undefined), 'no kinds given: does not break');
 });

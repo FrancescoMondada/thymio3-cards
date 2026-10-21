@@ -1,15 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { ArrowIcon, EraserIcon, PlayIcon, StopIcon, TrashIcon } from '../icons.jsx';
-import { STEP_CODES, cardClass } from '../spec.js';
+import { cardClass } from '../spec.js';
+import { paletteColumns } from '../modes.js';
 import { cardLabel } from '../labels.js';
 
-// The advanced cards of the palette, each with the value it starts with (the cards are changed when selected).
-export const ADVANCED_PALETTE = ['(', ')', '2', 'r'];
-
-export function Palette({ onPointerDown, onKeyTap, t, disabled, advanced }) {
+// The cards the children have at hand (modes.js), each with the value it starts with (the cards are changed when selected).
+export function Palette({ onPointerDown, onKeyTap, t, disabled, codes }) {
   return (
-    <div className="palette" role="group" aria-label={t.title}>
-      {[...STEP_CODES, ...(advanced ? ADVANCED_PALETTE : [])].map((code) => (
+    <div className="palette" role="group" aria-label={t.title} style={{ '--cols': paletteColumns(codes.length) }}>
+      {codes.map((code) => (
         <button
           key={code}
           className={`pcard ${cardClass(code)}`}

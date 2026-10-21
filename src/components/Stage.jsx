@@ -79,7 +79,7 @@ function FinishFlag() {
 // A `picture` (url, cols, rows and the square the robot starts on) is laid under the grid. While the
 // robot is being `placing`, the mat does not follow it: the whole picture is shown, north up, and the
 // robot is dragged to its start square (onPlace) with a check to finish and a target to recentre it.
-export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, colourAt, advanced, brush, onBrush, onFloor, picture, placing, onPlace, onPlaced, onRecentre }) {
+export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, colourAt, ground, brush, onBrush, onFloor, picture, placing, onPlace, onPlaced, onRecentre }) {
   const wrap = useRef(null);
   const svg = useRef(null);
   const world = useRef(null);
@@ -169,7 +169,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
     const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());   // where, in the robot's frame
     const w = toWorld(at.x, at.y, pose.current);
     const cell = { x: Math.round(w.x), y: Math.round(w.y) };
-    if (advanced && brush) onFloor?.(cell);              // the brush paints the floor...
+    if (ground && brush) onFloor?.(cell);              // the brush paints the floor...
     else onTarget?.(cell);                               // ...otherwise a touch plants the flag
   };
 
@@ -241,7 +241,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
           <button className="validate" aria-label={t.map.done} onClick={onPlaced}><CheckIcon /></button>
         </div>
       )}
-      {advanced && !placing && (
+      {ground && !placing && (
         <div className="brushbar" onClick={(e) => e.stopPropagation()}>
           <button className={`brush ${brush ? 'on' : ''}`} aria-pressed={Boolean(brush)} aria-label={t.floor.paint} onClick={() => onBrush(brush ? null : 'r')}><BrushIcon /></button>
           {brush && (

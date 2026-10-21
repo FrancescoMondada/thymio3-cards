@@ -6,7 +6,8 @@ import { Palette, Dock } from './components/Dock.jsx';
 import Panel from './components/Panel.jsx';
 import ConfirmDisconnect from './components/ConfirmDisconnect.jsx';
 import { I18N, detectLang } from './i18n.js';
-import { cleanProgram, MAX_STEPS, isRepeat, isColor } from './spec.js';
+import { cleanProgram, MAX_STEPS, isRepeat, isColor, isWhile } from './spec.js';
+import { MODES, cardsOf, cleanCustom, hasGround, paletteCodes, toggleKind } from './modes.js';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
@@ -36,7 +37,12 @@ export default function App() {
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [speed, setSpeed] = useState(1);
-  const [advanced, setAdvanced] = useState(() => load('cards.advanced', '0') === '1');   // the advanced cards: groups, repeats, ifs on the ground colour
+  // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
+  // (A page from before the modes kept only "advanced" or not, in cards.advanced.)
+  const [mode, setMode] = useState(() => { const m = load('cards.mode', ''); return MODES.includes(m) ? m : load('cards.advanced', '0') === '1' ? 'advanced' : 'normal'; });
+  const [picked, setPicked] = useState(() => { try { return cleanCustom(JSON.parse(load('cards.custom', 'null'))); } catch { return cleanCustom(null); } });   // the cards of the custom mode
+  const kinds = useMemo(() => cardsOf(mode, picked), [mode, picked]);
+  const ground = hasGround(kinds);                  // a card looks at the ground: the brush, the picture's colours
   const [floor, setFloor] = useState(() => { try { return JSON.parse(load('cards.floor', '{}')) || {}; } catch { return {}; } });   // "x,y" -> colour letter: the floor of the virtual robot
   const [brush, setBrush] = useState(null);             // painting the floor: null, a colour letter, or 'erase'
   const [check, setCheck] = useState(null);             // what the last "if" saw: { index, taken, key }
@@ -87,7 +93,7 @@ export default function App() {
   const sync = useRef(null);                // keeps the robot's program equal to the cards (robot/sync.js)
   const syncCallbacks = useRef({});
   const S = useRef({});
-  const activeFloor = useMemo(() => (advanced ? floor : EMPTY_FLOOR), [advanced, floor]);
+  const activeFloor = useMemo(() => (ground ? floor : EMPTY_FLOOR), [ground, floor]);
   // The picture is the ground of the virtual robot only: with a real robot connected (which reads the real ground)
   // it is not shown and not read, so that it cannot be taken for the robot's own.
   const cells = scan && map && mapImage && scan.url === mapImage.url && scan.cols === map.cols && scan.rows === map.rows ? scan.cells : null;
@@ -95,13 +101,15 @@ export default function App() {
   const picture = live ? null : mapPicture;
   // The colour of the ground at a cell of the robot's frame: what the brush painted, else what the picture has there.
   const colourAt = useMemo(() => {
-    if (!advanced) return null;
+    if (!ground) return null;
     return groundAt(activeFloor, live ? null : cells, map ? map.sx : 0, map ? map.sy : 0);
-  }, [advanced, activeFloor, live, cells, map]);
-  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing };
+  }, [ground, activeFloor, live, cells, map]);
+  S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing, kinds };
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
-  useEffect(() => { save('cards.advanced', advanced ? '1' : '0'); if (!advanced) setBrush(null); }, [advanced]);
+  useEffect(() => { save('cards.mode', mode); }, [mode]);
+  useEffect(() => { save('cards.custom', JSON.stringify(picked)); }, [picked]);
+  useEffect(() => { if (!ground) setBrush(null); }, [ground]);
   useEffect(() => { save('cards.floor', JSON.stringify(floor)); }, [floor]);
   useEffect(() => { save('cards.map', JSON.stringify(map)); }, [map]);
   useEffect(() => { save('cards.mapkind', mapKind); }, [mapKind]);
@@ -341,7 +349,7 @@ export default function App() {
     setCards((cs) => { const i = Math.max(0, Math.min(cs.length, at ?? cs.length)); return [...cs.slice(0, i), mk(code), ...cs.slice(i)]; });
     sfx('drop', code);
     edited();
-    if (isRepeat(code) || isColor(code)) setSelected(where);      // a card with a value: its choices are there at once
+    if (isRepeat(code) || isColor(code) || isWhile(code)) setSelected(where);      // a card with a value: its choices are there at once
   }, [edited, refuseWhenFull]);
 
   // The value of a repeat ("2".."9") or of an "if" (a colour) card: the card stays selected, to be changed again.
@@ -538,7 +546,7 @@ export default function App() {
       }
       const onButton = e.target?.tagName === 'BUTTON';
       const map = { ArrowUp: 'F', ArrowDown: 'B', ArrowLeft: 'L', ArrowRight: 'R' };
-      if (map[e.key]) { if (S.current.phase === 'idle') { e.preventDefault(); append(map[e.key]); } }
+      if (map[e.key]) { if (S.current.phase === 'idle' && S.current.kinds.includes(map[e.key])) { e.preventDefault(); append(map[e.key]); } }
       else if (e.key === 'Enter' && !onButton) { e.preventDefault(); go(); }
       else if ((e.key === 'Backspace' || e.key === 'Delete') && S.current.phase === 'idle') { e.preventDefault(); eraseLast(); }
       else if (e.key === 'd' || e.key === 'D') togglePath();
@@ -585,7 +593,7 @@ export default function App() {
             showPath={showPath} target={target} canPlace={phase === 'idle' && !panel && !confirmDisc}
             onTarget={(cell) => setTarget((cur) => (cur && cur.x === cell.x && cur.y === cell.y ? null : cell))}
             overlay={overlay} celebrate={celebrate && finished ? celebrate : 0} t={t} kind={live ? 'live' : 'sim'}
-            floor={activeFloor} colourAt={colourAt} advanced={advanced} brush={brush} onBrush={setBrush} onFloor={paintFloor}
+            floor={activeFloor} colourAt={colourAt} ground={ground} brush={brush} onBrush={setBrush} onFloor={paintFloor}
             picture={picture} placing={placing} onPlace={changeMap} onPlaced={() => setPlacing(false)} onRecentre={recentreRobot}
           />
         </section>
@@ -593,10 +601,10 @@ export default function App() {
           <Track
             ref={trackRef} cards={cards} cursor={cursor} doneUpTo={doneUpTo} selected={selected} phase={phase}
             dragFrom={drag?.kind === 'move' ? drag.from : null} dropIndex={drag ? drag.target : null}
-            onPointerDown={onPointerDown} onRemove={removeAt} onSetCode={setCode} check={check} t={t} shake={shake}
+            onPointerDown={onPointerDown} onRemove={removeAt} onSetCode={setCode} check={check} t={t} shake={shake} kinds={kinds}
           />
           <div className="dock">
-            <Palette onPointerDown={onPointerDown} onKeyTap={append} t={t} disabled={!enabled} advanced={advanced} />
+            <Palette onPointerDown={onPointerDown} onKeyTap={append} t={t} disabled={!enabled} codes={paletteCodes(kinds)} />
             <Dock
               eraserRef={eraserRef} canErase={enabled && cards.length > 0} running={phase !== 'idle'} canGo={cards.length > 0 && phase === 'idle' && !placing}
               eraserActive={Boolean(drag?.eraser)} onEraseLast={eraseLast} onClear={clearAll}
@@ -617,7 +625,7 @@ export default function App() {
           t={t} lang={lang} onLang={setLang} sound={sound} onSound={setSound} speed={speed} onSpeed={setSpeed}
           live={live} bluetooth={bluetooth} conn={conn} cal={cal} program={program} lastError={lastError}
           log={log} onClearLog={() => setLog([])} onTest={testRobot} testing={testing} canTest={live && phase === 'idle'}
-          showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} advanced={advanced} onAdvanced={setAdvanced}
+          showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} mode={mode} onMode={setMode} kinds={kinds} custom={picked} onToggleCard={(k) => setPicked((c) => toggleKind(c, k))}
           picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
           onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}

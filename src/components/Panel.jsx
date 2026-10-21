@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BluetoothOffIcon, CloseIcon, FlagIcon, MapIcon, PathIcon, TargetIcon } from '../icons.jsx';
+import { BluetoothOffIcon, CheckIcon, CloseIcon, FlagIcon, MapIcon, PathIcon, TargetIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { cardClass } from '../spec.js';
+import { CARD_KINDS, MODES, NORMAL_KINDS, PALETTE_CODE, fitsCards } from '../modes.js';
 import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
@@ -25,7 +26,7 @@ const BLUEFY_URL = 'https://apps.apple.com/app/id1492822055';   // a browser wit
 // The page for the adult: language, sounds, the robot, examples, and the Python that runs.
 export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
-  showPath, onTogglePath, canReset, onResetRobot, advanced, onAdvanced,
+  showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
   log, onClearLog, onTest, testing, canTest, onExample, onConnect, onDisconnect, onClose,
 }) {
@@ -116,13 +117,28 @@ export default function Panel({
             </div>
           </div>
           <div className="row">
-            <label>{t.panel.advanced}</label>
+            <label>{t.panel.mode}</label>
             <div className="seg-ctl">
-              <button className={advanced ? 'on' : ''} onClick={() => onAdvanced(true)}>{t.panel.on}</button>
-              <button className={!advanced ? 'on' : ''} onClick={() => onAdvanced(false)}>{t.panel.off}</button>
+              {MODES.map((m) => <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => onMode(m)}>{t.panel.modes[m]}</button>)}
             </div>
           </div>
-          <p className="hint">{t.panel.advancedHint}</p>
+          <p className="hint">{t.panel.modeHints[mode]}</p>
+          {mode === 'custom' && (
+            <div className="custom-cards" role="group" aria-label={t.panel.customCards}>
+              {CARD_KINDS.map((k) => {
+                const on = custom.includes(k), code = PALETTE_CODE[k];
+                return (
+                  <button
+                    key={k} className={`custom-card ${cardClass(code)} ${on ? 'on' : ''}`} aria-pressed={on} aria-label={t.card[k]} title={t.card[k]}
+                    disabled={on && custom.length === 1} onClick={() => onToggleCard(k)}
+                  >
+                    <ArrowIcon code={code} />
+                    {on && <span className="tick" aria-hidden="true"><CheckIcon /></span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {!live && (
             <div className="row">
               <label>{t.panel.speed}</label>
@@ -166,7 +182,7 @@ export default function Panel({
 
         <h3>{t.panel.examples}</h3>
         <div className="examples">
-          {EXAMPLES.filter((ex) => advanced || !ex.advanced).map((ex) => (
+          {EXAMPLES.filter((ex) => fitsCards(ex.program, kinds)).map((ex) => (
             <button key={ex.id} onClick={() => onExample(ex)}>
               <span className="mini">{ex.program.split('').map((c, i) => <span key={i} className={cardClass(c)}><ArrowIcon code={c} /></span>)}</span>
               <b>{t.examples[ex.id]}</b>

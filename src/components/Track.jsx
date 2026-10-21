@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { ArrowIcon, ChevronDownIcon, CloseIcon, FlagIcon, PlusIcon, digitPath } from '../icons.jsx';
-import { MAX_STEPS, REPEAT_CODES, COLOR_CODES, WHILE_CODES, WHILE_COLOR, cardClass, isRepeat, isColor, isWhile } from '../spec.js';
+import { MAX_STEPS, WHILE_COLOR, cardClass, isRepeat, isColor, isWhile } from '../spec.js';
+import { pickerRows } from '../modes.js';
 import { GROUND_CSS } from '../colors.js';
 import { cardLabel } from '../labels.js';
 
@@ -16,7 +17,7 @@ export function CardFace({ code, label }) {
 // The program: the start flag, then the cards in the order the robot will play them. A touch
 // drags a card by holding it first, so a swipe still scrolls a long program.
 export default function Track({
-  ref, cards, cursor, doneUpTo, selected, dragFrom, dropIndex, onPointerDown, onRemove, onSetCode, check, t, phase, shake,
+  ref, cards, cursor, doneUpTo, selected, dragFrom, dropIndex, onPointerDown, onRemove, onSetCode, check, t, phase, shake, kinds = [],
 }) {
   const ol = useRef(null);
   const bar = useRef(null);
@@ -97,7 +98,7 @@ export default function Track({
         {count === 0 && <li className="empty-hint" aria-hidden="true"><span className="ghost-slot"><PlusIcon /></span></li>}
         {picking && (
           <div className="picker" ref={pick} role="group" aria-label={cardLabel(t, chosen.code)}>
-            {(isColor(chosen.code) ? [COLOR_CODES] : [REPEAT_CODES, WHILE_CODES]).map((row, r) => (
+            {pickerRows(chosen.code, kinds).map((row, r) => (
               <div className="pick-row" key={r}>
                 {row.map((v) => (
                   <button

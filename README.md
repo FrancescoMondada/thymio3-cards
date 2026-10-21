@@ -63,10 +63,30 @@ Non reproduit : la détection d'obstacle de `sequence.c` est entièrement commen
 (`CheckCollisionStatus`), elle ne l'est pas ici non plus ; deux flèches pressées dans le même
 instant ne créent pas de pas « double ».
 
+## Les cartes à disposition : modes normal, avancé et personnalisé
+
+Réglages (icône du robot orange) → **Mode** (retenu par l'appareil). Il choisit les cartes que les enfants
+ont dans la palette, pour des exercices plus précis ou une approche pas à pas :
+
+| Mode | Cartes à disposition |
+| --- | --- |
+| **Normal** (au départ) | les quatre pas : avance, recule, gauche, droite |
+| **Avancé** | en plus : `(` `)`, répéter, « si le sol est… » et « tant que le sol est… » (voir ci-dessous) |
+| **Personnalisé** | celles que l'adulte donne : neuf cartes à toucher dans les réglages (les quatre pas, `(`, `)`, répéter ×N, répéter avec une couleur, « si ») ; une carte donnée a une coche, une carte retirée est pâle. La dernière carte donnée ne peut pas être retirée |
+
+En mode personnalisé, la palette ne montre que les cartes données (une seule carte « répéter » quand le
+nombre et la couleur sont donnés tous deux ; ses choix, une fois sélectionnée, ne proposent que ce qui est
+donné). Le pinceau du tapis (et le sol de l'image) n'existent que si une carte regarde le sol, « si » ou
+« tant que ». Les cartes déjà dans le programme restent même si le mode ne les donne plus, et marchent
+(le programme est le même sur le robot) ; les exemples des réglages sont ceux dont toutes les cartes sont données.
+Les touches fléchées n'ajoutent que les pas donnés. Retenu sous `cards.mode` (`normal`, `advanced`,
+`custom`) et `cards.custom` (la liste des cartes données) ; une page d'avant les modes, qui ne retenait que
+`cards.advanced`, reste en mode avancé ou normal comme avant.
+
 ## Mode avancé : groupes, répétitions et couleur du sol
 
-Réglages (icône du robot orange) → **Mode avancé** (sur Non au départ, retenu par l'appareil). Quatre
-cartes s'ajoutent à la palette, et le tapis reçoit un pinceau :
+Réglages (icône du robot orange) → **Mode → Avancé**. Quatre cartes s'ajoutent à la palette, et le tapis
+reçoit un pinceau :
 
 | Carte | Ce qu'elle fait |
 | --- | --- |
@@ -110,7 +130,7 @@ sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pou
   programme : avec des boucles une carte se fait plusieurs fois, ou pas du tout.
 - **Le sol du robot virtuel** se peint avec le pinceau (en haut à gauche du tapis) : choisir une couleur,
   toucher une case ; la même couleur à nouveau (ou la gomme) l'efface ; pinceau fermé, un toucher plante
-  le drapeau comme avant. Le sol est retenu par l'appareil, et n'existe qu'en mode avancé. Les exemples
+  le drapeau comme avant. Le sol est retenu par l'appareil, et n'existe que si une carte « si » ou « tant que » est à disposition (mode avancé, ou personnalisé). Les exemples
   « Tourner sur le rouge », « Reculer sur le vert » et « Avancer sur le rouge » apportent le sol qui va avec. Un vrai robot lit,
   lui, le vrai sol (des feuilles de couleur sur la table) : le sol peint ne sert alors qu'à prévoir.
 - **Mise à jour en direct** : cinq bits par carte quand il y a des cartes avancées (deux bits pour les
@@ -133,7 +153,7 @@ bleues des pas en arrière ; le robot est dessiné là où il s'arrête (son ava
 sol se décrit aussi par ses cases `(x, y)` : `x` vers la droite, `y` vers le haut, départ en `(0, 0)`.
 Les résultats sont calculés par l'interpréteur de `src/lang.js` (le même langage que sur le robot) et
 vérifiés par `tests/readme-examples.test.js`, qui contrôle aussi les images (`npm run docs:examples`
-les redessine). Pour les essayer : réglages → mode avancé, puis peindre le sol avec le pinceau, ou
+les redessine). Pour les essayer : réglages → mode avancé (ou personnalisé avec ces cartes), puis peindre le sol avec le pinceau, ou
 prendre l'un des exemples des réglages, qui apportent leur sol.
 
 **Répétitions et groupes**
@@ -462,6 +482,7 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/sim/physics.js`, `mode.js`, `sim-backend.js` | Robot virtuel et port JavaScript du mode, mêmes événements |
 | `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
 | `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
+| `src/modes.js` | Les cartes à disposition : modes normal, avancé et personnalisé, cartes de la palette, choix d'une carte sélectionnée, exemples compatibles |
 | `src/colors.js`, `src/labels.js` | Les huit couleurs du sol, les noms des cartes pour les lecteurs d'écran |
 | `src/worldmap.js`, `src/mapStore.js` | L'image sous le tapis : rectangle de l'image dans le repère du robot, case de départ, déplacement du sol peint ; stockage de l'image (IndexedDB) et réduction |
 | `src/picturecolor.js` | Les couleurs que le robot virtuel lit dans l'image : pixel → une des huit couleurs, carré par carré, et sol « pinceau d'abord, image ensuite » |
