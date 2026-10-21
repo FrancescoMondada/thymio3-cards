@@ -202,11 +202,11 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 ## Partager la configuration : le code QR
 
 Pour la classe : une page peut **afficher en grand le code QR de toute sa configuration**, et les autres
-pages le **scannent** pour être réglées à l'identique. Deux boutons, à côté du logo des réglages :
+pages le **scannent** pour être réglées à l'identique. Deux boutons dans la barre du haut :
 
-- **le code QR** affiche le code par-dessus l'application, aussi grand que l'écran le permet (un
+- **le code QR** (blanc, à côté du logo des réglages) affiche le code par-dessus l'application, aussi grand que l'écran le permet (un
   toucher ou Échap le ferme) ; c'est une image du moment, qui ne suit pas les changements d'après ;
-- **le viseur** ouvre la caméra pour scanner le code d'une autre page : le cadre devient vert et la
+- **le bouton bleu** (un QR dans un viseur, seul au centre de la barre : « appuie sur le bouton bleu ») ouvre la caméra pour scanner le code d'une autre page : le cadre devient vert et la
   configuration est appliquée (un code d'ailleurs fait clignoter le cadre en rouge, sans rien changer). Si la caméra est
   refusée ou absente, ou si le code arrive en image (une capture d'écran, une photo), le bouton « image » en bas du scanner lit un code
   dans une photo. Le scan est impossible pendant que le robot joue.

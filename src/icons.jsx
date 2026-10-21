@@ -216,11 +216,14 @@ export const QrIcon = () => (
     <path d="M37 40 h7 M50 40 h7 M37 48 v9 M44 47 h6 M54 47 v10 M44 56 h4" strokeLinecap="round" />
   </svg>
 );
-// A viewfinder around a line, to scan a code
+// A QR code in a viewfinder, to scan a code
 export const ScanIcon = () => (
   <svg {...base} fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 22 V12 a4 4 0 0 1 4-4 h10 M42 8 h10 a4 4 0 0 1 4 4 v10 M56 42 v10 a4 4 0 0 1-4 4 H42 M22 56 H12 a4 4 0 0 1-4-4 V42" />
-    <path d="M16 32 H48" strokeWidth="4" />
+    <path d="M6 22 V12 a6 6 0 0 1 6-6 h10 M42 6 h10 a6 6 0 0 1 6 6 v10 M58 42 v10 a6 6 0 0 1-6 6 H42 M22 58 H12 a6 6 0 0 1-6-6 V42" />
+    <g fill="currentColor" stroke="none">
+      <rect x="18" y="18" width="11" height="11" rx="2" /><rect x="35" y="18" width="11" height="11" rx="2" /><rect x="18" y="35" width="11" height="11" rx="2" />
+      <rect x="35" y="35" width="5" height="5" rx="1" /><rect x="41" y="41" width="5" height="5" rx="1" />
+    </g>
   </svg>
 );
 export const CameraOffIcon = () => (

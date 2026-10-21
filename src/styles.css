@@ -54,13 +54,14 @@ svg { display: block; }
 
 /* ---- top bar ------------------------------------------------------------------------ */
 .top {
-  display: flex; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px;
   padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
 }
+.top-left { display: flex; align-items: center; gap: 10px; }
+.top-right { display: flex; justify-content: flex-end; }
 .logo { width: 46px; height: 46px; border-radius: 15px; background: var(--L); color: var(--ink); display: grid; place-items: center; box-shadow: 0 4px 0 var(--L-d); }
 .logo svg { width: 32px; height: 32px; }
 .logo:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--L-d); }
-.spacer { flex: 1; }
 .robot-btn {
   height: 56px; border-radius: 28px; background: var(--paper); border: 3px solid var(--line);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; min-width: 56px;
@@ -491,6 +492,9 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .top-btn svg { width: 26px; height: 26px; }
 .top-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
 .top-btn:disabled { opacity: .4; }
+/* the scan button is the blue one: "press the blue button" is an instruction a child can follow */
+.top-btn.scan { background: var(--B); color: #fff; border-color: var(--B-d); box-shadow: 0 4px 0 var(--B-d); }
+.top-btn.scan:active:not(:disabled) { box-shadow: 0 1px 0 var(--B-d); }
 .qr-back { position: fixed; inset: 0; z-index: 90; background: rgba(20, 20, 40, .84); display: grid; place-items: center; padding: 16px; animation: fade .2s; overflow: hidden; }
 .qr-code { width: min(94vw, calc(100dvh - 32px), 780px); height: auto; aspect-ratio: 1; border-radius: 18px; background: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
 .qr-close {
