@@ -12,6 +12,10 @@ On touche (ou on glisse) des cartes *Avance*, *Recule*, *Tourne à gauche*, *Tou
 construire un programme, puis on appuie sur **C'est parti !** : le robot le rejoue. Sans robot, un
 **robot virtuel** joue le même programme sur un tapis quadrillé, avec la même mécanique.
 
+**Cartes à imprimer pour la classe : [`docs/cartes-thymio.pdf`](docs/cartes-thymio.pdf)** (5 pages A4 : les
+instructions, 64 cartes de 45 mm à découper, et une page de cartes en grand à montrer à la classe, les mêmes
+pictogrammes que l'application).
+
 Même base que [`thymio3-cockpit`](https://github.com/FrancescoMondada/thymio3-cockpit) : React + Vite, et l'API
 [`Mobsya/thymio3-ts-api`](https://github.com/Mobsya/thymio3-ts-api) prise directement sur GitHub
 (non copiée ici). Le comportement du robot vient du firmware
@@ -198,6 +202,27 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 | ![bad-close](docs/examples/bad-close.svg) | `F)B` | une `)` sans `(` est ignorée. `FB`. |
 | ![bad-empty-repeat](docs/examples/bad-empty-repeat.svg) | `3(2)F` | une répétition dont la carte est vide ne fait rien. `F`. |
 | ![bad-empty-while](docs/examples/bad-empty-while.svg) | `E()F` | un « tant que » sur un groupe vide ne fait rien (pas de boucle sans fin sur une carte oubliée). `F`. |
+
+## Les cartes à imprimer
+
+[`docs/cartes-thymio.pdf`](docs/cartes-thymio.pdf) est un PDF de **5 pages A4** pour travailler en classe sans écran,
+puis avec le robot. Les cartes ont les couleurs et les pictogrammes de l'application, et **aucun mot** :
+
+| Page | Contenu |
+| --- | --- |
+| 1 | Comment imprimer et découper, comment programmer avec les cartes, ce que fait chaque carte |
+| 2 | **Cartes de base** (24) : avance ×8, recule ×4, tourne à gauche ×4, tourne à droite ×4, et les cartes **Départ** ×2 et **Arrivée** ×2 |
+| 3 | **Groupes et répétitions** (24) : `(` ×6, `)` ×6, répéter ×2 à ×9 (une carte de chaque, et un deuxième jeu de ×2 à ×5) |
+| 4 | **Couleurs** (16) : « si le sol est… » et « répéter tant que le sol est… » dans les huit couleurs du capteur |
+| 5 | **Les cartes en grand** (11, pas à découper) : une carte de chaque sorte — Départ, Arrivée, avance, recule, gauche, droite, début et fin de groupe, répéter, répéter avec une couleur, « si » — de 62 mm, à montrer devant la classe (ou à projeter) |
+
+Imprimer en **A4 à 100 %** (« taille réelle », sans « ajuster à la page »), recto seul : les cartes mesurent
+45 mm et ont 3 mm de marge blanche, il est inutile de couper juste. Pour qu'elles durent : plastifier la feuille
+avant de découper, ou la coller sur du carton. Le PDF est fait par `npm run docs:cards`
+(`scripts/cards-sheet.mjs` pour les pages, `scripts/make-cards-pdf.mjs` pour l'impression par Chrome, qui doit
+être installé ou dont le chemin est donné dans `CHROME`) ; pour changer le nombre d'exemplaires de chaque carte,
+modifier `SHEETS` dans `scripts/cards-sheet.mjs`, puis relancer la commande. `tests/cards-sheet.test.js` vérifie
+que toutes les cartes du langage y sont, qu'aucune ne porte de mot, et que le PDF a bien 5 pages A4.
 
 ## Partager la configuration : le code QR
 
@@ -512,6 +537,7 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/sim/physics.js`, `mode.js`, `sim-backend.js` | Robot virtuel et port JavaScript du mode, mêmes événements |
 | `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
 | `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
+| `scripts/cards-sheet.mjs`, `scripts/make-cards-pdf.mjs` | Les cartes à imprimer : les pages (HTML) et leur impression en `docs/cartes-thymio.pdf` par Chrome |
 | `src/share.js`, `src/qr.js` | La configuration de la page en texte pour un code QR (écriture et lecture stricte), le dessin du code et sa lecture dans une image |
 | `src/modes.js` | Les cartes à disposition : modes normal, avancé et personnalisé, cartes de la palette, choix d'une carte sélectionnée, exemples compatibles |
 | `src/colors.js`, `src/labels.js` | Les huit couleurs du sol, les noms des cartes pour les lecteurs d'écran |

@@ -9,7 +9,7 @@ const CARD = {
   F: ['#2fbf71', '#1f9a57'], B: ['#3d8bfd', '#2a68c9'], L: ['#ff9f1c', '#cf7800'], R: ['#a45ee9', '#7b3fbf'],
   open: ['#7c8aa5', '#566380'], close: ['#7c8aa5', '#566380'], repeat: ['#14b8a6', '#0f857a'], if: ['#3d4663', '#272d45'],
 };
-const colours = (code) => CARD[isStep(code) ? code : kindOf(code) === 'while' ? 'repeat' : kindOf(code)];
+export const colours = (code) => CARD[isStep(code) ? code : kindOf(code) === 'while' ? 'repeat' : kindOf(code)];     // [the colour of a card, its darker edge]
 
 const SIZE = 38, GAP = 6, EDGE = 4, PAD = 6;       // a card, the space between cards, its lower edge, the margin
 const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

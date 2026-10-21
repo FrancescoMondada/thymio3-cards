@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "node --test tests/*.test.js && python3 -I tests/test_sequence_mode.py",
     "api:update": "npm update thymio3-ts-api",
-    "docs:examples": "node scripts/make-example-images.mjs"
+    "docs:examples": "node scripts/make-example-images.mjs",
+    "docs:cards": "node scripts/make-cards-pdf.mjs"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
