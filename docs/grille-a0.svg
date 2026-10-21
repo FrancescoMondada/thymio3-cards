@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="841mm" height="1189mm" viewBox="0 0 841 1189">
+<title>Grille de cases de 15 cm, A0</title>
+<desc>5 colonnes (A à E) et 7 lignes (1 à 7) de cases de 15 cm, un point de 5 mm au centre de chaque case. 1 unité = 1 mm.</desc>
+<g id="couleurs" inkscape:groupmode="layer" inkscape:label="1 · Couleurs des cases (donner une couleur de remplissage à un carré colorie toute la case)"><rect id="cell-A1" x="45.5" y="69.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B1" x="195.5" y="69.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C1" x="345.5" y="69.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D1" x="495.5" y="69.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E1" x="645.5" y="69.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A2" x="45.5" y="219.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B2" x="195.5" y="219.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C2" x="345.5" y="219.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D2" x="495.5" y="219.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E2" x="645.5" y="219.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A3" x="45.5" y="369.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B3" x="195.5" y="369.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C3" x="345.5" y="369.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D3" x="495.5" y="369.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E3" x="645.5" y="369.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A4" x="45.5" y="519.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B4" x="195.5" y="519.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C4" x="345.5" y="519.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D4" x="495.5" y="519.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E4" x="645.5" y="519.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A5" x="45.5" y="669.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B5" x="195.5" y="669.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C5" x="345.5" y="669.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D5" x="495.5" y="669.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E5" x="645.5" y="669.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A6" x="45.5" y="819.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B6" x="195.5" y="819.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C6" x="345.5" y="819.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D6" x="495.5" y="819.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E6" x="645.5" y="819.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-A7" x="45.5" y="969.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-B7" x="195.5" y="969.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-C7" x="345.5" y="969.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-D7" x="495.5" y="969.5" width="150" height="150" fill="#ffffff"/>
+<rect id="cell-E7" x="645.5" y="969.5" width="150" height="150" fill="#ffffff"/></g>
+<g id="lieux" inkscape:groupmode="layer" inkscape:label="2 · Lieux et détails (dessiner ici, dans un coin des cases)"></g>
+<g id="grille" inkscape:groupmode="layer" inkscape:label="3 · Grille" fill="none" stroke="#000000" stroke-width="0.6" stroke-linecap="square"><line x1="45.5" y1="69.5" x2="45.5" y2="1119.5"/>
+<line x1="195.5" y1="69.5" x2="195.5" y2="1119.5"/>
+<line x1="345.5" y1="69.5" x2="345.5" y2="1119.5"/>
+<line x1="495.5" y1="69.5" x2="495.5" y2="1119.5"/>
+<line x1="645.5" y1="69.5" x2="645.5" y2="1119.5"/>
+<line x1="795.5" y1="69.5" x2="795.5" y2="1119.5"/>
+<line x1="45.5" y1="69.5" x2="795.5" y2="69.5"/>
+<line x1="45.5" y1="219.5" x2="795.5" y2="219.5"/>
+<line x1="45.5" y1="369.5" x2="795.5" y2="369.5"/>
+<line x1="45.5" y1="519.5" x2="795.5" y2="519.5"/>
+<line x1="45.5" y1="669.5" x2="795.5" y2="669.5"/>
+<line x1="45.5" y1="819.5" x2="795.5" y2="819.5"/>
+<line x1="45.5" y1="969.5" x2="795.5" y2="969.5"/>
+<line x1="45.5" y1="1119.5" x2="795.5" y2="1119.5"/></g>
+<g id="points" inkscape:groupmode="layer" inkscape:label="4 · Points au centre des cases"><circle id="dot-A1" cx="120.5" cy="144.5" r="2.5" fill="#000000"/>
+<circle id="dot-B1" cx="270.5" cy="144.5" r="2.5" fill="#000000"/>
+<circle id="dot-C1" cx="420.5" cy="144.5" r="2.5" fill="#000000"/>
+<circle id="dot-D1" cx="570.5" cy="144.5" r="2.5" fill="#000000"/>
+<circle id="dot-E1" cx="720.5" cy="144.5" r="2.5" fill="#000000"/>
+<circle id="dot-A2" cx="120.5" cy="294.5" r="2.5" fill="#000000"/>
+<circle id="dot-B2" cx="270.5" cy="294.5" r="2.5" fill="#000000"/>
+<circle id="dot-C2" cx="420.5" cy="294.5" r="2.5" fill="#000000"/>
+<circle id="dot-D2" cx="570.5" cy="294.5" r="2.5" fill="#000000"/>
+<circle id="dot-E2" cx="720.5" cy="294.5" r="2.5" fill="#000000"/>
+<circle id="dot-A3" cx="120.5" cy="444.5" r="2.5" fill="#000000"/>
+<circle id="dot-B3" cx="270.5" cy="444.5" r="2.5" fill="#000000"/>
+<circle id="dot-C3" cx="420.5" cy="444.5" r="2.5" fill="#000000"/>
+<circle id="dot-D3" cx="570.5" cy="444.5" r="2.5" fill="#000000"/>
+<circle id="dot-E3" cx="720.5" cy="444.5" r="2.5" fill="#000000"/>
+<circle id="dot-A4" cx="120.5" cy="594.5" r="2.5" fill="#000000"/>
+<circle id="dot-B4" cx="270.5" cy="594.5" r="2.5" fill="#000000"/>
+<circle id="dot-C4" cx="420.5" cy="594.5" r="2.5" fill="#000000"/>
+<circle id="dot-D4" cx="570.5" cy="594.5" r="2.5" fill="#000000"/>
+<circle id="dot-E4" cx="720.5" cy="594.5" r="2.5" fill="#000000"/>
+<circle id="dot-A5" cx="120.5" cy="744.5" r="2.5" fill="#000000"/>
+<circle id="dot-B5" cx="270.5" cy="744.5" r="2.5" fill="#000000"/>
+<circle id="dot-C5" cx="420.5" cy="744.5" r="2.5" fill="#000000"/>
+<circle id="dot-D5" cx="570.5" cy="744.5" r="2.5" fill="#000000"/>
+<circle id="dot-E5" cx="720.5" cy="744.5" r="2.5" fill="#000000"/>
+<circle id="dot-A6" cx="120.5" cy="894.5" r="2.5" fill="#000000"/>
+<circle id="dot-B6" cx="270.5" cy="894.5" r="2.5" fill="#000000"/>
+<circle id="dot-C6" cx="420.5" cy="894.5" r="2.5" fill="#000000"/>
+<circle id="dot-D6" cx="570.5" cy="894.5" r="2.5" fill="#000000"/>
+<circle id="dot-E6" cx="720.5" cy="894.5" r="2.5" fill="#000000"/>
+<circle id="dot-A7" cx="120.5" cy="1044.5" r="2.5" fill="#000000"/>
+<circle id="dot-B7" cx="270.5" cy="1044.5" r="2.5" fill="#000000"/>
+<circle id="dot-C7" cx="420.5" cy="1044.5" r="2.5" fill="#000000"/>
+<circle id="dot-D7" cx="570.5" cy="1044.5" r="2.5" fill="#000000"/>
+<circle id="dot-E7" cx="720.5" cy="1044.5" r="2.5" fill="#000000"/></g>
+<g id="reperes" inkscape:groupmode="layer" inkscape:label="5 · Lettres et numéros du bord" fill="#000000" text-anchor="middle" font-size="38" font-weight="700" style="font-family:Helvetica,Arial,sans-serif"><text id="col-A-haut" x="120.5" y="48.43">A</text>
+<text id="col-A-bas" x="120.5" y="1167.93">A</text>
+<text id="col-B-haut" x="270.5" y="48.43">B</text>
+<text id="col-B-bas" x="270.5" y="1167.93">B</text>
+<text id="col-C-haut" x="420.5" y="48.43">C</text>
+<text id="col-C-bas" x="420.5" y="1167.93">C</text>
+<text id="col-D-haut" x="570.5" y="48.43">D</text>
+<text id="col-D-bas" x="570.5" y="1167.93">D</text>
+<text id="col-E-haut" x="720.5" y="48.43">E</text>
+<text id="col-E-bas" x="720.5" y="1167.93">E</text>
+<text id="ligne-1-gauche" x="22.75" y="158.18">1</text>
+<text id="ligne-1-droite" x="818.25" y="158.18">1</text>
+<text id="ligne-2-gauche" x="22.75" y="308.18">2</text>
+<text id="ligne-2-droite" x="818.25" y="308.18">2</text>
+<text id="ligne-3-gauche" x="22.75" y="458.18">3</text>
+<text id="ligne-3-droite" x="818.25" y="458.18">3</text>
+<text id="ligne-4-gauche" x="22.75" y="608.18">4</text>
+<text id="ligne-4-droite" x="818.25" y="608.18">4</text>
+<text id="ligne-5-gauche" x="22.75" y="758.18">5</text>
+<text id="ligne-5-droite" x="818.25" y="758.18">5</text>
+<text id="ligne-6-gauche" x="22.75" y="908.18">6</text>
+<text id="ligne-6-droite" x="818.25" y="908.18">6</text>
+<text id="ligne-7-gauche" x="22.75" y="1058.18">7</text>
+<text id="ligne-7-droite" x="818.25" y="1058.18">7</text></g>
+<g id="palette" inkscape:groupmode="layer" inkscape:label="6 · Palette (hors page, non imprimée)"><text x="871" y="55.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">Palette des 8 couleurs du capteur (hors page, non imprimée)</text><rect id="palette-rouge" x="871" y="69.5" width="30" height="30" fill="#ef4444" stroke="#000000" stroke-width="0.5"/><text x="909" y="88.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">rouge</text><rect id="palette-jaune" x="871" y="109.5" width="30" height="30" fill="#facc15" stroke="#000000" stroke-width="0.5"/><text x="909" y="128.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">jaune</text><rect id="palette-vert" x="871" y="149.5" width="30" height="30" fill="#22c55e" stroke="#000000" stroke-width="0.5"/><text x="909" y="168.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">vert</text><rect id="palette-cyan" x="871" y="189.5" width="30" height="30" fill="#06b6d4" stroke="#000000" stroke-width="0.5"/><text x="909" y="208.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">cyan</text><rect id="palette-bleu" x="871" y="229.5" width="30" height="30" fill="#3b82f6" stroke="#000000" stroke-width="0.5"/><text x="909" y="248.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">bleu</text><rect id="palette-violet" x="871" y="269.5" width="30" height="30" fill="#a855f7" stroke="#000000" stroke-width="0.5"/><text x="909" y="288.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">violet</text><rect id="palette-blanc" x="871" y="309.5" width="30" height="30" fill="#ffffff" stroke="#000000" stroke-width="0.5"/><text x="909" y="328.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">blanc</text><rect id="palette-noir" x="871" y="349.5" width="30" height="30" fill="#1f2937" stroke="#000000" stroke-width="0.5"/><text x="909" y="368.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">noir</text></g>
+</svg>

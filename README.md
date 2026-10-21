@@ -16,6 +16,10 @@ construire un programme, puis on appuie sur **C'est parti !** : le robot le rejo
 instructions, 64 cartes de 45 mm à découper, et une page de cartes en grand à montrer à la classe, les mêmes
 pictogrammes que l'application).
 
+**Sol à imprimer en A0** (cases de 15 cm, lettres et numéros sur le bord) : grille vide
+([PDF](docs/grille-a0.pdf), [SVG à modifier](docs/grille-a0.svg)) et exemple « ville »
+([PDF](docs/grille-a0-ville.pdf), [SVG à modifier](docs/grille-a0-ville.svg)).
+
 Même base que [`thymio3-cockpit`](https://github.com/FrancescoMondada/thymio3-cockpit) : React + Vite, et l'API
 [`Mobsya/thymio3-ts-api`](https://github.com/Mobsya/thymio3-ts-api) prise directement sur GitHub
 (non copiée ici). Le comportement du robot vient du firmware
@@ -223,6 +227,37 @@ avant de découper, ou la coller sur du carton. Le PDF est fait par `npm run doc
 être installé ou dont le chemin est donné dans `CHROME`) ; pour changer le nombre d'exemplaires de chaque carte,
 modifier `SHEETS` dans `scripts/cards-sheet.mjs`, puis relancer la commande. `tests/cards-sheet.test.js` vérifie
 que toutes les cartes du langage y sont, qu'aucune ne porte de mot, et que le PDF a bien 5 pages A4.
+
+## Une grille A0 pour le sol
+
+Une affiche **A0 portrait (841 × 1189 mm)** de **cases de 15 cm**, pour faire un sol sur lequel le robot roule :
+5 colonnes (A à E) et 7 lignes (1 à 7), un **point de 5 mm** au centre de chaque case, et des **lettres et des numéros sur les
+quatre bords** pour retrouver une case (« C4 » est la troisième colonne, la quatrième ligne ; A1 est en haut à gauche, comme
+sur la carte Thymio). Deux versions, chacune en **PDF à imprimer** et en **SVG à modifier** :
+
+| | PDF (à imprimer en A0) | SVG (à modifier) |
+| --- | --- | --- |
+| **Grille vide** : les cases blanches, les points, les lettres | [`docs/grille-a0.pdf`](docs/grille-a0.pdf) | [`docs/grille-a0.svg`](docs/grille-a0.svg) |
+| **Exemple « ville »** : des cases en couleur (vert, violet, rouge, jaune, bleu ou blanc) et onze lieux dessinés dans un coin des cases (phare, immeuble, caserne, hôpital, maison, cabane, ferme, musée, château, magasin, école) | [`docs/grille-a0-ville.pdf`](docs/grille-a0-ville.pdf) | [`docs/grille-a0-ville.svg`](docs/grille-a0-ville.svg) |
+
+Les SVG s'ouvrent avec Inkscape (gratuit), Illustrator, Affinity ou Figma (une unité = 1 mm dans la grille vide ; Illustrator
+enregistre en points et supprime les calques vides, sans conséquence). L'exemple « ville » est la grille vide complétée :
+c'est un modèle pour en faire d'autres, en changeant les couleurs et en déplaçant ou remplaçant les lieux. Les calques de la
+grille vide, du bas vers le haut :
+
+1. **Couleurs des cases** : un carré blanc de 15 cm par case (`cell-A1` à `cell-E7`). Lui donner une couleur de remplissage
+   colorie **toute la case**.
+2. **Lieux et détails** : vide. On y dessine les lieux (maison, école, zoo…) **dans un coin d'une case** : ils sont au-dessus
+   de la couleur de la case, et sous la grille et le point, qu'ils ne cachent donc pas.
+3. **Grille**, 4. **Points** au centre, 5. **Lettres et numéros** du bord.
+6. **Palette** des huit couleurs du capteur du robot, **hors de la page** (visible dans l'éditeur, jamais imprimée).
+
+Pour obtenir un PDF après des modifications : l'exporter depuis l'éditeur (en gardant le format A0), ou imprimer le SVG par Chrome :
+`npm run docs:grid` fait `docs/grille-a0.pdf` depuis `docs/grille-a0.svg`, et `node scripts/make-grid-a0.mjs docs/grille-a0-ville.svg`
+fait `docs/grille-a0-ville.pdf` ; dans les deux cas le SVG n'est pas touché. La grille vide de base est refaite par
+`node scripts/make-grid-a0.mjs --new` (**il remplace `docs/grille-a0.svg`**). `scripts/grid-a0.mjs` fabrique le dessin de base
+et `tests/grid-a0.test.js` vérifie sa géométrie (cases de 150 mm, points de 5 mm au centre, lettres, calques) et que les deux
+SVG et les deux PDF sont bien des pages A0.
 
 ## Partager la configuration : le code QR
 
@@ -537,6 +572,7 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/sim/physics.js`, `mode.js`, `sim-backend.js` | Robot virtuel et port JavaScript du mode, mêmes événements |
 | `src/spec.js`, `src/program.js` | Constantes du mode et alphabet des cartes, chemin d'un programme sur un sol, exemples |
 | `src/lang.js` | Le langage des cartes avancées : compilateur, machine qui l'exécute, trace (même chose que `compile_program` / `Machine` du mode) |
+| `scripts/grid-a0.mjs`, `scripts/make-grid-a0.mjs` | La grille A0 de cases de 15 cm : le dessin de base (SVG à modifier) et son impression en PDF par Chrome |
 | `scripts/cards-sheet.mjs`, `scripts/make-cards-pdf.mjs` | Les cartes à imprimer : les pages (HTML) et leur impression en `docs/cartes-thymio.pdf` par Chrome |
 | `src/share.js`, `src/qr.js` | La configuration de la page en texte pour un code QR (écriture et lecture stricte), le dessin du code et sa lecture dans une image |
 | `src/modes.js` | Les cartes à disposition : modes normal, avancé et personnalisé, cartes de la palette, choix d'une carte sélectionnée, exemples compatibles |
