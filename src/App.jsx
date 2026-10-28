@@ -7,7 +7,7 @@ import Panel from './components/Panel.jsx';
 import ConfirmDisconnect from './components/ConfirmDisconnect.jsx';
 import { I18N, detectLang } from './i18n.js';
 import { cleanProgram, MAX_STEPS, isRepeat, isColor, isWhile } from './spec.js';
-import { MODES, cardsOf, cleanCustom, hasGround, paletteCodes, toggleKind } from './modes.js';
+import { MODES, cardsOf, cleanCustom, hasGround, hasGroundCards, paletteCodes, toggleKind } from './modes.js';
 import { decodeConfig, encodeConfig, mapPlan } from './share.js';
 import QrShow from './components/QrShow.jsx';
 import QrScan from './components/QrScan.jsx';
@@ -75,6 +75,7 @@ export default function App() {
   const [map, setMap] = useState(() => { try { return cleanMap(JSON.parse(load('cards.map', 'null'))) || THYMIO_MAP; } catch { return THYMIO_MAP; } });   // the picture under the grid: squares covered, and the start square on it
   const [mapKind, setMapKind] = useState(() => { const k = load('cards.mapkind', 'none'); return k === 'custom' || k === 'builtin' ? k : 'none'; });   // a plain mat (the start), the Thymio map, or a picture the adult chose
   const [custom, setCustom] = useState(null);           // the picture the adult chose, kept in IndexedDB: { url, w, h }
+  const mapRequest = useRef(0);                         // each choice of what is under the mat takes a number: a big picture still being prepared must not undo a later choice
   const mapImage = mapKind === 'builtin' ? BUILTIN_MAP_IMAGE : mapKind === 'custom' ? custom : null;
   const [placing, setPlacing] = useState(false);        // the robot is being dragged to its start square on the picture
   const [qr, setQr] = useState(null);                    // over the page: { show: the text of its QR code } or { scan: true }
@@ -97,7 +98,9 @@ export default function App() {
   const sync = useRef(null);                // keeps the robot's program equal to the cards (robot/sync.js)
   const syncCallbacks = useRef({});
   const S = useRef({});
-  const activeFloor = useMemo(() => (ground ? floor : EMPTY_FLOOR), [ground, floor]);
+  // The colours of the ground are those of the virtual robot's world. A real robot reads the real floor, which the page cannot
+  // know: with one connected nothing painted or pictured is shown or used, and the mat is greyed.
+  const activeFloor = useMemo(() => (ground && !live ? floor : EMPTY_FLOOR), [ground, live, floor]);
   // The picture is the ground of the virtual robot only: with a real robot connected (which reads the real ground)
   // it is not shown and not read, so that it cannot be taken for the robot's own.
   const cells = scan && map && mapImage && scan.url === mapImage.url && scan.cols === map.cols && scan.rows === map.rows ? scan.cells : null;
@@ -105,7 +108,7 @@ export default function App() {
   const picture = live ? null : mapPicture;
   // The colour of the ground at a cell of the robot's frame: what the brush painted, else what the picture has there.
   const colourAt = useMemo(() => {
-    if (!ground) return null;
+    if (!ground || live) return null;
     return groundAt(activeFloor, live ? null : cells, map ? map.sx : 0, map ? map.sy : 0);
   }, [ground, activeFloor, live, cells, map]);
   S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing, kinds, qr };
@@ -124,7 +127,7 @@ export default function App() {
     if (mapKind !== 'custom') return undefined;
     let alive = true, url = null;
     loadImage().then((rec) => {
-      if (!alive) return;
+      if (!alive || S.current.mapKind !== 'custom') return;          // (the adult asked for something else in the meantime)
       if (!rec) { setMapKind('none'); return; }
       url = URL.createObjectURL(rec.blob);
       setCustom({ url, w: rec.w, h: rec.h });
@@ -391,9 +394,12 @@ export default function App() {
   }, [edited]);
 
   const pickMapFile = useCallback(async (file) => {
+    const mine = ++mapRequest.current;
     const prepared = await prepareImage(file);                       // rejects when the file is not a picture
+    if (mine !== mapRequest.current) return;                         // another choice was made while it was prepared (a photo takes seconds on a tablet)
     const rec = { blob: prepared.blob, w: prepared.w, h: prepared.h };
     await saveImage(rec);
+    if (mine !== mapRequest.current) return;                         // (a choice made while it was saved clears it after this save)
     const url = URL.createObjectURL(rec.blob);
     setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return { url, w: rec.w, h: rec.h }; });
     setMapKind('custom');
@@ -417,8 +423,8 @@ export default function App() {
     setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; });
     setPlacing(false);
   }, []);
-  const removeMap = useCallback(() => { forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
-  const thymioMap = useCallback(() => { forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
+  const removeMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
+  const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
   const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }) });
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
@@ -436,6 +442,7 @@ export default function App() {
     if (cfg.floor) setFloor(cfg.floor);
     const plan = mapPlan(cfg.map, S.current.mapKind);
     if (plan) {
+      mapRequest.current++;
       if (plan.kind === 'none') { clearImage(); setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; }); setMapKind('none'); }
       else if (plan.kind === 'builtin') { clearImage(); setCustom((old) => { if (old) URL.revokeObjectURL(old.url); return null; }); setMapKind('builtin'); setMap(plan.geometry ? cleanMap(plan.geometry) : THYMIO_MAP); }
       else if (plan.geometry) setMap(cleanMap(plan.geometry));
@@ -624,10 +631,10 @@ export default function App() {
         <section className="left">
           <Stage
             ref={stageRef} program={program} cursor={cursor} doneUpTo={doneUpTo}
-            showPath={showPath} target={target} canPlace={phase === 'idle' && !panel && !confirmDisc}
+            showPath={showPath && !(live && hasGroundCards(program))} target={target} canPlace={phase === 'idle' && !panel && !confirmDisc}
             onTarget={(cell) => setTarget((cur) => (cur && cur.x === cell.x && cur.y === cell.y ? null : cell))}
             overlay={overlay} celebrate={celebrate && finished ? celebrate : 0} t={t} kind={live ? 'live' : 'sim'}
-            floor={activeFloor} colourAt={colourAt} ground={ground} brush={brush} onBrush={setBrush} onFloor={paintFloor}
+            floor={activeFloor} colourAt={colourAt} ground={ground && !live} unknownGround={live && hasGroundCards(program)} brush={brush} onBrush={setBrush} onFloor={paintFloor}
             picture={picture} placing={placing} onPlace={changeMap} onPlaced={() => setPlacing(false)} onRecentre={recentreRobot}
           />
         </section>

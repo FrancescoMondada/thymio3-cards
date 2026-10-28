@@ -63,3 +63,28 @@ test('the path draws every dark module and only those', () => {
   assert.equal(area, dark);
   assert.ok(d.length < m.size * m.size * 4, 'runs, not one rectangle per module');
 });
+
+// ---- scanning must not need the network once the page is open ------------------------------------------------------------
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { build } from 'vite';
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+test('the reader of QR codes is not fetched at the first scan: it is in the application, no dynamic import of it', () => {
+  for (const file of ['src/qr.js', 'src/components/QrScan.jsx', 'src/components/QrShow.jsx', 'src/App.jsx']) {
+    const source = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.ok(!/import\(\s*['"]jsqr/.test(source), `${file}: no dynamic import of jsqr`);
+  }
+  assert.match(fs.readFileSync(path.join(root, 'src/qr.js'), 'utf8'), /^import jsQR from 'jsqr';$/m, 'a static import');
+});
+
+test('the built application is one script (a chunk that is loaded later would need the network at the first scan)', async () => {
+  const result = await build({ root, logLevel: 'silent', build: { write: false } });
+  const outputs = (Array.isArray(result) ? result : [result]).flatMap((r) => r.output);
+  const scripts = outputs.filter((o) => o.type === 'chunk');
+  assert.equal(scripts.length, 1, `scripts: ${scripts.map((s) => s.fileName).join(', ')}`);
+  assert.ok(/jsQR|findQR|decodeQR/i.test(scripts[0].code) || scripts[0].code.includes('inversionAttempts'), 'the reader is in it');
+  assert.ok(!scripts.some((s) => s.dynamicImports.length), 'nothing is imported later');
+});

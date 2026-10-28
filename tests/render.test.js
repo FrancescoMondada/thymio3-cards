@@ -6,6 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -318,6 +319,23 @@ test('a picture under the mat: laid under the grid over its squares; placing the
   assert.ok(!none.includes('<image') && !none.includes('placebar') && !none.includes('has-map'), 'no picture: nothing to place the robot on');
 });
 
+test('a real robot reads the real floor: the mat is greyed and a pictogram says the colours are not known', async () => {
+  const { default: Stage } = await load('/src/components/Stage.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    assert.ok(t.stageRealFloor && t.stageRealFloor.length > 20, `a sentence for screen readers (${lang})`);
+    const props = { program: 'FrL', cursor: -1, doneUpTo: -1, showPath: false, target: null, onTarget: noop, canPlace: true, overlay: null, celebrate: 0, t, kind: 'live', floor: {} };
+    const unknown = renderToStaticMarkup(h(Stage, { ...props, unknownGround: true }));
+    assert.ok(unknown.includes('class="stage live') && unknown.includes('class="ground-unknown"') && unknown.includes(`aria-label="${t.stageRealFloor}"`), `the badge on the live mat (${lang})`);
+    assert.equal(textOf(unknown), '', `no text (${lang})`);
+    assert.ok(!renderToStaticMarkup(h(Stage, props)).includes('ground-unknown'), 'no badge when the program does not look at the ground');
+    assert.ok(!renderToStaticMarkup(h(Stage, { ...props, kind: 'sim', unknownGround: false })).includes('ground-unknown'));
+    assert.ok(!renderToStaticMarkup(h(Stage, { ...props, ground: false })).includes('brushbar'), 'no brush for a real floor');
+  }
+  const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
+  assert.match(css, /\.stage\.live \{ --mat: #[0-9a-f]{6}; --grid: #[0-9a-f]{6}; \}/, 'the live mat has its own grey colours');
+});
+
 test('the settings: choose a picture, then its size and the three buttons', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { I18N } = await load('/src/i18n.js');
@@ -337,13 +355,21 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
     const picture = { url: 'blob:x', cols: 5, rows: 4, sx: 2, sy: 2 };
     const has = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'custom', mapImage: { url: 'blob:x', w: 800, h: 600 } }));
     assert.ok(has.includes(t.map.change) && !has.includes(`>${t.map.choose}<`) && has.includes(t.map.builtin), `change it, or go back to the Thymio map (${lang})`);
-    const builtin = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'builtin', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
+    const town = { ...picture, cols: 4, rows: 4, sx: 2, sy: 2 };
+    const builtin = renderToStaticMarkup(h(Panel, { ...base, picture: town, mapKind: 'builtin', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
     assert.ok(builtin.includes(t.map.choose) && !builtin.includes(`>${t.map.builtin}<`) && builtin.includes(t.map.place) && builtin.includes(t.map.remove), `the Thymio map is chosen: choose another, place, remove (${lang})`);
+    const stretched = renderToStaticMarkup(h(Panel, { ...base, picture, mapKind: 'builtin', mapImage: { url: 'blob:x', w: 8, h: 6 } }));
+    assert.ok(stretched.includes(`>${t.map.builtin}<`), `the Thymio map is on but its grid was changed to 5 x 4: the button puts it back to 4 x 4 (${lang})`);
     for (const k of ['size', 'ratio', 'place', 'recentre', 'remove']) assert.ok(has.includes(t.map[k]), `${k} (${lang})`);
     assert.ok(has.includes(`aria-label="${t.map.cols}" value="5"`) && has.includes(`aria-label="${t.map.rows}" value="4"`), `the size (${lang})`);
     assert.ok(has.includes('class="map-thumb"'));
     assert.ok(!has.includes(t.map.virtualOnly), 'no note while the robot is virtual');
     assert.ok(renderToStaticMarkup(h(Panel, { ...base, live: true, canPlace: false, picture, mapImage: { url: 'blob:x', w: 8, h: 6 } })).includes(t.map.virtualOnly), `a real robot is connected: the picture is hidden (${lang})`);
+    // said at the top of the section, also before any picture is asked for: with a real robot nothing shows on the mat, whatever button is pressed
+    const live = renderToStaticMarkup(h(Panel, { ...base, live: true, canPlace: false }));
+    assert.ok(live.includes(`<p class="warn" role="status">${t.map.virtualOnly}</p>`), `a real robot is connected, no picture yet: the note is there (${lang})`);
+    assert.ok(live.indexOf(t.map.virtualOnly) < live.indexOf(t.map.choose), 'before the buttons');
+    assert.ok(!renderToStaticMarkup(h(Panel, { ...base, live: false })).includes(t.map.virtualOnly));
     assert.match(renderToStaticMarkup(h(Panel, { ...base, picture, mapImage: { url: 'blob:x', w: 8, h: 6 }, canPlace: false })), /<button[^>]*disabled=""[^>]*><svg[^>]*>.*?<\/svg><span>[^<]*<\/span><\/button>/, 'placing is not offered while the robot runs');
   }
 });
@@ -399,6 +425,20 @@ test('the custom mode: the palette holds the cards that were given, the brush on
   const kept = render({ 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F']), 'cards.program': 'F(F)3F' });
   assert.equal((kept.match(/class="slot/g) || []).length, 6, 'the six cards of the program are there');
   delete globalThis.localStorage;
+});
+
+test('the palette of a tablet held upright: its own number of columns, and a layout that is not made of squares a quarter wide', async () => {
+  const { Palette } = await load('/src/components/Dock.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  const markup = (codes) => renderToStaticMarkup(h(Palette, { onPointerDown: noop, onKeyTap: noop, t: I18N.en, disabled: false, codes }));
+  assert.ok(markup(['F', 'B', 'L', 'R']).includes('--cols:4;--tcols:4'));
+  assert.ok(markup(['F', 'B', 'L', 'R', '(', ')', '2', 'r']).includes('--cols:4;--tcols:8'), 'eight cards, one row on a tablet');
+  assert.ok(markup(['F', 'L', 'R']).includes('--tcols:4'), 'three cards do not get a width of a third of the screen');
+  const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
+  const block = css.slice(css.indexOf('@media (min-width: 600px) and (orientation: portrait) {'));
+  const rules = block.slice(0, block.indexOf('\n}\n'));
+  assert.ok(rules.includes('grid-template-columns: repeat(var(--tcols, 4)') && rules.includes('.pcard { aspect-ratio: auto; height: var(--pcard)'), 'one row of cards that are not square');
+  assert.ok(css.indexOf('@media (min-width: 600px) and (orientation: portrait)') > css.indexOf('.pcard {'), 'after the base rules, so that it wins');
 });
 
 test('the choices of a repeat card follow the cards given: numbers, colours, or both', async () => {

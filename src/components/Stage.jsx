@@ -79,7 +79,7 @@ function FinishFlag() {
 // A `picture` (url, cols, rows and the square the robot starts on) is laid under the grid. While the
 // robot is being `placing`, the mat does not follow it: the whole picture is shown, north up, and the
 // robot is dragged to its start square (onPlace) with a check to finish and a target to recentre it.
-export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, colourAt, ground, brush, onBrush, onFloor, picture, placing, onPlace, onPlaced, onRecentre }) {
+export default function Stage({ ref, program, cursor, doneUpTo, showPath, target, onTarget, canPlace, overlay, celebrate, t, kind, floor = {}, colourAt, ground, unknownGround, brush, onBrush, onFloor, picture, placing, onPlace, onPlaced, onRecentre }) {
   const wrap = useRef(null);
   const svg = useRef(null);
   const world = useRef(null);
@@ -254,6 +254,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
           )}
         </div>
       )}
+      {unknownGround && <div className="ground-unknown" role="img" aria-label={t.stageRealFloor} title={t.stageRealFloor}><ArrowIcon code="r" /></div>}
       {overlay && <Note kind={overlay.kind} key={overlay.key} />}
       {celebrate ? <Celebrate key={celebrate} /> : null}
     </div>

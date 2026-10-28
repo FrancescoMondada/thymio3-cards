@@ -4,6 +4,7 @@ import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { cardClass } from '../spec.js';
 import { CARD_KINDS, MODES, NORMAL_KINDS, PALETTE_CODE, fitsCards } from '../modes.js';
+import { THYMIO_MAP } from '../worldmap.js';
 import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
@@ -151,12 +152,13 @@ export default function Panel({
 
         <h3>{t.map.title}</h3>
         <p className="hint">{t.map.hint}</p>
+        {live && <p className="warn" role="status">{t.map.virtualOnly}</p>}
         <div className="map-box">
           <div className="map-top">
             {picture && mapImage && <img className="map-thumb" src={mapImage.url} alt="" />}
             <input ref={fileInput} type="file" accept="image/*" hidden onChange={chooseFile} />
             <button className="tile-btn" onClick={() => fileInput.current?.click()}><MapIcon /><span>{mapKind === 'custom' ? t.map.change : t.map.choose}</span></button>
-            {mapKind !== 'builtin' && <button className="tile-btn" onClick={onMapThymio}><MapIcon /><span>{t.map.builtin}</span></button>}
+            {(mapKind !== 'builtin' || (picture && (picture.cols !== THYMIO_MAP.cols || picture.rows !== THYMIO_MAP.rows))) && <button className="tile-btn" onClick={onMapThymio}><MapIcon /><span>{t.map.builtin}</span></button>}
           </div>
           {mapBad && <p className="warn" role="alert">{t.map.bad}</p>}
           {picture && (
@@ -170,7 +172,6 @@ export default function Panel({
                   <button className="plain" onClick={onMapRatio}>{t.map.ratio}</button>
                 </div>
               </div>
-              {live && <p className="hint">{t.map.virtualOnly}</p>}
               <div className="quick">
                 <button className="tile-btn" disabled={!canPlace} onClick={onMapPlace}><TargetIcon /><span>{t.map.place}</span></button>
                 <button className="tile-btn" onClick={onMapRecentre}><FlagIcon /><span>{t.map.recentre}</span></button>

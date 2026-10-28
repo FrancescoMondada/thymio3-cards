@@ -286,7 +286,7 @@ invalide est écarté). Ce qui vient d'un code est lu comme une donnée, stricte
 nettoyé carte par carte, les nombres sont des entiers à moins de 99 cases du départ. Un sol peint partout (plus d'environ 400 cases)
 ne tient pas dans un code : l'écran le dit. La caméra demande une page en **https** (ou `localhost`) et l'autorisation du
 navigateur. Le code est dessiné avec [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (niveau de correction M) et lu avec
-[jsQR](https://github.com/cozmo/jsQR), chargé seulement au premier scan. Format et lecture : `src/share.js`, `src/qr.js` ;
+[jsQR](https://github.com/cozmo/jsQR), tous deux dans l'application même : une fois la page ouverte, afficher et scanner un code ne demande plus de réseau (lecture et affichage sont locaux, le code ne contient aucune adresse). Format et lecture : `src/share.js`, `src/qr.js` ;
 boutons : `src/components/TopBar.jsx` ; écrans : `QrShow.jsx` et `QrScan.jsx`.
 
 ## Une image sous le tapis
@@ -331,7 +331,10 @@ plaçant le robot, un point de la couleur lue s'affiche au centre de chaque carr
 que le robot comprend d'un dégradé ou d'une photo : des aplats de couleur franche marchent le mieux.
 
 **Avec un vrai robot connecté, l'image est cachée** (et le placement impossible) : il lit le vrai sol,
-et l'image ne doit pas pouvoir être prise pour le sien. Elle revient à la déconnexion.
+et l'image ne doit pas pouvoir être prise pour le sien. Elle revient à la déconnexion. De même, **le tapis est grisé** : la
+page ne connaît pas les couleurs du vrai sol, donc ni le sol peint ni le pinceau ne sont montrés ni utilisés ; si le programme
+a une carte « si » ou « tant que », un petit « ? » gris apparaît sur le tapis, et le chemin prévu (touche **D**) n'est pas
+dessiné, puisqu'il dépendrait de ces couleurs. Le robot, lui, avance sur le tapis d'après les pas que le vrai robot annonce.
 
 ## Comment ça marche avec un vrai robot
 

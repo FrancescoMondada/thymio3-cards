@@ -1,7 +1,7 @@
 // The modes of the settings: which cards the children have.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MODES, CARD_KINDS, PALETTE_CODE, NORMAL_KINDS, cardKind, cleanCustom, cardsOf, toggleKind, paletteCodes, paletteColumns, hasGround, pickerRows, kindsOfProgram, fitsCards } from '../src/modes.js';
+import { MODES, CARD_KINDS, PALETTE_CODE, NORMAL_KINDS, cardKind, cleanCustom, cardsOf, toggleKind, paletteCodes, paletteColumns, hasGround, hasGroundCards, pickerRows, kindsOfProgram, fitsCards, paletteColumnsWide } from '../src/modes.js';
 import { REPEAT_CODES, COLOR_CODES, WHILE_CODES, TOKEN_ALPHABET } from '../src/spec.js';
 import { EXAMPLES } from '../src/program.js';
 
@@ -81,4 +81,17 @@ test('the kinds a program uses; an example is shown when the mode has all its ca
   // the examples of the basic mode are made of the four steps; the others need the advanced cards
   for (const ex of EXAMPLES) assert.equal(fitsCards(ex.program, NORMAL_KINDS), !ex.advanced, ex.id);
   for (const ex of EXAMPLES) assert.equal(fitsCards(ex.program, CARD_KINDS), true, ex.id);
+});
+
+test('a program has a card that looks at the ground when it has an "if" or a repeat on a colour', () => {
+  assert.equal(hasGroundCards(''), false);
+  assert.equal(hasGroundCards('FFRL'), false);
+  assert.equal(hasGroundCards('2(FR)'), false, 'a repeat with a number does not look at the ground');
+  assert.equal(hasGroundCards('FrL'), true, 'if the ground is red');
+  assert.equal(hasGroundCards('E(F)'), true, 'while the ground is red');
+  assert.equal(hasGroundCards('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFk'.slice(0, 55)), false, 'only the cards that are kept are looked at');
+});
+
+test('on a tablet held upright the palette is one row: as many columns as cards, four at least, eight at most', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 12].map(paletteColumnsWide), [4, 4, 4, 4, 5, 6, 7, 8, 8, 8]);
 });

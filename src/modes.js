@@ -38,6 +38,10 @@ export function paletteCodes(kinds) {
 // A palette of n cards is laid out in this many columns: four, or five when five or nine fit better
 export const paletteColumns = (n) => (n === 5 || n >= 9 ? 5 : 4);
 
+// On a tablet held upright the palette is one row, as many columns as cards (at least four: a few cards do not get a
+// huge width), at most eight
+export const paletteColumnsWide = (n) => Math.max(4, Math.min(8, n));
+
 // The floor of the virtual robot (the brush, the picture's colours) matters when a card looks at the ground.
 export const hasGround = (kinds) => kinds.includes('if') || kinds.includes('while');
 
@@ -50,6 +54,9 @@ export function pickerRows(code, kinds) {
   if (kinds.includes('while') || isWhile(code)) rows.push(WHILE_CODES);
   return rows;
 }
+
+// Does a program have a card that looks at the ground ("if", or a repeat on a colour)?
+export const hasGroundCards = (program) => [...cleanProgram(program)].some((c) => isColor(c) || isWhile(c));
 
 // The kinds of cards a program uses, and whether the mode has them all (an example is shown only then)
 export const kindsOfProgram = (program) => [...new Set([...cleanProgram(program)].map(cardKind))];

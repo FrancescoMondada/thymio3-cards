@@ -1,6 +1,8 @@
-// QR codes: the modules of a code for a text (qrcode-generator), and the text of a code in an image (jsQR,
-// loaded when a code is first scanned: it is the larger of the two).
+// QR codes: the modules of a code for a text (qrcode-generator), and the text of a code in an image (jsQR). Both are in the
+// application itself, not fetched when a code is first scanned: scanning has to work in a classroom whose network comes
+// and goes once the page is open.
 import qrcode from 'qrcode-generator';
+import jsQR from 'jsqr';
 
 // { size, dark(row, col) } for a text (error correction level M: a screen, a camera, some glare), or null when the
 // text does not fit the largest code.
@@ -33,7 +35,6 @@ export function qrPath({ size, dark }) {
 
 // The text of the first QR code found in an image ({ data, width, height }, RGBA as ImageData), or null.
 export async function readQr(image) {
-  const { default: jsQR } = await import('jsqr');
   const found = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
   return found && found.data ? found.data : null;
 }

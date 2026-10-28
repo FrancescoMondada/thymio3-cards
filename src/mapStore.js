@@ -30,9 +30,14 @@ async function run(mode, use) {
   }
 }
 
-export const saveImage = (image) => run('readwrite', (s) => s.put(image, KEY)).then(() => true, () => false);
+// The writes go one after the other, in the order they were asked for: a picture that is saved and then cleared is
+// cleared, whatever the time each takes.
+let chain = Promise.resolve();
+const inOrder = (job) => { const done = chain.then(job); chain = done.then(() => {}, () => {}); return done; };
+
+export const saveImage = (image) => inOrder(() => run('readwrite', (s) => s.put(image, KEY))).then(() => true, () => false);
 export const loadImage = () => run('readonly', (s) => s.get(KEY)).then((r) => (r && r.blob ? r : null), () => null);
-export const clearImage = () => run('readwrite', (s) => s.delete(KEY)).then(() => true, () => false);
+export const clearImage = () => inOrder(() => run('readwrite', (s) => s.delete(KEY))).then(() => true, () => false);
 
 // The colour of each square of the picture, as the virtual robot's colour sensor reads it (picturecolor.js).
 export async function scanPicture(url, cols, rows, side = 24) {
