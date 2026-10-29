@@ -5,6 +5,10 @@
 //
 // An animal and an adjective that agree with it, as the language wants (the fox is red, the giraffe is red-e), and
 // a number of two digits. An animal is `word gender` (m, f, n), an adjective its forms.
+//
+// The genders of the animals are not balanced (French: 32 masculine, 10 feminine), and a child who is given "Petit renard"
+// three times out of four would notice. So a name is drawn gender first, each gender of the language equally likely
+// (masculine and feminine in French and Italian, with the neuter in German), then an animal of that gender.
 
 export const NAME_MAX = 32;                 // characters of a name, typed or drawn (the longest drawn is 29)
 
@@ -105,10 +109,33 @@ export function composeName(lang, animal, adjective, number) {
   return upFirst(before ? `${adj} ${noun}` : `${noun} ${adj}`) + ` ${n}`;
 }
 
-// A name drawn at random (`rand`: a function giving a number from 0 up to 1, exclusive, as Math.random does)
-export function randomName(lang, rand = Math.random) {
+// The grammatical gender of an animal in a language: m, f or n; English has none
+export const genderOf = (lang, animal) => (lang === 'en' ? '-' : ANIMALS[animal][lang === 'de' || lang === 'it' ? lang : 'fr'].split(' ')[1]);
+
+// The animals of each gender of a language: [[indexes of the masculine], [of the feminine], ...], the genders that exist
+const GROUPS = {};
+function groupsOf(lang) {
+  const key = NAME_LANGS.includes(lang) ? lang : 'fr';
+  if (!GROUPS[key]) {
+    const by = {};
+    ANIMALS.forEach((_, i) => { (by[genderOf(key, i)] ||= []).push(i); });
+    GROUPS[key] = ['m', 'f', 'n', '-'].filter((g) => by[g]).map((g) => by[g]);
+  }
+  return GROUPS[key];
+}
+
+// The pieces of a name drawn at random (`rand`: a function giving a number from 0 up to 1, exclusive, as Math.random does)
+export function randomParts(lang, rand = Math.random) {
   const pick = (n) => Math.min(n - 1, Math.floor(rand() * n));
-  return composeName(lang, pick(ANIMALS.length), pick(ADJECTIVES.length), pick(NUMBERS));
+  const groups = groupsOf(lang);
+  const group = groups[pick(groups.length)];
+  return { animal: group[pick(group.length)], adjective: pick(ADJECTIVES.length), number: pick(NUMBERS) };
+}
+
+// A name drawn at random
+export function randomName(lang, rand = Math.random) {
+  const { animal, adjective, number } = randomParts(lang, rand);
+  return composeName(lang, animal, adjective, number);
 }
 
 // A name as it is kept: text, no line break, not longer than the limit

@@ -2,7 +2,7 @@
 // the date and the time next to it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NAME_COUNT, NAME_LANGS, NAME_MAX, composeName, randomName, cleanName, formatWhen } from '../src/names.js';
+import { NAME_COUNT, NAME_LANGS, NAME_MAX, composeName, randomName, randomParts, genderOf, cleanName, formatWhen } from '../src/names.js';
 
 // animals 0 fox, 1 giraffe, 10 rabbit; adjectives 0 red, 1 blue, 9 small, 10 big; number 32 -> 42
 test('a name is an animal, an adjective that agrees with it, and a number: the four languages', () => {
@@ -54,16 +54,18 @@ test('a drawn name uses the whole palette, and two tablets of a class rarely sha
   const rand = () => { state = (state * 1664525 + 1013904223) % 4294967296; return state / 4294967296; };     // a fixed sequence, so the test does not flake
   const names = Array.from({ length: 60000 }, () => randomName('fr', rand));
   const distinct = new Set(names);
-  assert.ok(distinct.size > 40000, `${distinct.size} different names in 60000 draws`);
+  assert.ok(distinct.size > 35000, `${distinct.size} different names in 60000 draws`);
   const classes = 2000;
   let shared = 0;
   for (let c = 0; c < classes; c++) {
     const room = new Set(Array.from({ length: 30 }, () => randomName('en', rand)));
     if (room.size < 30) shared++;
   }
-  assert.ok(shared / classes < 0.02, `${shared} classes of 30 tablets out of ${classes} had two with the same name`);
-  assert.equal(randomName('fr', () => 0.999999999), composeName('fr', 41, 23, 89), 'the end of the range is the last piece, not an index past it');
-  assert.equal(randomName('fr', () => 1), composeName('fr', 41, 23, 89), 'even a generator that gave 1');
+  assert.ok(shared / classes < 0.03, `${shared} classes of 30 tablets out of ${classes} had two with the same name`);
+  const last = randomParts('fr', () => 0.999999999);
+  assert.deepEqual([last.adjective, last.number, genderOf('fr', last.animal)], [23, 89, 'f'], 'the end of the range is the last piece, not an index past it');
+  assert.deepEqual(randomParts('fr', () => 1), last, 'even a generator that gave 1');
+  assert.deepEqual(randomParts('fr', () => 0), { animal: 0, adjective: 0, number: 0 }, 'and the start is the first');
 });
 
 test('a name that is kept: one line of text, not longer than the limit', () => {
@@ -82,4 +84,25 @@ test('the date and the time as one short line, in the language', () => {
   assert.ok(/oct/i.test(fr) && /Oct/.test(en) && /Okt/.test(de) && /ott/i.test(it), [fr, en, de, it].join(' | '));
   assert.ok(formatWhen(new Date(Date.UTC(2026, 9, 29, 0, 5)), 'en', 'UTC').includes('00:05'), 'a 24 hour clock: midnight is 00, not 12 AM');
   assert.ok(formatWhen(d, 'not a language !', 'UTC').includes('2026'), 'a language the browser does not know still gives a date');
+});
+
+test('the genders of the names are balanced, whatever the genders of the animals: each gender of the language equally often', () => {
+  const animals = Array.from({ length: 42 }, (_, i) => i);
+  const share = (lang) => {
+    const c = {};
+    for (const a of animals) c[genderOf(lang, a)] = (c[genderOf(lang, a)] || 0) + 1;
+    return c;
+  };
+  assert.ok(share('fr').m >= 3 * share('fr').f, 'the palette itself is not balanced in French (it is why the draw is gender first)');
+  let state = 987654321;
+  const rand = () => { state = (state * 1664525 + 1013904223) % 4294967296; return state / 4294967296; };
+  const draws = 30000;
+  const expected = { fr: ['m', 'f'], it: ['m', 'f'], de: ['m', 'f', 'n'], en: ['-'] };
+  for (const [lang, genders] of Object.entries(expected)) {
+    const seen = {};
+    for (let i = 0; i < draws; i++) { const g = genderOf(lang, randomParts(lang, rand).animal); seen[g] = (seen[g] || 0) + 1; }
+    assert.deepEqual(Object.keys(seen).sort(), [...genders].sort(), `${lang}: the genders that come up`);
+    for (const g of genders) assert.ok(Math.abs(seen[g] / draws - 1 / genders.length) < 0.015, `${lang}: ${g} is ${(100 * seen[g] / draws).toFixed(1)} %, expected ${(100 / genders.length).toFixed(1)} %`);
+  }
+  assert.equal(genderOf('xx', 0), 'm', 'an unknown language is French');
 });

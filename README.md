@@ -300,7 +300,10 @@ page, au moment où le code est affiché), noir sur blanc, lisibles sur une phot
 nom avec le code. Le nom se règle dans les réglages (ligne « Nom sur le code QR », 32 caractères au plus) : au premier lancement,
 chaque tablette en reçoit un **tiré au hasard**, par exemple « Renard bleu 42 », « Blue Fox 42 », « Blauer Fuchs 42 » ou « Volpe blu 42 »
 (un animal, un adjectif accordé avec lui, un nombre de deux chiffres : 42 animaux × 24 adjectifs × 90 nombres, soit environ **90 000
-noms par langue**, de sorte que, dans une classe de 30 tablettes, deux d'entre elles ont le même nom une fois sur deux cents environ, 0,5 %).
+noms par langue**, de sorte que, dans une classe de 30 tablettes, deux d'entre elles ont le même nom une fois sur deux cents environ, de 0,5 à 0,7 % selon la langue).
+Les genres sont **équilibrés** : les animaux ne le sont pas (en français 32 masculins pour 10 féminins), alors le tirage choisit d'abord le
+genre grammatical, chacun aussi probable que l'autre (masculin et féminin en français et en italien, avec le neutre en allemand), puis un animal de ce genre ;
+sans cela trois élèves sur quatre auraient « Petit renard » en français.
 Il est gardé sur la tablette, et le dé à côté du champ en tire un autre ; on peut le remplacer par un prénom (accents compris : c'est du
 texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
 **pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
