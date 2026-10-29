@@ -111,7 +111,6 @@ export default function Panel({
             <label>{t.qr.linkRow}</label>
             <div className="quick">
               <button className="tile-btn" onClick={() => onShowLink('web')}><QrIcon /><span>{t.qr.linkButton}</span></button>
-              <button className="tile-btn" onClick={() => onShowLink('android')}><QrIcon /><span>{t.qr.linkAndroid}</span></button>
               <button className="tile-btn" onClick={() => onShowLink('ios')}><QrIcon /><span>{t.qr.linkIos}</span></button>
             </div>
           </div>

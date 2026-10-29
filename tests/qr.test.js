@@ -100,16 +100,15 @@ test('the address of the demo: a small code that is read back, and the one the R
   assert.ok(fs.readFileSync(path.join(root, 'README.md'), 'utf8').includes(`<${APP_URL}>`), 'the README links the same page');
 });
 
-test('the links by browser: the plain address, Chrome on Android, Bluefy on iOS; each one is a code that is read back', async () => {
-  assert.deepEqual(Object.keys(APP_LINKS), ['web', 'android', 'ios']);
+test('the links by browser: the plain address and Bluefy on iOS; each one is a code that is read back, and none is an intent link', async () => {
+  assert.deepEqual(Object.keys(APP_LINKS), ['web', 'ios']);
   assert.equal(APP_LINKS.web, APP_URL);
-  const host = APP_URL.replace(/^https:\/\//, '');
-  assert.equal(APP_LINKS.android, `intent://${host}#Intent;scheme=https;package=com.android.chrome;end`, "Chrome's intent syntax: the host and path, the scheme apart, the Chrome package");
   const ios = new URL(APP_LINKS.ios);
   assert.equal(ios.protocol, 'bluefy:');
   assert.equal(ios.searchParams.get('url'), APP_URL, 'the address is the url of the link, encoded');
   assert.ok(!APP_LINKS.ios.slice('bluefy://open?url='.length).includes('/'), 'encoded: no slash left in it');
   for (const [kind, link] of Object.entries(APP_LINKS)) {
+    assert.ok(!link.startsWith('intent:'), `${kind}: the camera of a Samsung does not open intent links`);
     const m = qrMatrix(link);
     assert.ok(m && m.size <= 45, `${kind}: ${m && m.size} modules, still big squares across a classroom`);
     assert.equal(await readQr(picture(m, 4)), link, kind);

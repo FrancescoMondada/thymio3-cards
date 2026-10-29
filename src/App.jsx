@@ -661,7 +661,7 @@ export default function App() {
           <CardFace code={drag.code} label="" />
         </div>
       )}
-      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, android: t.qr.linkAndroid, ios: t.qr.linkIos }[qr.link] : t.qr.show} onClose={() => setQr(null)} />}
+      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, ios: t.qr.linkIos }[qr.link] : t.qr.show} onClose={() => setQr(null)} />}
       {qr && qr.scan && <QrScan t={t} onText={applyScanned} onClose={() => setQr(null)} />}
       {confirmDisc && <ConfirmDisconnect t={t} onYes={disconnect} onNo={() => setConfirmDisc(false)} />}
       {panel && (
