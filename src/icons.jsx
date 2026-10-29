@@ -236,3 +236,13 @@ export const ImageIcon = () => (
     <rect x="7" y="10" width="50" height="44" rx="7" /><circle cx="22" cy="25" r="5" fill="currentColor" stroke="none" /><path d="M9 48 L25 33 L35 42 L43 34 L55 46" />
   </svg>
 );
+
+// A die, to draw another name at random
+export const DiceIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinejoin="round">
+    <rect x="8" y="8" width="48" height="48" rx="11" />
+    <circle cx="22" cy="22" r="3.6" fill="currentColor" stroke="none" /><circle cx="42" cy="22" r="3.6" fill="currentColor" stroke="none" />
+    <circle cx="32" cy="32" r="3.6" fill="currentColor" stroke="none" />
+    <circle cx="22" cy="42" r="3.6" fill="currentColor" stroke="none" /><circle cx="42" cy="42" r="3.6" fill="currentColor" stroke="none" />
+  </svg>
+);

@@ -3,17 +3,27 @@ import { CloseIcon, WarnIcon } from '../icons.jsx';
 import { qrMatrix, qrPath } from '../qr.js';
 
 // The QR code of the page, over the whole application and as large as the screen allows, for the other
-// screens of the class to scan. A touch anywhere (or Esc) puts it away.
-export default function QrShow({ text, t, label = t.qr.show, onClose }) {
+// screens of the class to scan. A touch anywhere (or Esc) puts it away. With a `caption` ({ name, when }: the name of
+// the tablet and the date and time) it is written under the code, in the same white card: a code that is photographed
+// to be filed carries whose it is.
+export default function QrShow({ text, t, label = t.qr.show, caption, onClose }) {
   const code = useMemo(() => qrMatrix(text), [text]);
   const quiet = 4;
   return (
-    <div className="qr-back" role="dialog" aria-modal="true" aria-label={label} onClick={onClose}>
+    <div className={caption ? 'qr-back captioned' : 'qr-back'} role="dialog" aria-modal="true" aria-label={label} onClick={onClose}>
       {code ? (
-        <svg className="qr-code" viewBox={`${-quiet} ${-quiet} ${code.size + 2 * quiet} ${code.size + 2 * quiet}`} shapeRendering="crispEdges" role="img" aria-label={label}>
-          <rect x={-quiet} y={-quiet} width={code.size + 2 * quiet} height={code.size + 2 * quiet} fill="#fff" />
-          <path d={qrPath(code)} fill="#000" />
-        </svg>
+        <div className="qr-card">
+          <svg className="qr-code" viewBox={`${-quiet} ${-quiet} ${code.size + 2 * quiet} ${code.size + 2 * quiet}`} shapeRendering="crispEdges" role="img" aria-label={label}>
+            <rect x={-quiet} y={-quiet} width={code.size + 2 * quiet} height={code.size + 2 * quiet} fill="#fff" />
+            <path d={qrPath(code)} fill="#000" />
+          </svg>
+          {caption && (
+            <div className="qr-caption">
+              {caption.name && <b>{caption.name}</b>}
+              <time>{caption.when}</time>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="qr-problem" role="alert"><WarnIcon /><p>{t.qr.tooBig}</p></div>
       )}

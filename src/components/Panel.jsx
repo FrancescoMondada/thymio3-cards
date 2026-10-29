@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BluetoothOffIcon, CheckIcon, CloseIcon, FlagIcon, MapIcon, PathIcon, QrIcon, TargetIcon } from '../icons.jsx';
+import { BluetoothOffIcon, CheckIcon, CloseIcon, DiceIcon, FlagIcon, MapIcon, PathIcon, QrIcon, TargetIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { cardClass } from '../spec.js';
 import { CARD_KINDS, MODES, NORMAL_KINDS, PALETTE_CODE, fitsCards } from '../modes.js';
 import { THYMIO_MAP } from '../worldmap.js';
 import { APP_URL } from '../share.js';
+import { NAME_MAX } from '../names.js';
 import { buildRobotScript } from '../script.js';
 import { ArrowIcon } from '../icons.jsx';
 
@@ -30,7 +31,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -115,6 +116,14 @@ export default function Panel({
             </div>
           </div>
           <p className="hint">{t.qr.linkHint} <a className="app-link" href={APP_URL} target="_blank" rel="noopener noreferrer">{APP_URL.replace(/^https:\/\//, '')}</a></p>
+          <div className="row">
+            <label htmlFor="qr-name">{t.qr.nameRow}</label>
+            <div className="name-field">
+              <input id="qr-name" type="text" value={name} maxLength={NAME_MAX} autoComplete="off" spellCheck="false" aria-label={t.qr.nameField} onChange={(e) => onName(e.target.value)} />
+              <button className="tile-btn" onClick={onNewName} aria-label={t.qr.nameDraw} title={t.qr.nameDraw}><DiceIcon /></button>
+            </div>
+          </div>
+          <p className="hint">{t.qr.nameHint}</p>
           <div className="row">
             <label>{t.panel.quick}</label>
             <div className="quick">

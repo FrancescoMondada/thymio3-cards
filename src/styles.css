@@ -342,6 +342,10 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .nobt p { margin: 6px 0 12px; font-size: 16px; line-height: 1.4; }
 .nobt-link { display: inline-block; padding: 12px 18px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 900; text-decoration: none; }
 .panel p.hint { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.name-field { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 220px; justify-content: flex-end; }
+.name-field input { flex: 1 1 140px; min-width: 0; max-width: 320px; min-height: 44px; padding: 8px 12px; border-radius: 14px; border: 2px solid #ece6f8; background: #faf7ff; font: inherit; font-weight: 800; color: var(--ink); }
+.name-field input:focus-visible { outline: 3px solid var(--B); outline-offset: 1px; }
+.name-field .tile-btn { padding: 8px 12px; }
 .app-link { display: block; color: var(--ink); font-weight: 800; overflow-wrap: anywhere; }
 .about { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 16px 0 0; }
 
@@ -512,8 +516,14 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 /* the scan button is the blue one: "press the blue button" is an instruction a child can follow */
 .top-btn.scan { background: var(--B); color: #fff; border-color: var(--B-d); box-shadow: 0 4px 0 var(--B-d); }
 .top-btn.scan:active:not(:disabled) { box-shadow: 0 1px 0 var(--B-d); }
-.qr-back { position: fixed; inset: 0; z-index: 90; background: rgba(20, 20, 40, .84); display: grid; place-items: center; padding: 16px; animation: fade .2s; overflow: hidden; }
-.qr-code { width: min(94vw, calc(100dvh - 32px), 780px); height: auto; aspect-ratio: 1; border-radius: 18px; background: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
+.qr-back { --qr: min(94vw, calc(100dvh - 32px), 780px); position: fixed; inset: 0; z-index: 90; background: rgba(20, 20, 40, .84); display: grid; place-items: center; padding: 16px; animation: fade .2s; overflow: hidden; }
+.qr-back.captioned { --qr: min(94vw, calc(100dvh - 190px), 780px); }      /* room under the code for the name and the date */
+.qr-card { width: var(--qr); border-radius: 18px; background: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); overflow: hidden; }
+.qr-code { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+/* what is written under the code is read on a photograph: large, black on white, in the card of the code */
+.qr-caption { padding: 0 14px 14px; text-align: center; color: #111; display: grid; gap: 2px; }
+.qr-caption b { font-size: clamp(24px, 5.2vmin, 44px); font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
+.qr-caption time { font-size: clamp(15px, 2.8vmin, 24px); font-weight: 700; color: #444; font-variant-numeric: tabular-nums; }
 .qr-close {
   position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 3; width: 52px; height: 52px;
   border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; box-shadow: 0 3px 0 rgba(0, 0, 0, .3);

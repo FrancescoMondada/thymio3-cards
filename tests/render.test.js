@@ -493,6 +493,43 @@ test('the QR code over the page: as large as it can be, the code of the text, a 
   }
 });
 
+test('the QR code of the page carries a name and the date and time under it, in the same white card; the other codes carry nothing', async () => {
+  const { default: QrShow } = await load('/src/components/QrShow.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const caption = { name: 'Renard bleu 42', when: '29 oct. 2026, 11:42' };
+    const shown = renderToStaticMarkup(h(QrShow, { text: 'T3C1;l=fr;p=FF', t, caption, onClose: noop }));
+    assert.ok(shown.includes('class="qr-back captioned"'), `room is made for it (${lang})`);
+    assert.ok(shown.indexOf('class="qr-card"') < shown.indexOf('<svg class="qr-code"') && shown.indexOf('</svg>') < shown.indexOf('class="qr-caption"') && shown.indexOf('class="qr-caption"') < shown.indexOf('class="qr-close"'), 'the caption is in the card of the code, after it');
+    assert.ok(shown.includes('<b>Renard bleu 42</b>') && shown.includes('<time>29 oct. 2026, 11:42</time>'), `the name and the date (${lang})`);
+    assert.equal(textOf(shown), `${caption.name}${caption.when}`, `nothing else is written over the code (${lang})`);
+    const noName = renderToStaticMarkup(h(QrShow, { text: 'T3C1;l=fr', t, caption: { name: '', when: '29 oct. 2026, 11:42' }, onClose: noop }));
+    assert.ok(!noName.includes('<b>') && noName.includes('<time>'), `an empty name leaves the date alone (${lang})`);
+    const plain = renderToStaticMarkup(h(QrShow, { text: 'https://example.org/', t, onClose: noop }));
+    assert.ok(plain.includes('class="qr-back"') && !plain.includes('qr-caption') && textOf(plain) === '', `the codes of the application have no caption (${lang})`);
+  }
+});
+
+test('the settings have a field for the name beside the QR code, with a die to draw another one', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { DiceIcon } = await load('/src/icons.jsx');
+  const { NAME_MAX } = await load('/src/names.js');
+  const { I18N } = await load('/src/i18n.js');
+  const dice = renderToStaticMarkup(h(DiceIcon));
+  for (const [lang, t] of Object.entries(I18N)) {
+    for (const key of ['nameRow', 'nameField', 'nameDraw', 'nameHint']) assert.ok(t.qr[key] && t.qr[key].length > 8, `${key} (${lang})`);
+    const base = { t, lang, sound: true, speed: 1, live: false, bluetooth: true, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '', log: [], onClose: noop, onName: noop, onNewName: noop };
+    const markup = renderToStaticMarkup(h(Panel, { ...base, name: 'Léa & co' }));
+    assert.ok(markup.includes(`<label for="qr-name">${t.qr.nameRow}</label>`), `a labelled row (${lang})`);
+    assert.ok(/<input id="qr-name" type="text" value="Léa &amp; co" maxLength="/.test(markup) || markup.includes('value="Léa &amp; co"'), `the field holds the name (${lang})`);
+    assert.ok(markup.includes(`maxLength="${NAME_MAX}"`) && markup.includes(`aria-label="${t.qr.nameField}"`), `limited, and named for a screen reader (${lang})`);
+    assert.ok(markup.includes(`<button class="tile-btn" aria-label="${t.qr.nameDraw}" title="${t.qr.nameDraw}">${dice}</button>`), `a die beside it (${lang})`);
+    assert.ok(markup.includes(t.qr.nameHint), `and what it is for (${lang})`);
+    const empty = renderToStaticMarkup(h(Panel, base));
+    assert.ok(empty.includes('value=""'), `a page without a name still renders (${lang})`);
+  }
+});
+
 test('the settings offer the QR code of the application: the generic one, one for Bluefy on iOS, and the address in text', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { QrIcon } = await load('/src/icons.jsx');

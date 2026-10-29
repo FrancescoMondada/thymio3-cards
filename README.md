@@ -293,6 +293,19 @@ ouvre le navigateur de la tablette, qui est Chrome ou Samsung Internet dans pres
 bandeau rouge des réglages dit quoi installer. **À vérifier sur un iPad** : la forme `bluefy://open?url=` n'est pas documentée par
 l'éditeur de Bluefy (on sait seulement que le schéma `bluefy://` existe) et l'appareil photo d'iOS doit la proposer.
 
+**Un nom et l'heure à côté du code, pour le classer.** Un élève affiche son code, l'enseignant le **photographie** et range la photo
+ailleurs : il faut donc que la photo dise de qui est le code. Le code de la page (bouton blanc de la barre du haut) porte, **sous
+lui, dans la même carte blanche**, un **nom** en gros et la **date et l'heure** (« 29 oct. 2026, 11:42 », dans la langue de la
+page, au moment où le code est affiché), noir sur blanc, lisibles sur une photo prise de loin. Même rognée serré, la photo garde le
+nom avec le code. Le nom se règle dans les réglages (ligne « Nom sur le code QR », 32 caractères au plus) : au premier lancement,
+chaque tablette en reçoit un **tiré au hasard**, par exemple « Renard bleu 42 », « Blue Fox 42 », « Blauer Fuchs 42 » ou « Volpe blu 42 »
+(un animal, un adjectif accordé avec lui, un nombre de deux chiffres : 42 animaux × 24 adjectifs × 90 nombres, soit environ **90 000
+noms par langue**, de sorte que, dans une classe de 30 tablettes, deux d'entre elles ont le même nom une fois sur deux cents environ, 0,5 %).
+Il est gardé sur la tablette, et le dé à côté du champ en tire un autre ; on peut le remplacer par un prénom (accents compris : c'est du
+texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
+**pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
+(`tests/names.test.js`).
+
 Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
 le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la
 **vitesse** du robot virtuel, le chemin affiché (D), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni

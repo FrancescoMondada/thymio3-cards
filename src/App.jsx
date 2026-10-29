@@ -9,6 +9,7 @@ import { I18N, detectLang } from './i18n.js';
 import { cleanProgram, MAX_STEPS, isRepeat, isColor, isWhile } from './spec.js';
 import { MODES, cardsOf, cleanCustom, hasGround, hasGroundCards, paletteCodes, toggleKind } from './modes.js';
 import { APP_LINKS, decodeConfig, encodeConfig, mapPlan } from './share.js';
+import { cleanName, formatWhen, randomName } from './names.js';
 import QrShow from './components/QrShow.jsx';
 import QrScan from './components/QrScan.jsx';
 import { SimBackend } from './sim/sim-backend.js';
@@ -39,6 +40,7 @@ export default function App() {
   const [lang, setLang] = useState(detectLang);
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
+  const [name, setName] = useState(() => { const kept = load('cards.name', null); return kept === null ? randomName(lang) : cleanName(kept); });   // beside the QR code of the page, drawn at random the first time
   const [speed, setSpeed] = useState(1);
   // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
   // (A page from before the modes kept only "advanced" or not, in cards.advanced.)
@@ -114,6 +116,7 @@ export default function App() {
   S.current = { cards, program, phase, live, speed, selected, syncing, modeUp, floor: activeFloor, colourAt, brush, map, mapKind, placing, kinds, qr };
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
+  useEffect(() => { save('cards.name', name); }, [name]);
   useEffect(() => { save('cards.mode', mode); }, [mode]);
   useEffect(() => { save('cards.custom', JSON.stringify(picked)); }, [picked]);
   useEffect(() => { if (!ground) setBrush(null); }, [ground]);
@@ -426,7 +429,7 @@ export default function App() {
   const removeMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
-  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }) });
+  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }), caption: { name: name.trim(), when: formatWhen(new Date(), lang) } });
   const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
   const applyScanned = useCallback((text) => {
@@ -661,7 +664,7 @@ export default function App() {
           <CardFace code={drag.code} label="" />
         </div>
       )}
-      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, ios: t.qr.linkIos }[qr.link] : t.qr.show} onClose={() => setQr(null)} />}
+      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, ios: t.qr.linkIos }[qr.link] : t.qr.show} caption={qr.caption} onClose={() => setQr(null)} />}
       {qr && qr.scan && <QrScan t={t} onText={applyScanned} onClose={() => setQr(null)} />}
       {confirmDisc && <ConfirmDisconnect t={t} onYes={disconnect} onNo={() => setConfirmDisc(false)} />}
       {panel && (
@@ -672,7 +675,7 @@ export default function App() {
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} mode={mode} onMode={setMode} kinds={kinds} custom={picked} onToggleCard={(k) => setPicked((c) => toggleKind(c, k))}
           picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
-          onShowLink={showLink} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
+          name={name} onName={(v) => setName(cleanName(v))} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}
     </div>
