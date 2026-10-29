@@ -90,7 +90,7 @@ test('the built application is one script (a chunk that is loaded later would ne
 });
 
 // ---- the link to the application, for the tablets of a class -------------------------------------------------------------
-import { APP_URL } from '../src/share.js';
+import { APP_URL, APP_LINKS } from '../src/share.js';
 
 test('the address of the demo: a small code that is read back, and the one the README gives', async () => {
   assert.match(APP_URL, /^https:\/\/[a-z0-9-]+\.github\.io\/thymio3-cards\/$/, 'the GitHub page, no query that would change what the tablets start with');
@@ -98,4 +98,20 @@ test('the address of the demo: a small code that is read back, and the one the R
   assert.ok(m.size <= 33, `${m.size} modules: big squares, read from the back of the class`);
   assert.equal(await readQr(picture(m, 4)), APP_URL);
   assert.ok(fs.readFileSync(path.join(root, 'README.md'), 'utf8').includes(`<${APP_URL}>`), 'the README links the same page');
+});
+
+test('the links by browser: the plain address, Chrome on Android, Bluefy on iOS; each one is a code that is read back', async () => {
+  assert.deepEqual(Object.keys(APP_LINKS), ['web', 'android', 'ios']);
+  assert.equal(APP_LINKS.web, APP_URL);
+  const host = APP_URL.replace(/^https:\/\//, '');
+  assert.equal(APP_LINKS.android, `intent://${host}#Intent;scheme=https;package=com.android.chrome;end`, "Chrome's intent syntax: the host and path, the scheme apart, the Chrome package");
+  const ios = new URL(APP_LINKS.ios);
+  assert.equal(ios.protocol, 'bluefy:');
+  assert.equal(ios.searchParams.get('url'), APP_URL, 'the address is the url of the link, encoded');
+  assert.ok(!APP_LINKS.ios.slice('bluefy://open?url='.length).includes('/'), 'encoded: no slash left in it');
+  for (const [kind, link] of Object.entries(APP_LINKS)) {
+    const m = qrMatrix(link);
+    assert.ok(m && m.size <= 45, `${kind}: ${m && m.size} modules, still big squares across a classroom`);
+    assert.equal(await readQr(picture(m, 4)), link, kind);
+  }
 });

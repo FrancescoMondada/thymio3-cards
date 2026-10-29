@@ -8,7 +8,7 @@ import ConfirmDisconnect from './components/ConfirmDisconnect.jsx';
 import { I18N, detectLang } from './i18n.js';
 import { cleanProgram, MAX_STEPS, isRepeat, isColor, isWhile } from './spec.js';
 import { MODES, cardsOf, cleanCustom, hasGround, hasGroundCards, paletteCodes, toggleKind } from './modes.js';
-import { APP_URL, decodeConfig, encodeConfig, mapPlan } from './share.js';
+import { APP_LINKS, decodeConfig, encodeConfig, mapPlan } from './share.js';
 import QrShow from './components/QrShow.jsx';
 import QrScan from './components/QrScan.jsx';
 import { SimBackend } from './sim/sim-backend.js';
@@ -427,7 +427,7 @@ export default function App() {
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
   const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }) });
-  const showLink = useCallback(() => { setPanel(false); setQr({ show: APP_URL, link: true }); }, []);   // from the settings: the address of the demo, for the tablets of the class
+  const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
   const applyScanned = useCallback((text) => {
     const cfg = decodeConfig(text);
@@ -661,7 +661,7 @@ export default function App() {
           <CardFace code={drag.code} label="" />
         </div>
       )}
-      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? t.qr.link : t.qr.show} onClose={() => setQr(null)} />}
+      {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, android: t.qr.linkAndroid, ios: t.qr.linkIos }[qr.link] : t.qr.show} onClose={() => setQr(null)} />}
       {qr && qr.scan && <QrScan t={t} onText={applyScanned} onClose={() => setQr(null)} />}
       {confirmDisc && <ConfirmDisconnect t={t} onYes={disconnect} onNo={() => setConfirmDisc(false)} />}
       {panel && (

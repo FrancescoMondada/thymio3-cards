@@ -271,13 +271,24 @@ pages le **scannent** pour être réglées à l'identique. Deux boutons dans la 
   refusée ou absente, ou si le code arrive en image (une capture d'écran, une photo), le bouton « image » en bas du scanner lit un code
   dans une photo. Le scan est impossible pendant que le robot joue.
 
-**Faire ouvrir l'application sur les tablettes.** Les réglages (logo en haut à gauche) ont une ligne « Élèves » avec un bouton
-« Code QR de l'application » : il affiche en grand, par-dessus l'écran, le code de l'adresse de la démo
-<https://francescomondada.github.io/thymio3-cards/> (un code de 33 modules, qui se lit du fond de la classe ; un toucher
-ou Échap le ferme). Les élèves le scannent avec l'appareil photo de leur tablette et la page s'ouvre. C'est
-toujours l'adresse de la démo sur GitHub, même si la page du professeur tourne ailleurs (ou en `localhost`, que les
-tablettes n'atteignent pas) ; l'adresse (`APP_URL`, `src/share.js`) est aussi écrite en texte sous le bouton, pour la taper à la main. Une fois la page
-ouverte sur une tablette, le bouton blanc et le bouton bleu de la barre du haut règlent cette tablette comme celle du professeur.
+**Faire ouvrir l'application sur les tablettes.** Les réglages (logo en haut à gauche) ont une ligne « Élèves » avec trois
+boutons, chacun affichant en grand, par-dessus l'écran, un code QR (un toucher ou Échap le ferme) que les élèves scannent avec
+l'appareil photo de leur tablette :
+
+| Bouton | Ce que contient le code | Ce qu'il faut |
+|---|---|---|
+| **Code QR générique** | l'adresse de la démo, <https://francescomondada.github.io/thymio3-cards/> (33 modules) | rien : la page s'ouvre dans le navigateur choisi par l'appareil |
+| **Android · Chrome** | `intent://francescomondada.github.io/thymio3-cards/#Intent;scheme=https;package=com.android.chrome;end` (41 modules), la syntaxe d'« intent » qui désigne Chrome | Chrome installé, et un lecteur de code qui transmet les liens `intent:` à Android (sinon il les montre comme du texte) |
+| **iOS · Bluefy** | `bluefy://open?url=` suivi de l'adresse encodée (37 modules), le schéma de Bluefy, le navigateur de l'App Store qui sait parler Bluetooth sur iPhone et iPad | Bluefy installé |
+
+Le générique suffit pour le robot virtuel, dans n'importe quel navigateur. Les deux autres servent au vrai robot : seuls Chrome et
+Edge (Android, ordinateur) et Bluefy (iOS) ont le Bluetooth web ; Firefox, Safari et Chrome sur iOS ne l'ont pas. Le code est
+toujours l'adresse de la démo sur GitHub, même si la page du professeur tourne ailleurs (ou en `localhost`, que les tablettes
+n'atteignent pas) ; les liens (`APP_LINKS`, `src/share.js`) sont construits à partir de la seule constante `APP_URL`, et l'adresse est aussi écrite
+en texte sous les boutons, pour la taper à la main. **À vérifier sur de vrais appareils** : la forme `bluefy://open?url=` n'est pas
+documentée par l'éditeur de Bluefy (on sait seulement que le schéma `bluefy://` existe), et un lien `intent:` dépend du lecteur
+de code de la tablette. Une fois la page ouverte sur une tablette, le bouton blanc et le bouton bleu de la barre du haut règlent cette
+tablette comme celle du professeur.
 
 Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
 le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la

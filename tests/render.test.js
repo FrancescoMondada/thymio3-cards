@@ -146,7 +146,7 @@ test('without Web Bluetooth the settings page says what to use, Bluefy on an iPh
     assert.ok(off.includes('role="alert"') && off.includes(t.panel.noBluetoothTitle), `with a headline (${lang})`);
     assert.ok(off.includes('href="https://apps.apple.com/app/id1492822055"'), `and a link to Bluefy (${lang})`);
     assert.ok(off.indexOf('role="alert"') < off.indexOf(t.panel.language), `before everything else on the page (${lang})`);
-    assert.ok(!on.includes('Bluefy'), `and only when the browser cannot connect (${lang})`);
+    assert.ok(!on.includes('role="alert"') && !on.includes(t.panel.noBluetoothTitle) && !on.includes('apps.apple.com'), `and only when the browser cannot connect (${lang}): the button of the QR code that opens Bluefy is always there, the warning is not`);
   }
 });
 
@@ -493,18 +493,20 @@ test('the QR code over the page: as large as it can be, the code of the text, a 
   }
 });
 
-test('the settings offer the QR code of the application: a button with the QR icon and the address in text', async () => {
+test('the settings offer the QR code of the application: the generic one, one for Chrome on Android, one for Bluefy on iOS, and the address in text', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { QrIcon } = await load('/src/icons.jsx');
   const { APP_URL } = await load('/src/share.js');
   const { I18N } = await load('/src/i18n.js');
   const icon = renderToStaticMarkup(h(QrIcon));
   for (const [lang, t] of Object.entries(I18N)) {
-    for (const key of ['link', 'linkRow', 'linkButton', 'linkHint']) assert.ok(t.qr[key] && t.qr[key].length > 3, `${key} (${lang})`);
+    for (const key of ['link', 'linkRow', 'linkButton', 'linkAndroid', 'linkIos', 'linkHint']) assert.ok(t.qr[key] && t.qr[key].length > 3, `${key} (${lang})`);
     const base = { t, lang: 'fr', sound: true, speed: 1, live: false, bluetooth: true, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '', log: [], onShowLink: noop, onClose: noop };
     const markup = renderToStaticMarkup(h(Panel, base));
-    assert.ok(markup.includes(t.qr.linkRow) && markup.includes(t.qr.linkButton), `a row of its own (${lang})`);
-    assert.ok(markup.includes(`<button class="tile-btn">${icon}<span>${t.qr.linkButton}</span></button>`), `the button wears the QR icon (${lang})`);
+    assert.ok(markup.includes(t.qr.linkRow), `a row of its own (${lang})`);
+    const generic = t.qr.linkButton, android = t.qr.linkAndroid, ios = t.qr.linkIos;
+    assert.ok(markup.includes(`<div class="quick"><button class="tile-btn">${icon}<span>${generic}</span></button><button class="tile-btn">${icon}<span>${android}</span></button><button class="tile-btn">${icon}<span>${ios}</span></button></div>`), `three buttons, in that order, each with the QR icon (${lang})`);
+    assert.ok(android.includes('Chrome') && ios.includes('Bluefy'), `named by the browser they open (${lang})`);
     assert.ok(markup.includes(`href="${APP_URL}"`) && markup.includes(`>${APP_URL.replace('https://', '')}</a>`), `the address, to read and to type (${lang})`);
   }
 });
@@ -515,6 +517,7 @@ test('the QR code of the application is announced as such, and the one of the pa
   for (const [lang, t] of Object.entries(I18N)) {
     const link = renderToStaticMarkup(h(QrShow, { text: 'https://example.org/', t, label: t.qr.link, onClose: noop }));
     assert.ok(link.includes(`aria-label="${t.qr.link}"`) && !link.includes(`aria-label="${t.qr.show}"`), `(${lang})`);
+    for (const label of [t.qr.linkAndroid, t.qr.linkIos]) assert.ok(renderToStaticMarkup(h(QrShow, { text: 'x', t, label, onClose: noop })).includes(`aria-label="${label}"`), `${label} (${lang})`);
     assert.equal(textOf(link), '', `still no text over the code (${lang})`);
     const page = renderToStaticMarkup(h(QrShow, { text: 'T3C1;l=fr', t, onClose: noop }));
     assert.ok(page.includes(`aria-label="${t.qr.show}"`) && !page.includes(t.qr.link), `(${lang})`);

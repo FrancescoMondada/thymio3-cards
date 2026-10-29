@@ -109,7 +109,11 @@ export default function Panel({
           </div>
           <div className="row">
             <label>{t.qr.linkRow}</label>
-            <button className="tile-btn" onClick={onShowLink}><QrIcon /><span>{t.qr.linkButton}</span></button>
+            <div className="quick">
+              <button className="tile-btn" onClick={() => onShowLink('web')}><QrIcon /><span>{t.qr.linkButton}</span></button>
+              <button className="tile-btn" onClick={() => onShowLink('android')}><QrIcon /><span>{t.qr.linkAndroid}</span></button>
+              <button className="tile-btn" onClick={() => onShowLink('ios')}><QrIcon /><span>{t.qr.linkIos}</span></button>
+            </div>
           </div>
           <p className="hint">{t.qr.linkHint} <a className="app-link" href={APP_URL} target="_blank" rel="noopener noreferrer">{APP_URL.replace(/^https:\/\//, '')}</a></p>
           <div className="row">

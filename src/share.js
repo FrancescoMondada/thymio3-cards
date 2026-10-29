@@ -19,6 +19,16 @@ import { cleanMap } from './worldmap.js';
 
 export const PREFIX = 'T3C1';
 export const APP_URL = 'https://francescomondada.github.io/thymio3-cards/';   // the demo, for the QR code that opens it on the other screens of a class
+// What the QR code of the application can hold, by the browser it should open in. `web`: the plain address, opened by the
+// camera's own choice of browser. `android`: Chrome's intent syntax, which names the Chrome package (developer.chrome.com/docs/android/intents):
+// only a scanner that hands intent links to Android opens it, and only if Chrome is installed. `ios`: the custom scheme of Bluefy, the browser
+// with Web Bluetooth for iPhone and iPad, that must be installed too; Bluefy's own documentation does not give the form of its link, so
+// `open?url=` with the encoded address is the usual one and the thing to check on an iPad first.
+export const APP_LINKS = {
+  web: APP_URL,
+  android: `intent://${APP_URL.replace(/^https:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`,
+  ios: `bluefy://open?url=${encodeURIComponent(APP_URL)}`,
+};
 export const MAX_PAYLOAD = 2300;           // characters: a QR code of the highest version holds 2331 at the level M
 export const MAX_CELLS = 99;               // a painted cell or the flag further than this from the start is not kept
 const SPEEDS = [1, 2, 4];
