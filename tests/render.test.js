@@ -493,6 +493,34 @@ test('the QR code over the page: as large as it can be, the code of the text, a 
   }
 });
 
+test('the settings offer the QR code of the application: a button with the QR icon and the address in text', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { QrIcon } = await load('/src/icons.jsx');
+  const { APP_URL } = await load('/src/share.js');
+  const { I18N } = await load('/src/i18n.js');
+  const icon = renderToStaticMarkup(h(QrIcon));
+  for (const [lang, t] of Object.entries(I18N)) {
+    for (const key of ['link', 'linkRow', 'linkButton', 'linkHint']) assert.ok(t.qr[key] && t.qr[key].length > 3, `${key} (${lang})`);
+    const base = { t, lang: 'fr', sound: true, speed: 1, live: false, bluetooth: true, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '', log: [], onShowLink: noop, onClose: noop };
+    const markup = renderToStaticMarkup(h(Panel, base));
+    assert.ok(markup.includes(t.qr.linkRow) && markup.includes(t.qr.linkButton), `a row of its own (${lang})`);
+    assert.ok(markup.includes(`<button class="tile-btn">${icon}<span>${t.qr.linkButton}</span></button>`), `the button wears the QR icon (${lang})`);
+    assert.ok(markup.includes(`href="${APP_URL}"`) && markup.includes(`>${APP_URL.replace('https://', '')}</a>`), `the address, to read and to type (${lang})`);
+  }
+});
+
+test('the QR code of the application is announced as such, and the one of the page as before', async () => {
+  const { default: QrShow } = await load('/src/components/QrShow.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const link = renderToStaticMarkup(h(QrShow, { text: 'https://example.org/', t, label: t.qr.link, onClose: noop }));
+    assert.ok(link.includes(`aria-label="${t.qr.link}"`) && !link.includes(`aria-label="${t.qr.show}"`), `(${lang})`);
+    assert.equal(textOf(link), '', `still no text over the code (${lang})`);
+    const page = renderToStaticMarkup(h(QrShow, { text: 'T3C1;l=fr', t, onClose: noop }));
+    assert.ok(page.includes(`aria-label="${t.qr.show}"`) && !page.includes(t.qr.link), `(${lang})`);
+  }
+});
+
 test('the scanner: a viewfinder, a way to give a photo of the code, a way out', async () => {
   const { default: QrScan } = await load('/src/components/QrScan.jsx');
   const { I18N } = await load('/src/i18n.js');

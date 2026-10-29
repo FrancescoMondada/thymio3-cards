@@ -18,6 +18,7 @@ import { MODES, CARD_KINDS, PALETTE_CODE, cleanCustom } from './modes.js';
 import { cleanMap } from './worldmap.js';
 
 export const PREFIX = 'T3C1';
+export const APP_URL = 'https://francescomondada.github.io/thymio3-cards/';   // the demo, for the QR code that opens it on the other screens of a class
 export const MAX_PAYLOAD = 2300;           // characters: a QR code of the highest version holds 2331 at the level M
 export const MAX_CELLS = 99;               // a painted cell or the flag further than this from the start is not kept
 const SPEEDS = [1, 2, 4];

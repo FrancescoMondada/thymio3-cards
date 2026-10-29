@@ -88,3 +88,14 @@ test('the built application is one script (a chunk that is loaded later would ne
   assert.ok(/jsQR|findQR|decodeQR/i.test(scripts[0].code) || scripts[0].code.includes('inversionAttempts'), 'the reader is in it');
   assert.ok(!scripts.some((s) => s.dynamicImports.length), 'nothing is imported later');
 });
+
+// ---- the link to the application, for the tablets of a class -------------------------------------------------------------
+import { APP_URL } from '../src/share.js';
+
+test('the address of the demo: a small code that is read back, and the one the README gives', async () => {
+  assert.match(APP_URL, /^https:\/\/[a-z0-9-]+\.github\.io\/thymio3-cards\/$/, 'the GitHub page, no query that would change what the tablets start with');
+  const m = qrMatrix(APP_URL);
+  assert.ok(m.size <= 33, `${m.size} modules: big squares, read from the back of the class`);
+  assert.equal(await readQr(picture(m, 4)), APP_URL);
+  assert.ok(fs.readFileSync(path.join(root, 'README.md'), 'utf8').includes(`<${APP_URL}>`), 'the README links the same page');
+});

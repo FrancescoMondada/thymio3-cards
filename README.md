@@ -271,6 +271,14 @@ pages le **scannent** pour être réglées à l'identique. Deux boutons dans la 
   refusée ou absente, ou si le code arrive en image (une capture d'écran, une photo), le bouton « image » en bas du scanner lit un code
   dans une photo. Le scan est impossible pendant que le robot joue.
 
+**Faire ouvrir l'application sur les tablettes.** Les réglages (logo en haut à gauche) ont une ligne « Élèves » avec un bouton
+« Code QR de l'application » : il affiche en grand, par-dessus l'écran, le code de l'adresse de la démo
+<https://francescomondada.github.io/thymio3-cards/> (un code de 33 modules, qui se lit du fond de la classe ; un toucher
+ou Échap le ferme). Les élèves le scannent avec l'appareil photo de leur tablette et la page s'ouvre. C'est
+toujours l'adresse de la démo sur GitHub, même si la page du professeur tourne ailleurs (ou en `localhost`, que les
+tablettes n'atteignent pas) ; l'adresse (`APP_URL`, `src/share.js`) est aussi écrite en texte sous le bouton, pour la taper à la main. Une fois la page
+ouverte sur une tablette, le bouton blanc et le bouton bleu de la barre du haut règlent cette tablette comme celle du professeur.
+
 Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
 le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la
 **vitesse** du robot virtuel, le chemin affiché (D), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
