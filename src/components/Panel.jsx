@@ -31,7 +31,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  name = '', onName, onNewName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, showName = true, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -121,6 +121,13 @@ export default function Panel({
             <div className="name-field">
               <input id="qr-name" type="text" value={name} maxLength={NAME_MAX} autoComplete="off" spellCheck="false" aria-label={t.qr.nameField} onChange={(e) => onName(e.target.value)} />
               <button className="tile-btn" onClick={onNewName} aria-label={t.qr.nameDraw} title={t.qr.nameDraw}><DiceIcon /></button>
+            </div>
+          </div>
+          <div className="row">
+            <label>{t.qr.nameShow}</label>
+            <div className="seg-ctl">
+              <button className={showName ? 'on' : ''} aria-pressed={showName} onClick={() => onShowName(true)}>{t.panel.on}</button>
+              <button className={!showName ? 'on' : ''} aria-pressed={!showName} onClick={() => onShowName(false)}>{t.panel.off}</button>
             </div>
           </div>
           <p className="hint">{t.qr.nameHint}</p>

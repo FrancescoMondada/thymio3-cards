@@ -41,6 +41,7 @@ export default function App() {
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [name, setName] = useState(() => { const kept = load('cards.name', null); return kept === null ? randomName(lang) : cleanName(kept); });   // beside the QR code of the page, drawn at random the first time
+  const [showName, setShowName] = useState(() => load('cards.showname', '1') === '1');   // one flag for the two places: the top bar and the caption of the QR code
   const [speed, setSpeed] = useState(1);
   // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
   // (A page from before the modes kept only "advanced" or not, in cards.advanced.)
@@ -117,6 +118,7 @@ export default function App() {
 
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
   useEffect(() => { save('cards.name', name); }, [name]);
+  useEffect(() => { save('cards.showname', showName ? '1' : '0'); }, [showName]);
   useEffect(() => { save('cards.mode', mode); }, [mode]);
   useEffect(() => { save('cards.custom', JSON.stringify(picked)); }, [picked]);
   useEffect(() => { if (!ground) setBrush(null); }, [ground]);
@@ -429,7 +431,7 @@ export default function App() {
   const removeMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
-  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }), caption: { name: name.trim(), when: formatWhen(new Date(), lang) } });
+  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
   const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
   const applyScanned = useCallback((text) => {
@@ -630,7 +632,7 @@ export default function App() {
 
   return (
     <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'} ${placing ? 'placing' : ''}`}>
-      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} onShowQr={showQr} onScanQr={scanQr} canScan={phase === 'idle'} name={name.trim()} />
+      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} onShowQr={showQr} onScanQr={scanQr} canScan={phase === 'idle'} name={showName ? name.trim() : ''} />
       <main className="board">
         <section className="left">
           <Stage
@@ -675,7 +677,7 @@ export default function App() {
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} mode={mode} onMode={setMode} kinds={kinds} custom={picked} onToggleCard={(k) => setPicked((c) => toggleKind(c, k))}
           picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
-          name={name} onName={(v) => setName(cleanName(v))} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
+          name={name} onName={(v) => setName(cleanName(v))} showName={showName} onShowName={setShowName} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}
     </div>

@@ -308,7 +308,10 @@ Il est gardé sur la tablette, et le dé à côté du champ en tire un autre ; o
 texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Le même nom est écrit **dans la barre du haut, à
 droite des deux boutons de code QR** : c'est le seul texte de l'écran principal, il sert à reconnaître la tablette et suit le champ des
 réglages en direct ; sur un téléphone étroit il passe sur deux lignes puis se coupe par « … » plutôt que de pousser le bouton du robot, et il
-disparaît quand le champ est vide. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
+disparaît quand le champ est vide. **Un seul réglage, « Afficher le nom » (Oui / Non, sous le champ, Oui au départ), montre ou cache le nom aux
+deux endroits à la fois** : la barre du haut et la légende du code QR. Sur « Non », le nom reste dans le champ (on le retrouve en revenant à
+« Oui ») mais n'est écrit ni en haut ni sous le code, où la date et l'heure restent. Comme le nom, ce réglage est propre à la tablette
+(`cards.showname`) : il ne voyage pas dans le code QR de la page. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
 **pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
 (`tests/names.test.js`).
 
