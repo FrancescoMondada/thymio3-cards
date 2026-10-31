@@ -41,7 +41,7 @@ export default function App() {
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [name, setName] = useState(() => { const kept = load('cards.name', null); return kept === null ? randomName(lang) : cleanName(kept); });   // beside the QR code of the page, drawn at random the first time
-  const [showName, setShowName] = useState(() => load('cards.showname', '1') === '1');   // one flag for the two places: the top bar and the caption of the QR code
+  const [showName, setShowName] = useState(() => load('cards.showname', '0') === '1');   // one flag for the two places, the top bar and the caption of the QR code; hidden until the adult asks
   const [speed, setSpeed] = useState(1);
   // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
   // (A page from before the modes kept only "advanced" or not, in cards.advanced.)

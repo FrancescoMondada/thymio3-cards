@@ -31,7 +31,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  name = '', onName, onNewName, showName = true, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, showName = false, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);

@@ -491,15 +491,16 @@ test('the name of the tablet in the top bar, right of the two QR buttons: the on
   for (const none of [undefined, '']) assert.ok(!renderToStaticMarkup(h(TopBar, { ...props, name: none })).includes('top-name'), 'no name, no empty box');
 });
 
-test('the top bar of the page carries the name kept on the tablet, or a drawn one, and none when it was emptied', async () => {
+test('the top bar of the page carries the name kept on the tablet, or a drawn one, once it is shown, and none when it was emptied', async () => {
   const { default: App } = await load('/src/App.jsx');
   const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
   const nameIn = (markup) => markup.match(/<span class="top-name"[^>]*>([^<]*)<\/span>/)?.[1];
-  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa' })), 'Léa', 'the name of the settings');
-  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '  Léa  ' })), 'Léa', 'without the spaces around it');
-  assert.match(nameIn(render({ 'cards.lang': 'fr' })), /^\S.* \d\d$/, 'a drawn name on the first launch');
-  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '' })), undefined, 'emptied: nothing, not an empty box');
-  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '   ' })), undefined, 'only spaces: nothing');
+  const shown = { 'cards.lang': 'fr', 'cards.showname': '1' };                // the name is hidden until the flag of the settings is on
+  assert.equal(nameIn(render({ ...shown, 'cards.name': 'Léa' })), 'Léa', 'the name of the settings');
+  assert.equal(nameIn(render({ ...shown, 'cards.name': '  Léa  ' })), 'Léa', 'without the spaces around it');
+  assert.match(nameIn(render(shown)), /^\S.* \d\d$/, 'a drawn name on the first launch');
+  assert.equal(nameIn(render({ ...shown, 'cards.name': '' })), undefined, 'emptied: nothing, not an empty box');
+  assert.equal(nameIn(render({ ...shown, 'cards.name': '   ' })), undefined, 'only spaces: nothing');
   delete globalThis.localStorage;
 });
 
@@ -571,10 +572,11 @@ test('one flag in the settings shows or hides the name, in the top bar and under
     assert.ok(on.includes(`<label>${t.qr.nameShow}</label>`), `a row for it (${lang})`);
     assert.ok(row(on).includes(`<button class="on" aria-pressed="true">${t.panel.on}</button>`) && row(on).includes(`<button class="" aria-pressed="false">${t.panel.off}</button>`), `on: the first button is lit (${lang})`);
     assert.ok(row(off).includes(`<button class="" aria-pressed="false">${t.panel.on}</button>`) && row(off).includes(`<button class="on" aria-pressed="true">${t.panel.off}</button>`), `off: the second button is lit (${lang})`);
-    assert.ok(renderToStaticMarkup(h(Panel, { ...base })).includes(`<button class="on" aria-pressed="true">${t.panel.on}</button>`), `shown unless said otherwise (${lang})`);
+    assert.ok(renderToStaticMarkup(h(Panel, { ...base })).includes(`<button class="on" aria-pressed="true">${t.panel.off}</button>`), `hidden unless said otherwise (${lang})`);
   }
   const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
-  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa' })), 'Léa', 'shown on a page that never set the flag');
+  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa' })), undefined, 'hidden on a page that never set the flag, though it has a name');
+  assert.equal(nameIn(render({ 'cards.lang': 'fr' })), undefined, 'and on a first launch, when a name is drawn');
   assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa', 'cards.showname': '1' })), 'Léa');
   assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa', 'cards.showname': '0' })), undefined, 'hidden: nothing in the top bar');
   delete globalThis.localStorage;

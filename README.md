@@ -295,9 +295,9 @@ l'éditeur de Bluefy (on sait seulement que le schéma `bluefy://` existe) et l'
 
 **Un nom et l'heure à côté du code, pour le classer.** Un élève affiche son code, l'enseignant le **photographie** et range la photo
 ailleurs : il faut donc que la photo dise de qui est le code. Le code de la page (bouton blanc de la barre du haut) porte, **sous
-lui, dans la même carte blanche**, un **nom** en gros et la **date et l'heure** (« 29 oct. 2026, 11:42 », dans la langue de la
-page, au moment où le code est affiché), noir sur blanc, lisibles sur une photo prise de loin. Même rognée serré, la photo garde le
-nom avec le code. Le nom se règle dans les réglages (ligne « Nom sur le code QR », 32 caractères au plus) : au premier lancement,
+lui, dans la même carte blanche**, la **date et l'heure** (« 29 oct. 2026, 11:42 », dans la langue de la
+page, au moment où le code est affiché) et, une fois le réglage « Afficher le nom » allumé (voir plus bas), un **nom** en gros, noir sur blanc, lisibles sur une photo prise de loin. Même rognée serré, la photo garde le
+nom avec le code, quand il est affiché. Le nom se règle dans les réglages (ligne « Nom sur le code QR », 32 caractères au plus) : au premier lancement,
 chaque tablette en reçoit un **tiré au hasard**, par exemple « Renard bleu 42 », « Blue Fox 42 », « Blauer Fuchs 42 » ou « Volpe blu 42 »
 (un animal, un adjectif accordé avec lui, un nombre de deux chiffres : 42 animaux × 24 adjectifs × 90 nombres, soit environ **90 000
 noms par langue**, de sorte que, dans une classe de 30 tablettes, deux d'entre elles ont le même nom une fois sur deux cents environ, de 0,5 à 0,7 % selon la langue).
@@ -308,9 +308,9 @@ Il est gardé sur la tablette, et le dé à côté du champ en tire un autre ; o
 texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Le même nom est écrit **dans la barre du haut, à
 droite des deux boutons de code QR** : c'est le seul texte de l'écran principal, il sert à reconnaître la tablette et suit le champ des
 réglages en direct ; sur un téléphone étroit il passe sur deux lignes puis se coupe par « … » plutôt que de pousser le bouton du robot, et il
-disparaît quand le champ est vide. **Un seul réglage, « Afficher le nom » (Oui / Non, sous le champ, Oui au départ), montre ou cache le nom aux
-deux endroits à la fois** : la barre du haut et la légende du code QR. Sur « Non », le nom reste dans le champ (on le retrouve en revenant à
-« Oui ») mais n'est écrit ni en haut ni sous le code, où la date et l'heure restent. Comme le nom, ce réglage est propre à la tablette
+disparaît quand le champ est vide. **Un seul réglage, « Afficher le nom » (Oui / Non, sous le champ), montre ou cache le nom aux deux endroits à la fois**, la barre
+du haut et la légende du code QR. Il est sur **Non au départ** : tant que l'adulte ne l'allume pas, le nom (tiré ou saisi) n'est écrit
+ni en haut ni sous le code, où seules la date et l'heure restent. Sur « Non », le nom reste dans le champ et on le retrouve en revenant à « Oui ». Comme le nom, ce réglage est propre à la tablette
 (`cards.showname`) : il ne voyage pas dans le code QR de la page. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
 **pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
 (`tests/names.test.js`).
