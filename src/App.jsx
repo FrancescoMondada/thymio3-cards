@@ -630,7 +630,7 @@ export default function App() {
 
   return (
     <div className={`app ${phase !== 'idle' ? 'running' : ''} ${live ? 'is-live' : 'is-sim'} ${placing ? 'placing' : ''}`}>
-      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} onShowQr={showQr} onScanQr={scanQr} canScan={phase === 'idle'} />
+      <TopBar t={t} conn={conn} live={live} bluetooth={bluetooth} busy={phase !== 'idle'} syncing={syncing} modeUp={modeUp} failed={startFailed} onConnect={connect} onPanel={() => setPanel(true)} onShowQr={showQr} onScanQr={scanQr} canScan={phase === 'idle'} name={name.trim()} />
       <main className="board">
         <section className="left">
           <Stage

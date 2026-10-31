@@ -305,7 +305,10 @@ Les genres sont **équilibrés** : les animaux ne le sont pas (en français 32 m
 genre grammatical, chacun aussi probable que l'autre (masculin et féminin en français et en italien, avec le neutre en allemand), puis un animal de ce genre ;
 sans cela trois élèves sur quatre auraient « Petit renard » en français.
 Il est gardé sur la tablette, et le dé à côté du champ en tire un autre ; on peut le remplacer par un prénom (accents compris : c'est du
-texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
+texte affiché, il n'entre pas dans le code) ou le vider, et seule la date reste. Le même nom est écrit **dans la barre du haut, à
+droite des deux boutons de code QR** : c'est le seul texte de l'écran principal, il sert à reconnaître la tablette et suit le champ des
+réglages en direct ; sur un téléphone étroit il passe sur deux lignes puis se coupe par « … » plutôt que de pousser le bouton du robot, et il
+disparaît quand le champ est vide. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
 **pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
 (`tests/names.test.js`).
 

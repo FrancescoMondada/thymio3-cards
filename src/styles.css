@@ -516,6 +516,11 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 /* the scan button is the blue one: "press the blue button" is an instruction a child can follow */
 .top-btn.scan { background: var(--B); color: #fff; border-color: var(--B-d); box-shadow: 0 4px 0 var(--B-d); }
 .top-btn.scan:active:not(:disabled) { box-shadow: 0 1px 0 var(--B-d); }
+/* the name of the tablet, as under the QR code: on two lines at most, so that it gives way to the robot on a narrow phone */
+.top-name {
+  flex: 0 1 auto; min-width: 0; font-size: clamp(15px, 2.4vmin, 22px); font-weight: 800; line-height: 1.1; color: var(--ink); opacity: .8;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
 .qr-back { --qr: min(94vw, calc(100dvh - 32px), 780px); position: fixed; inset: 0; z-index: 90; background: rgba(20, 20, 40, .84); display: grid; place-items: center; padding: 16px; animation: fade .2s; overflow: hidden; }
 .qr-back.captioned { --qr: min(94vw, calc(100dvh - 190px), 780px); }      /* room under the code for the name and the date */
 .qr-card { width: var(--qr); border-radius: 18px; background: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); overflow: hidden; }

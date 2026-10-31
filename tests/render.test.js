@@ -20,14 +20,16 @@ after(async () => { await server.close(); });
 const h = React.createElement;
 const noop = () => {};
 const textOf = (markup) => markup.replace(/<[^>]*>/g, '').trim();
+// the text of a whole page: the name of the tablet in the top bar (drawn at random when none is kept) is the one thing written there
+const mainText = (markup) => textOf(markup.replace(/<span class="top-name"[^>]*>[^<]*<\/span>/, ''));
 
-test('the main screen has no text at all, in every language', async () => {
+test('the main screen has no text at all (but the name of the tablet), in every language', async () => {
   const { default: App } = await load('/src/App.jsx');
   const { I18N } = await load('/src/i18n.js');
   for (const lang of Object.keys(I18N)) {
     globalThis.localStorage = { getItem: (k) => (k === 'cards.lang' ? lang : k === 'cards.program' ? 'FFLRBF' : null), setItem: noop };
     const markup = renderToStaticMarkup(h(App));
-    assert.equal(textOf(markup), '', `text on the main screen (${lang}): ${textOf(markup)}`);
+    assert.equal(mainText(markup), '', `text on the main screen (${lang}): ${mainText(markup)}`);
     assert.match(markup, /aria-label=/, 'labels are for screen readers only');
     assert.equal((markup.match(/class="slot/g) || []).length, 6, 'the six cards are there');
   }
@@ -41,7 +43,7 @@ test('advanced mode: the cards, the palette and the brush are pictograms, still 
     const store = { 'cards.lang': lang, 'cards.advanced': '1', 'cards.program': '4(FR)3Fk(B)E(F)', 'cards.floor': '{"0,2":"r","1,1":"g"}' };
     globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop };
     const markup = renderToStaticMarkup(h(App));
-    assert.equal(textOf(markup), '', `text on the main screen (${lang}): ${textOf(markup)}`);
+    assert.equal(mainText(markup), '', `text on the main screen (${lang}): ${mainText(markup)}`);
     assert.equal((markup.match(/class="slot/g) || []).length, 15, 'the fifteen cards are there');
     for (const kind of ['c-repeat', 'c-open', 'c-close', 'c-if', 'c-F', 'c-R', 'c-B']) assert.ok(markup.includes(kind), `a ${kind} card (${lang})`);
     assert.equal((markup.match(/class="pcard /g) || []).length, 8, `four steps and four advanced cards in the palette (${lang})`);
@@ -387,7 +389,7 @@ test('the mat is plain from the start; the Thymio map or a picture of the adult 
   assert.match(image, /class="map-image"/);
   assert.match(image, /href="[^"]*Tapis_Thymio[^"]*\.jpg"/, 'the map of the town');
   assert.match(image, /x="-2\.5"/); assert.match(image, /y="-1\.5"/); assert.match(image, /width="4"/); assert.match(image, /height="4"/);
-  assert.equal(textOf(first), '', 'still no text on the main screen');
+  assert.equal(mainText(first), '', 'still no text on the main screen');
   // moved to another square
   assert.match(render({ 'cards.mapkind': 'builtin', 'cards.map': JSON.stringify({ cols: 4, rows: 4, sx: 0, sy: 3 }) }).match(/<image [^>]*>/)[0], /x="-0\.5"/);
   delete globalThis.localStorage;
@@ -404,7 +406,7 @@ test('the custom mode: the palette holds the cards that were given, the brush on
     assert.deepEqual(palette(turns), ['c-F', 'c-L', 'c-repeat'], `three cards (${lang})`);
     assert.ok(turns.includes('--cols:4'));
     assert.ok(!turns.includes('brushbar'), 'no card looks at the ground: no brush');
-    assert.equal(textOf(turns), '', `still no text on the main screen (${lang})`);
+    assert.equal(mainText(turns), '', `still no text on the main screen (${lang})`);
     const ground = render({ 'cards.lang': lang, 'cards.mode': 'custom', 'cards.custom': JSON.stringify(['F', 'B', 'L', 'R', 'if']), 'cards.floor': '{"0,1":"r"}' });
     assert.deepEqual(palette(ground), ['c-F', 'c-B', 'c-L', 'c-R', 'c-if']);
     assert.ok(ground.includes('--cols:5'), 'five cards in one row');
@@ -473,6 +475,32 @@ test('two buttons next to the settings: the QR code of the page and the scanner 
     const [busyShow, busyScan] = buttonsOf(busy);
     assert.ok(busyScan.attrs.includes('disabled') && busyScan.attrs.includes(`aria-label="${t.qr.scan}"`) && !busyShow.attrs.includes('disabled'), `no scanning while the robot plays (${lang})`);
   }
+});
+
+test('the name of the tablet in the top bar, right of the two QR buttons: the only text of the bar, nothing without a name', async () => {
+  const { default: TopBar } = await load('/src/components/TopBar.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  const t = I18N.fr;
+  const props = { t, conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, live: false, bluetooth: true, busy: false, syncing: false, modeUp: false, failed: false, onConnect: noop, onPanel: noop, onShowQr: noop, onScanQr: noop, canScan: true };
+  const named = renderToStaticMarkup(h(TopBar, { ...props, name: 'Renard bleu 42' }));
+  assert.equal(textOf(named), 'Renard bleu 42', 'the name and nothing else');
+  assert.ok(named.indexOf(t.qr.scan) < named.indexOf('class="top-name"') && named.indexOf('class="top-name"') < named.indexOf('class="spacer"') && named.indexOf('class="spacer"') < named.indexOf('class="robot-btn'), 'after the scan button, before the robot');
+  assert.ok(named.includes('title="Renard bleu 42"'), 'the whole name on hover when it is cut');
+  const escaped = renderToStaticMarkup(h(TopBar, { ...props, name: '<b>Léa</b> & Zoé' }));
+  assert.ok(escaped.includes('&lt;b&gt;') && !escaped.includes('<b>'), 'a typed name is text, not markup');
+  for (const none of [undefined, '']) assert.ok(!renderToStaticMarkup(h(TopBar, { ...props, name: none })).includes('top-name'), 'no name, no empty box');
+});
+
+test('the top bar of the page carries the name kept on the tablet, or a drawn one, and none when it was emptied', async () => {
+  const { default: App } = await load('/src/App.jsx');
+  const render = (store) => { globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: noop }; return renderToStaticMarkup(h(App)); };
+  const nameIn = (markup) => markup.match(/<span class="top-name"[^>]*>([^<]*)<\/span>/)?.[1];
+  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa' })), 'Léa', 'the name of the settings');
+  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '  Léa  ' })), 'Léa', 'without the spaces around it');
+  assert.match(nameIn(render({ 'cards.lang': 'fr' })), /^\S.* \d\d$/, 'a drawn name on the first launch');
+  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '' })), undefined, 'emptied: nothing, not an empty box');
+  assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': '   ' })), undefined, 'only spaces: nothing');
+  delete globalThis.localStorage;
 });
 
 test('the QR code over the page: as large as it can be, the code of the text, a warning when the text does not fit', async () => {
