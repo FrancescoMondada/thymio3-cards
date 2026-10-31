@@ -94,6 +94,14 @@ export default function Panel({
 
         <div className="rows">
           <div className="row">
+            <label>{t.qr.linkRow}</label>
+            <div className="quick">
+              <button className="tile-btn" onClick={() => onShowLink('web')}><QrIcon /><span>{t.qr.linkButton}</span></button>
+              <button className="tile-btn" onClick={() => onShowLink('ios')}><QrIcon /><span>{t.qr.linkIos}</span></button>
+            </div>
+          </div>
+          <p className="hint">{t.qr.linkHint} <a className="app-link" href={APP_URL} target="_blank" rel="noopener noreferrer">{APP_URL.replace(/^https:\/\//, '')}</a></p>
+          <div className="row">
             <label>{t.panel.language}</label>
             <div className="seg-ctl">
               {LANGS.map((l) => (
@@ -102,20 +110,35 @@ export default function Panel({
             </div>
           </div>
           <div className="row">
+            <label>{t.panel.mode}</label>
+            <div className="seg-ctl">
+              {MODES.map((m) => <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => onMode(m)}>{t.panel.modes[m]}</button>)}
+            </div>
+          </div>
+          <p className="hint">{t.panel.modeHints[mode]}</p>
+          {mode === 'custom' && (
+            <div className="custom-cards" role="group" aria-label={t.panel.customCards}>
+              {CARD_KINDS.map((k) => {
+                const on = custom.includes(k), code = PALETTE_CODE[k];
+                return (
+                  <button
+                    key={k} className={`custom-card ${cardClass(code)} ${on ? 'on' : ''}`} aria-pressed={on} aria-label={t.card[k]} title={t.card[k]}
+                    disabled={on && custom.length === 1} onClick={() => onToggleCard(k)}
+                  >
+                    <ArrowIcon code={code} />
+                    {on && <span className="tick" aria-hidden="true"><CheckIcon /></span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="row">
             <label>{t.panel.sound}</label>
             <div className="seg-ctl">
               <button className={sound ? 'on' : ''} onClick={() => onSound(true)}>{t.panel.on}</button>
               <button className={!sound ? 'on' : ''} onClick={() => onSound(false)}>{t.panel.off}</button>
             </div>
           </div>
-          <div className="row">
-            <label>{t.qr.linkRow}</label>
-            <div className="quick">
-              <button className="tile-btn" onClick={() => onShowLink('web')}><QrIcon /><span>{t.qr.linkButton}</span></button>
-              <button className="tile-btn" onClick={() => onShowLink('ios')}><QrIcon /><span>{t.qr.linkIos}</span></button>
-            </div>
-          </div>
-          <p className="hint">{t.qr.linkHint} <a className="app-link" href={APP_URL} target="_blank" rel="noopener noreferrer">{APP_URL.replace(/^https:\/\//, '')}</a></p>
           <div className="row">
             <label htmlFor="qr-name">{t.qr.nameRow}</label>
             <div className="name-field">
@@ -142,29 +165,6 @@ export default function Panel({
               </button>
             </div>
           </div>
-          <div className="row">
-            <label>{t.panel.mode}</label>
-            <div className="seg-ctl">
-              {MODES.map((m) => <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => onMode(m)}>{t.panel.modes[m]}</button>)}
-            </div>
-          </div>
-          <p className="hint">{t.panel.modeHints[mode]}</p>
-          {mode === 'custom' && (
-            <div className="custom-cards" role="group" aria-label={t.panel.customCards}>
-              {CARD_KINDS.map((k) => {
-                const on = custom.includes(k), code = PALETTE_CODE[k];
-                return (
-                  <button
-                    key={k} className={`custom-card ${cardClass(code)} ${on ? 'on' : ''}`} aria-pressed={on} aria-label={t.card[k]} title={t.card[k]}
-                    disabled={on && custom.length === 1} onClick={() => onToggleCard(k)}
-                  >
-                    <ArrowIcon code={code} />
-                    {on && <span className="tick" aria-hidden="true"><CheckIcon /></span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
           {!live && (
             <div className="row">
               <label>{t.panel.speed}</label>
@@ -173,18 +173,17 @@ export default function Panel({
               </div>
             </div>
           )}
-        </div>
-
-        <h3>{t.map.title}</h3>
-        <p className="hint">{t.map.hint}</p>
-        {live && <p className="warn" role="status">{t.map.virtualOnly}</p>}
-        <div className="map-box">
-          <div className="map-top">
-            {picture && mapImage && <img className="map-thumb" src={mapImage.url} alt="" />}
-            <input ref={fileInput} type="file" accept="image/*" hidden onChange={chooseFile} />
-            <button className="tile-btn" onClick={() => fileInput.current?.click()}><MapIcon /><span>{mapKind === 'custom' ? t.map.change : t.map.choose}</span></button>
-            {(mapKind !== 'builtin' || (picture && (picture.cols !== THYMIO_MAP.cols || picture.rows !== THYMIO_MAP.rows))) && <button className="tile-btn" onClick={onMapThymio}><MapIcon /><span>{t.map.builtin}</span></button>}
+          <div className="row">
+            <label>{t.map.title}</label>
+            <div className="quick">
+              {picture && mapImage && <img className="map-thumb" src={mapImage.url} alt="" />}
+              <input ref={fileInput} type="file" accept="image/*" hidden onChange={chooseFile} />
+              <button className="tile-btn" onClick={() => fileInput.current?.click()}><MapIcon /><span>{mapKind === 'custom' ? t.map.change : t.map.choose}</span></button>
+              {(mapKind !== 'builtin' || (picture && (picture.cols !== THYMIO_MAP.cols || picture.rows !== THYMIO_MAP.rows))) && <button className="tile-btn" onClick={onMapThymio}><MapIcon /><span>{t.map.builtin}</span></button>}
+            </div>
           </div>
+          <p className="hint">{t.map.hint}</p>
+          {live && <p className="warn" role="status">{t.map.virtualOnly}</p>}
           {mapBad && <p className="warn" role="alert">{t.map.bad}</p>}
           {picture && (
             <>

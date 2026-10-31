@@ -271,7 +271,7 @@ pages le **scannent** pour être réglées à l'identique. Deux boutons dans la 
   refusée ou absente, ou si le code arrive en image (une capture d'écran, une photo), le bouton « image » en bas du scanner lit un code
   dans une photo. Le scan est impossible pendant que le robot joue.
 
-**Faire ouvrir l'application sur les tablettes.** Les réglages (logo en haut à gauche) ont une ligne « Élèves » avec deux
+**Faire ouvrir l'application sur les tablettes.** Les réglages (logo en haut à gauche) ont une ligne « Lien vers l'application » avec deux
 boutons, chacun affichant en grand, par-dessus l'écran, un code QR (un toucher ou Échap le ferme) que les élèves scannent avec
 l'appareil photo de leur tablette :
 
@@ -628,7 +628,7 @@ sur un vrai robot (voir « Mode avancé »).
 | `src/picturecolor.js` | Les couleurs que le robot virtuel lit dans l'image : pixel → une des huit couleurs, carré par carré, et sol « pinceau d'abord, image ensuite » |
 | `src/camera.js` | Le tapis tourne sous le robot : repères, zoom (fixe, ou adapté au chemin), flèche vers le drapeau |
 | `src/useDrag.js` | Glisser-déposer au doigt (appui long pour soulever une carte de la piste) |
-| `src/components/*` | Tapis, piste de cartes, palette et boutons, barre du haut, panneau adulte (réglages, journal) |
+| `src/components/*` | Tapis, piste de cartes, palette et boutons, barre du haut, panneau adulte (réglages, dans l'ordre : lien vers l'application, langue, mode, sons, nom sur le code QR et son affichage, raccourcis, vitesse, image sous le tapis, tous en lignes « titre + commande » ; puis exemples, robot, journal, script, raccourcis clavier) |
 | `src/App.jsx` | État, robot réel ou virtuel, boucle d'animation, clavier |
 | `src/i18n.js`, `src/sound.js` | Textes en 4 langues, petits sons WebAudio |
 | `tests/` | Tests JavaScript (`node --test`) et Python (`unittest`), robot virtuel |

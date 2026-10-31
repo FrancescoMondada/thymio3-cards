@@ -315,7 +315,7 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .seg-ctl { display: inline-flex; background: #f3f0fa; border-radius: 14px; padding: 4px; gap: 2px; flex-wrap: wrap; }
 .seg-ctl button { padding: 9px 14px; border-radius: 10px; font-weight: 800; font-size: 14px; }
 .seg-ctl button.on { background: var(--ink); color: #fff; }
-.quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tile-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: 14px; background: #f3f0fa; font-weight: 800; font-size: 14px; }
 .tile-btn svg { width: 22px; height: 22px; flex: none; }
 .tile-btn.reset svg { color: #e11d48; }
@@ -485,8 +485,6 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .placebar .validate { background: #22c55e; border-color: #15803d; box-shadow: 0 3px 0 #15803d; color: #fff; }
 .placebar svg { width: 26px; height: 26px; }
 .app.placing .right { opacity: .35; pointer-events: none; }
-.map-box { display: grid; gap: 10px; }
-.map-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .map-thumb { width: 96px; height: 72px; object-fit: cover; border-radius: 12px; border: 2px solid #ece6f8; background: #faf7ff; }
 .size { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; flex-wrap: wrap; }
 .size input { width: 62px; padding: 9px 8px; border-radius: 12px; border: 2px solid #e2dcf2; background: #fff; font: 800 15px var(--font); text-align: center; color: var(--ink); }

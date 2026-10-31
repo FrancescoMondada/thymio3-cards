@@ -78,7 +78,7 @@ test('the settings: the three modes, and the examples that the cards of the mode
     for (const m of ['normal', 'advanced', 'custom']) assert.ok(normal.includes(`>${t.panel.modes[m]}</button>`), `the ${m} mode is a button (${lang})`);
     assert.ok(normal.includes(t.panel.mode) && normal.includes(t.panel.modeHints.normal), `the mode and what it does (${lang})`);
     assert.ok(advanced.includes(t.panel.modeHints.advanced) && custom.includes(t.panel.modeHints.custom));
-    assert.ok(normal.indexOf(t.panel.quick) < normal.indexOf(t.panel.mode), `after the shortcuts (${lang})`);
+    assert.ok(normal.indexOf(`>${t.panel.mode}</label>`) < normal.indexOf(`>${t.panel.quick}</label>`), `before the shortcuts (${lang})`);
     assert.match(normal, /aria-pressed="true"[^>]*>Normal?[^<]*<|aria-pressed="true"[^>]*>[^<]*<\/button>/, 'the mode in use is pressed');
     // the cards to give appear in the custom mode only
     assert.ok(!normal.includes('custom-cards') && !advanced.includes('custom-cards'));
@@ -367,10 +367,10 @@ test('the settings: choose a picture, then its size and the three buttons', asyn
     assert.ok(has.includes('class="map-thumb"'));
     assert.ok(!has.includes(t.map.virtualOnly), 'no note while the robot is virtual');
     assert.ok(renderToStaticMarkup(h(Panel, { ...base, live: true, canPlace: false, picture, mapImage: { url: 'blob:x', w: 8, h: 6 } })).includes(t.map.virtualOnly), `a real robot is connected: the picture is hidden (${lang})`);
-    // said at the top of the section, also before any picture is asked for: with a real robot nothing shows on the mat, whatever button is pressed
+    // said under the row of the picture, also before any picture is asked for: with a real robot nothing shows on the mat, whatever button is pressed
     const live = renderToStaticMarkup(h(Panel, { ...base, live: true, canPlace: false }));
     assert.ok(live.includes(`<p class="warn" role="status">${t.map.virtualOnly}</p>`), `a real robot is connected, no picture yet: the note is there (${lang})`);
-    assert.ok(live.indexOf(t.map.virtualOnly) < live.indexOf(t.map.choose), 'before the buttons');
+    assert.ok(live.indexOf(`<label>${t.map.title}</label>`) < live.indexOf(t.map.hint) && live.indexOf(t.map.hint) < live.indexOf(t.map.virtualOnly), 'right under the row of the picture and its hint');
     assert.ok(!renderToStaticMarkup(h(Panel, { ...base, live: false })).includes(t.map.virtualOnly));
     assert.match(renderToStaticMarkup(h(Panel, { ...base, picture, mapImage: { url: 'blob:x', w: 8, h: 6 }, canPlace: false })), /<button[^>]*disabled=""[^>]*><svg[^>]*>.*?<\/svg><span>[^<]*<\/span><\/button>/, 'placing is not offered while the robot runs');
   }
@@ -580,6 +580,35 @@ test('one flag in the settings shows or hides the name, in the top bar and under
   assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa', 'cards.showname': '1' })), 'Léa');
   assert.equal(nameIn(render({ 'cards.lang': 'fr', 'cards.name': 'Léa', 'cards.showname': '0' })), undefined, 'hidden: nothing in the top bar');
   delete globalThis.localStorage;
+});
+
+test('the settings, in the order of the adult: link, language, mode, sounds, name, shortcuts, speed, picture, then the rest', async () => {
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, mode: 'normal', onMode: noop, kinds: ['F', 'B', 'L', 'R'], custom: ['F', 'B', 'L', 'R'], onToggleCard: noop,
+      picture: null, mapImage: null, mapKind: 'none', onMapThymio: noop, canPlace: true, onMapFile: noop, onMapSize: noop, onMapRatio: noop, onMapPlace: noop, onMapRecentre: noop, onMapRemove: noop,
+      name: 'Léa', onName: noop, onNewName: noop, onShowName: noop, onShowLink: noop,
+    };
+    const markup = renderToStaticMarkup(h(Panel, base));
+    const labels = [t.qr.linkRow, t.panel.language, t.panel.mode, t.panel.sound, t.qr.nameRow, t.qr.nameShow, t.panel.quick, t.panel.speed, t.map.title];
+    const at = labels.map((label) => markup.indexOf(`>${label}</label>`));
+    assert.ok(at.every((i) => i >= 0), `every row is there (${lang}): ${at}`);
+    assert.deepEqual([...at].sort((a, b) => a - b), at, `in that order (${lang})`);
+    const rest = [t.panel.examples, t.panel.robot, t.panel.log, t.panel.script, t.panel.shortcutsTitle].map((heading) => markup.indexOf(`<h3>${heading}</h3>`));
+    assert.ok(rest[0] > at.at(-1) && [...rest].sort((a, b) => a - b).join() === rest.join(), `the rest comes after, examples first (${lang})`);
+    assert.ok(!markup.includes(`<h3>${t.map.title}</h3>`), `the picture is a row like the others, not a heading (${lang})`);
+    // the explanation of the mode stays right under the mode, the one of the name under its two rows
+    assert.ok(markup.indexOf(t.panel.modeHints.normal) > at[2] && markup.indexOf(t.panel.modeHints.normal) < at[3], `the hint of the mode (${lang})`);
+    assert.ok(markup.indexOf(t.qr.nameHint) > at[5] && markup.indexOf(t.qr.nameHint) < at[6], `the hint of the name (${lang})`);
+    // a real robot sets its own speed: no speed row, the others do not move
+    const live = renderToStaticMarkup(h(Panel, { ...base, live: true }));
+    assert.ok(!live.includes(`>${t.panel.speed}</label>`) && live.indexOf(`>${t.map.title}</label>`) > live.indexOf(`>${t.panel.quick}</label>`), `no speed with a robot (${lang})`);
+  }
 });
 
 test('the settings offer the QR code of the application: the generic one, one for Bluefy on iOS, and the address in text', async () => {
