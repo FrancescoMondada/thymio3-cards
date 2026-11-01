@@ -595,7 +595,7 @@ test('the settings, in the order of the adult: link, language, mode, sounds, nam
       name: 'Léa', onName: noop, onNewName: noop, onShowName: noop, onShowLink: noop,
     };
     const markup = renderToStaticMarkup(h(Panel, base));
-    const labels = [t.qr.linkRow, t.panel.language, t.panel.mode, t.panel.sound, t.qr.nameRow, t.qr.nameShow, t.panel.quick, t.panel.speed, t.map.title];
+    const labels = [t.qr.linkRow, t.manual.row, t.panel.language, t.panel.mode, t.panel.sound, t.qr.nameRow, t.qr.nameShow, t.panel.quick, t.panel.speed, t.map.title];
     const at = labels.map((label) => markup.indexOf(`>${label}</label>`));
     assert.ok(at.every((i) => i >= 0), `every row is there (${lang}): ${at}`);
     assert.deepEqual([...at].sort((a, b) => a - b), at, `in that order (${lang})`);
@@ -603,12 +603,67 @@ test('the settings, in the order of the adult: link, language, mode, sounds, nam
     assert.ok(rest[0] > at.at(-1) && [...rest].sort((a, b) => a - b).join() === rest.join(), `the rest comes after, examples first (${lang})`);
     assert.ok(!markup.includes(`<h3>${t.map.title}</h3>`), `the picture is a row like the others, not a heading (${lang})`);
     // the explanation of the mode stays right under the mode, the one of the name under its two rows
-    assert.ok(markup.indexOf(t.panel.modeHints.normal) > at[2] && markup.indexOf(t.panel.modeHints.normal) < at[3], `the hint of the mode (${lang})`);
-    assert.ok(markup.indexOf(t.qr.nameHint) > at[5] && markup.indexOf(t.qr.nameHint) < at[6], `the hint of the name (${lang})`);
+    assert.ok(markup.indexOf(t.panel.modeHints.normal) > at[3] && markup.indexOf(t.panel.modeHints.normal) < at[4], `the hint of the mode (${lang})`);
+    assert.ok(markup.indexOf(t.qr.nameHint) > at[6] && markup.indexOf(t.qr.nameHint) < at[7], `the hint of the name (${lang})`);
     // a real robot sets its own speed: no speed row, the others do not move
     const live = renderToStaticMarkup(h(Panel, { ...base, live: true }));
     assert.ok(!live.includes(`>${t.panel.speed}</label>`) && live.indexOf(`>${t.map.title}</label>`) > live.indexOf(`>${t.panel.quick}</label>`), `no speed with a robot (${lang})`);
   }
+});
+
+test('the manual of the robot on its own: one page, four drawings and almost no words, in the four languages', async () => {
+  const { default: Manual } = await load('/src/components/Manual.jsx');
+  const { default: Panel } = await load('/src/components/Panel.jsx');
+  const { BookIcon } = await load('/src/icons.jsx');
+  const { I18N } = await load('/src/i18n.js');
+  for (const [lang, t] of Object.entries(I18N)) {
+    const m = t.manual;
+    for (const key of ['row', 'button', 'hint', 'title', 'close', 'or']) assert.ok(m[key] && m[key].length >= 1, `${key} (${lang})`);
+    assert.deepEqual(Object.keys(m).sort(), ['button', 'close', 'erase', 'go', 'hint', 'keys', 'or', 'row', 'stop', 'title'].sort(), `no more words than these (${lang})`);
+    const markup = renderToStaticMarkup(h(Manual, { t, onClose: noop }));
+    assert.match(markup, /^<div class="manual-back" role="dialog" aria-modal="true"/, `a dialog over the page (${lang})`);
+    assert.ok(markup.includes(`<h2>${m.title}</h2>`) && markup.includes(`aria-label="${m.close}"`), `titled, and it can be closed (${lang})`);
+    const cards = markup.split('<section class="m-card">').slice(1);
+    assert.equal(cards.length, 4, `four scenes (${lang})`);
+    assert.deepEqual(cards.map((c) => c.match(/<h3>([^<]*)<\/h3>/)[1]), [m.keys.title, m.go.title, m.stop.title, m.erase.title], `in this order: buttons with the remote, start, stop, erase (${lang})`);
+    for (const card of cards) assert.match(card, /<svg viewBox="0 0 320 200" aria-hidden="true"/, `a drawing in each (${lang})`);
+    assert.ok(!/<ol|<ul|<p /.test(markup), `no list and no paragraph: the words are in the drawings (${lang})`);
+    // too much text was the complaint: the whole screen, drawings included, says very little
+    assert.ok(textOf(markup).length < 160, `${textOf(markup).length} characters of text (${lang}): ${textOf(markup)}`);
+    // the middle button is there with its name, drawn like the others (a tile, the door), and the four arrows
+    for (const word of ['forward', 'backward', 'left', 'right', 'centre']) assert.ok(cards[0].includes(`>${m.keys[word]}</text>`), `the label ${word} is in the drawing (${lang})`);
+    assert.equal((cards[0].match(/M-9 -10 H-1 V10 H-9 Z/g) || []).length, 2, 'the door of the middle button, on the robot and in its tile');
+    assert.ok(!/stroke-dasharray="2 5"/.test(cards[0]), 'no line from the button to its name: it is found by its drawing');
+    assert.ok(cards[0].includes('x="-44" y="-96"') && cards[0].includes(`>${m.or}</text>`), `the remote control is in the first scene, next to the robot (${lang})`);
+    // start and stop: three ways each, between "or": the remote control, the robot, the tablet
+    for (const index of [1, 2]) {
+      assert.equal((cards[index].match(new RegExp(`>${m.or}</text>`, 'g')) || []).length, 2, `three ways, so two "or" (${lang}, scene ${index + 1})`);
+      assert.ok(cards[index].includes('x="-44" y="-96"') && cards[index].includes('x="236" y="48" width="60" height="88"'), 'the remote control and the tablet');
+    }
+    assert.ok(cards[1].includes('fill="#19b35a"') && !cards[1].includes('fill="#ef4444" /><rect x="260"'), 'start: the green play of the tablet');
+    assert.ok(cards[2].includes('<rect x="244" y="82" width="44" height="24" rx="12" fill="#ef4444"') && cards[2].includes('M-9 -10 H-1 V10 H-9 Z'), 'stop: the red button of the tablet, and the middle button (the door) of the robot');
+    // erase: the robot seen from the side on a table (not from above), upright, on its side and upside down, and how long to hold it
+    assert.ok(cards[3].includes(`>${m.erase.t1}</text>`) && cards[3].includes(`>${m.erase.t2}</text>`), `the two durations (${lang})`);
+    assert.ok(cards[3].includes('rotate(90)') && cards[3].includes('rotate(180)'), 'on its side, and upside down');
+    assert.equal((cards[3].match(/fill="#e7d4ae"/g) || []).length, 2, 'a table under each');
+    assert.ok(!/<circle r="44"/.test(cards[3]), 'no top view of the robot in the erase scene');
+    assert.equal((markup.match(/<button/g) || []).length, 1, 'one button: the cross');
+
+    // the settings: a row of its own right after the link to the application, with the book
+    const base = {
+      t, lang, onLang: noop, sound: true, onSound: noop, speed: 1, onSpeed: noop, live: false, bluetooth: true,
+      conn: { status: 'disconnected', device: '', firmware: null, battery: 0 }, cal: null, program: '', lastError: '',
+      log: [], onClearLog: noop, onTest: noop, testing: false, canTest: false, onExample: noop, onConnect: noop, onDisconnect: noop, onClose: noop,
+      showPath: false, onTogglePath: noop, canReset: true, onResetRobot: noop, mode: 'normal', onMode: noop, kinds: ['F', 'B', 'L', 'R'], custom: ['F', 'B', 'L', 'R'], onToggleCard: noop,
+      name: 'Léa', onName: noop, onNewName: noop, onShowName: noop, onShowLink: noop, onShowManual: noop,
+    };
+    const panel = renderToStaticMarkup(h(Panel, base));
+    assert.ok(panel.includes(`<label>${m.row}</label>`) && panel.includes(m.hint), `a row and its explanation (${lang})`);
+    assert.ok(panel.includes(`<button class="tile-btn">${renderToStaticMarkup(h(BookIcon))}<span>${m.button}</span></button>`), `a button with a book (${lang})`);
+  }
+  const css = fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8');
+  assert.match(css, /\.manual-back \{[^}]*overflow: hidden/, 'the page does not scroll');
+  assert.match(css, /\.manual-grid \{[^}]*grid-template-rows: repeat\(2, minmax\(0, 1fr\)\)/, 'two rows that share the height');
 });
 
 test('the settings offer the QR code of the application: the generic one, one for Bluefy on iOS, and the address in text', async () => {

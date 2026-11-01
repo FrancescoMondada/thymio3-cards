@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BluetoothOffIcon, CheckIcon, CloseIcon, DiceIcon, FlagIcon, MapIcon, PathIcon, QrIcon, TargetIcon } from '../icons.jsx';
+import { BluetoothOffIcon, BookIcon, CheckIcon, CloseIcon, DiceIcon, FlagIcon, MapIcon, PathIcon, QrIcon, TargetIcon } from '../icons.jsx';
 import { LANGS } from '../i18n.js';
 import { EXAMPLES } from '../program.js';
 import { cardClass } from '../spec.js';
@@ -31,7 +31,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  name = '', onName, onNewName, showName = false, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, showName = false, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onShowManual, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -101,6 +101,13 @@ export default function Panel({
             </div>
           </div>
           <p className="hint">{t.qr.linkHint} <a className="app-link" href={APP_URL} target="_blank" rel="noopener noreferrer">{APP_URL.replace(/^https:\/\//, '')}</a></p>
+          <div className="row">
+            <label>{t.manual.row}</label>
+            <div className="quick">
+              <button className="tile-btn" onClick={onShowManual}><BookIcon /><span>{t.manual.button}</span></button>
+            </div>
+          </div>
+          <p className="hint">{t.manual.hint}</p>
           <div className="row">
             <label>{t.panel.language}</label>
             <div className="seg-ctl">

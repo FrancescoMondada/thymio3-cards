@@ -89,10 +89,28 @@ de la tablette, l'avatar a le corps rouge et **recule** lui aussi (en temps de p
 s'arrête sans la fête de fin ; le robot virtuel n'a pas d'obstacles (rien ne se passe avec lui). Le robot de démonstration
 (`?fakerobot`) offre `window.fakeRobot.block(pourcent, millisecondes)` pour voir cette réaction de la page.
 
-**Pas essayé sur un vrai robot.** À régler là : le seuil 2000 (la distance à laquelle le robot s'arrête dépend de l'objet et de la
-lumière ; les valeurs vont à peu près de 0 à 4500), le numéro du son (5 est celui que le firmware joue pour « dernier pas effacé » ;
-la liste des sons de la Thymio 3 n'a pas été vérifiée), et la précision du retour (la durée est proportionnelle au temps, pas
-mesurée en distance). Ce code ajoute environ 2 Ko au module envoyé au robot (≈ 22 Ko), le budget de taille des tests est passé de 21 à 23 Ko.
+**Essayé sur un vrai robot : le comportement convient.** Réglages, au besoin, dans `src/py/sequence_mode.py` : le seuil `OBSTACLE` (la distance
+d'arrêt dépend de l'objet et de la lumière ; les valeurs vont à peu près de 0 à 4500), le numéro du son `SND_BLOCKED` (5 est celui que le
+firmware joue pour « dernier pas effacé »), la durée du rouge `BLOCKED_HOLD_MS`. Le retour est proportionnel au temps, pas mesuré en distance.
+Ce code ajoute environ 2 Ko au module envoyé au robot (≈ 22 Ko), le budget de taille des tests est passé de 21 à 23 Ko.
+
+### Le manuel du robot seul (mode débranché)
+
+Réglages → ligne **« Manuel du robot »** (juste sous « Lien vers l'application ») → **Afficher en grand** : **une seule page**, qui tient
+dans l'écran sans défiler (paysage : 2 × 2 ; portrait : 4 en colonne), presque sans mots, à montrer à la classe. Quatre dessins :
+**touches et télécommande** (le robot vu de dessus et la télécommande, reliés par « ou » : mêmes flèches, colorées comme les cartes, vert
+avance, bleu recule, orange gauche, violet droite ; le bouton du milieu, sombre avec une porte, **quitte** ; Go et Stop de la télécommande),
+**lancer** (Go de la télécommande, ou une main sur l'arrière du robot puis retirée, ou le bouton vert de la tablette), **arrêter** (Stop
+de la télécommande, ou le bouton du milieu du robot, ou le bouton rouge de la tablette) et **effacer**, dessiné **de côté, sur une table** :
+le robot sur son côté (≈ 1 s) efface le dernier pas, à l'envers (≈ 1,5 s) ou avec Stop de la télécommande efface tout (le dessus du robot
+porte une barre aux quatre couleurs des flèches, qui montre de quel côté il est). Pas de panneau des lumières, ni d'obstacle : ils n'ont pas
+besoin d'explication. Échap ou la croix le ferme. Les dessins sont des SVG faits à la main (`src/components/ManualArt.jsx`), les quelques mots
+sont dans `i18n.js` (`manual`, quatre langues), l'écran est `src/components/Manual.jsx` ; un test borne la quantité de texte.
+
+Le firmware dit bien « poser le Thymio sur son côté gauche ou droit » (dernier pas), « à l'envers » et *Stop* de la télécommande (tout)
+dans `sequence.c`. Les durées viennent des compteurs du mode (`process_erase`), qui suivent le firmware, pas d'une mesure sur un robot.
+**Non vérifié sur un vrai robot** : la disposition des touches sur le dessus (une croix de quatre flèches autour d'un bouton), celle de la
+télécommande, l'aspect du robot vu de face, et la façon dont on entre dans le mode sur un robot seul, que le manuel ne dit pas.
 
 ## Les cartes à disposition : modes normal, avancé et personnalisé
 

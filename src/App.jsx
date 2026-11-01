@@ -12,6 +12,7 @@ import { APP_LINKS, decodeConfig, encodeConfig, mapPlan } from './share.js';
 import { cleanName, formatWhen, randomName } from './names.js';
 import QrShow from './components/QrShow.jsx';
 import QrScan from './components/QrScan.jsx';
+import Manual from './components/Manual.jsx';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
@@ -60,6 +61,7 @@ export default function App() {
   const [conn, setConn] = useState({ status: 'disconnected', device: '', firmware: null, battery: 0 });
   const [cal, setCal] = useState(null);
   const [panel, setPanel] = useState(false);
+  const [manual, setManual] = useState(false);              // the manual of the robot on its own, over the page
   const [showPath, setShowPath] = useState(false);     // the path is for the child to imagine; shown on request only
   const [toast, setToast] = useState(null);           // { kind: 'warn' | 'link', key } shown as a pictogram
   const [lastError, setLastError] = useState('');     // the words go to the adults' page
@@ -438,6 +440,7 @@ export default function App() {
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
   const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, showName, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
+  const showManual = useCallback(() => { setPanel(false); setManual(true); }, []);       // from the settings: the manual, for the class
   const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
   const applyScanned = useCallback((text) => {
@@ -593,7 +596,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (S.current.qr) { if (e.key === 'Escape') setQr(null); return; }
-      if (panel || confirmDisc || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (manual || panel || confirmDisc || e.metaKey || e.ctrlKey || e.altKey) return;
       if (S.current.placing) {                       // the robot is being placed: Enter or Esc is done, nothing else
         if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); setPlacing(false); }
         return;
@@ -611,7 +614,7 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onDown);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onDown); };
-  }, [panel, confirmDisc, append, go, stop, eraseLast, togglePath, resetRobot]);
+  }, [manual, panel, confirmDisc, append, go, stop, eraseLast, togglePath, resetRobot]);
 
   // ---- what the stage says ---------------------------------------------------------------------
   const finished = phase === 'idle' && cards.length > 0 && doneUpTo === cards.length - 1;
@@ -674,6 +677,7 @@ export default function App() {
         </div>
       )}
       {qr && qr.show !== undefined && <QrShow text={qr.show} t={t} label={qr.link ? { web: t.qr.link, ios: t.qr.linkIos }[qr.link] : t.qr.show} caption={qr.caption} onClose={() => setQr(null)} />}
+      {manual && <Manual t={t} onClose={() => setManual(false)} />}
       {qr && qr.scan && <QrScan t={t} onText={applyScanned} onClose={() => setQr(null)} />}
       {confirmDisc && <ConfirmDisconnect t={t} onYes={disconnect} onNo={() => setConfirmDisc(false)} />}
       {panel && (
@@ -684,7 +688,7 @@ export default function App() {
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} mode={mode} onMode={setMode} kinds={kinds} custom={picked} onToggleCard={(k) => setPicked((c) => toggleKind(c, k))}
           picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
-          name={name} onName={(v) => setName(cleanName(v))} showName={showName} onShowName={setShowName} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
+          name={name} onName={(v) => setName(cleanName(v))} showName={showName} onShowName={setShowName} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onShowManual={showManual} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}
     </div>

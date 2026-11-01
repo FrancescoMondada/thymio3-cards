@@ -556,3 +556,21 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 }
 .scan-picture svg { width: 30px; height: 30px; }
 @keyframes scanbad { 0%, 60% { border-color: #ef4444; } 100% { border-color: #fff; } }
+
+/* ---- the manual of the robot on its own: over the page, one screen, no scrolling ---------------------------------------- */
+.manual-back { position: fixed; inset: 0; z-index: 90; background: var(--bg); overflow: hidden; animation: fade .2s; }
+.manual {
+  height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+.manual header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.manual h2 { margin: 0; font-size: clamp(22px, 4.4vmin, 44px); font-weight: 900; line-height: 1.1; }
+.manual-close { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--line); display: grid; place-items: center; }
+.manual-close svg { width: 18px; height: 18px; }
+@media (max-height: 480px) { .manual { gap: 6px; padding-top: 8px; padding-bottom: 8px; } .manual-close { width: 36px; height: 36px; } .manual h2 { font-size: 20px; } .m-card { border-radius: 18px; padding-top: 4px; } }
+.manual-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-aspect-ratio: 4 / 5) { .manual-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); } }
+.m-card { min-height: 0; background: #fff; border: 3px solid var(--line); border-radius: 24px; padding: 8px 14px 10px; box-shadow: 0 4px 0 var(--line); display: flex; flex-direction: column; }
+.m-card h3 { margin: 0; flex: none; font-size: clamp(16px, 3vmin, 30px); font-weight: 900; line-height: 1.2; }
+.m-art { flex: 1; min-height: 0; }
+.m-art svg { width: 100%; height: 100%; }

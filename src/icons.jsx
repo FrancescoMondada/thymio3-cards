@@ -246,3 +246,11 @@ export const DiceIcon = () => (
     <circle cx="22" cy="42" r="3.6" fill="currentColor" stroke="none" /><circle cx="42" cy="42" r="3.6" fill="currentColor" stroke="none" />
   </svg>
 );
+
+// An open book, for the manual of the robot
+export const BookIcon = () => (
+  <svg {...base} fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M32 16 C 24 10 14 10 6 12 V50 C 14 48 24 48 32 54 C 40 48 50 48 58 50 V12 C 50 10 40 10 32 16 Z" />
+    <path d="M32 16 V54" />
+  </svg>
+);
