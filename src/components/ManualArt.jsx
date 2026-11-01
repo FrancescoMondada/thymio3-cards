@@ -55,6 +55,23 @@ function Arc({ x, y, r, a0, a1, width = 3.5, color = MUTED, opacity = 1 }) {
   return <path d={`M${p(a0)} A${r} ${r} 0 0 1 ${p(a1)}`} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" opacity={opacity} />;
 }
 
+// An arrow along a curve: from `from`, bending towards `via`, to `to`, with a head that follows the way the curve goes at its tip
+// (a straight arrow when `via` is left out). The shaft stops at the base of the head, so that the rounded end of the line does not poke out.
+function Arrow({ from, via, to, color = PINK, width = 3.6, head = 10 }) {
+  const [x0, y0] = from, [x1, y1] = to;
+  const [cx, cy] = via || [(x0 + x1) / 2, (y0 + y1) / 2];
+  const len = Math.hypot(x1 - cx, y1 - cy) || 1;
+  const ux = (x1 - cx) / len, uy = (y1 - cy) / len;
+  const bx = x1 - ux * head, by = y1 - uy * head, hw = head * 0.62;
+  const p = (x, y) => `${x.toFixed(1)} ${y.toFixed(1)}`;
+  return (
+    <g stroke={color} strokeLinecap="round" strokeLinejoin="round">
+      <path d={`M${p(x0, y0)} Q${p(cx, cy)} ${p(bx, by)}`} fill="none" strokeWidth={width} />
+      <path d={`M${p(x1, y1)} L${p(bx - uy * hw, by + ux * hw)} L${p(bx + uy * hw, by - ux * hw)} Z`} fill={color} strokeWidth="2" />
+    </g>
+  );
+}
+
 // ---- the robot from above: front up, five touch buttons in a cross, the ring of eight lights, four body lights -----------------------
 // Drawn around (0, 0), 100 wide and 110 high. `press`: the button that is touched (F B L R or C), `body`: the body lights ('pulse' magenta and
 // cyan, or off), `exit`: the middle button is the dark one with its door (the button that leaves the mode).
@@ -163,7 +180,7 @@ export function GoArt({ or }) {
       <g transform="translate(160 84) scale(.62)"><RobotTop button={false} body="pulse" /></g>
       <circle cx="141" cy="109" r="4.5" fill={ORANGE} /><circle cx="179" cy="109" r="4.5" fill={ORANGE} />
       <Hand x={160} y={112} />
-      <path d="M192 124 q16 -4 14 -30 M201 100 l5 -8 l5 9" fill="none" stroke={PINK} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <Arrow from={[183, 128]} via={[193, 126]} to={[188, 92]} width={3.6} head={11} />
       {/* the green button of the tablet */}
       <rect x="236" y="48" width="60" height="88" rx="10" fill="#fff" stroke={INK} strokeWidth="3.5" />
       <rect x="244" y="82" width="44" height="24" rx="12" fill={GREEN} />
@@ -207,7 +224,7 @@ function RobotSide() {
 }
 
 // One lane: the robot upright (faint), the way it is turned (an arrow), the robot so, and what that does to the cards.
-function Lane({ y, pose, time, codes, crossed, tile = 26, children }) {
+function Lane({ y, pose, time, arc, timeX, codes, crossed, tile = 26, children }) {
   const ground = 82;
   const s = 0.72;
   // the centre of the turned robot, so that it rests on the table by the part that touches it
@@ -219,10 +236,9 @@ function Lane({ y, pose, time, codes, crossed, tile = 26, children }) {
       <rect x="14" y={ground} width="186" height="5" rx="2.5" fill={TABLE} />
       <g transform={`translate(54 ${ground - 24 * s}) scale(${s})`} opacity=".4"><RobotSide /></g>
       <g transform={`translate(${turned.x} ${turned.y}) rotate(${turned.r}) scale(${s})`}><RobotSide /></g>
-      <path d="M92 30 q22 -20 40 -2" fill="none" stroke={PINK} strokeWidth="3.6" strokeLinecap="round" />
-      <path d="M124 18 l10 11 l-14 4" fill="none" stroke={PINK} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="110" y="15" textAnchor="middle" fontSize="13" fontWeight="900" fill={MUTED}>{time}</text>
-      <path d="M190 52 h10 M196 47 l5 5 l-5 5" fill="none" stroke={MUTED} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <Arrow from={arc.from} via={arc.via} to={arc.to} width={3.8} head={11} />
+      <text x={timeX} y="14" textAnchor="middle" fontSize="13" fontWeight="900" fill={MUTED}>{time}</text>
+      <Arrow from={[192, 53]} to={[207, 53]} color={MUTED} width={3.2} head={9} />
       <g>
         {codes.map((c, i) => <Tile key={i} code={c} x={212 + i * (tile + gap)} y={40} s={tile} faded={i >= codes.length - crossed} />)}
         <Cross x={212 + (codes.length - crossed) * (tile + gap) + (crossed * (tile + gap) - gap) / 2} y={40 + tile / 2} s={crossed > 1 ? 20 : 12} />
@@ -236,9 +252,9 @@ export function EraseArt({ labels, or }) {
   return (
     <svg viewBox="0 0 320 200" aria-hidden="true" focusable="false">
       {/* on its left or right side: the last step goes */}
-      <Lane y={0} pose="side" time={labels.t1} codes={['F', 'R', 'F']} crossed={1} />
+      <Lane y={0} pose="side" time={labels.t1} arc={{ from: [80, 36], via: [100, 12], to: [124, 28] }} timeX={100} codes={['F', 'R', 'F']} crossed={1} />
       {/* upside down, or the Stop of the remote control: everything goes */}
-      <Lane y={102} pose="upside" time={labels.t2} codes={['F', 'R', 'F', 'L']} crossed={4} tile={22}>
+      <Lane y={102} pose="upside" time={labels.t2} arc={{ from: [86, 40], via: [112, 10], to: [140, 38] }} timeX={112} codes={['F', 'R', 'F', 'L']} crossed={4} tile={22}>
         <g transform="translate(262 18)"><circle r="12" fill={RED} /><rect x="-5" y="-5" width="10" height="10" rx="2.2" fill="#fff" /></g>
         <Or x={234} y={18} or={or} />
       </Lane>
