@@ -6,11 +6,11 @@ import { TOKEN_ALPHABET, COLOR_CODES } from '../src/spec.js';
 import { CARD_KINDS, cleanCustom } from '../src/modes.js';
 
 const sample = {
-  lang: 'de', sound: false, speed: 2, mode: 'custom', picked: ['F', 'B', 'open', 'close', 'repeat', 'if'], showPath: true,
+  lang: 'de', sound: false, speed: 2, mode: 'custom', picked: ['F', 'B', 'open', 'close', 'repeat', 'if'], showPath: true, showName: true,
   program: 'FF(FR)3F2(rL)', target: { x: 2, y: -1 }, floor: { '0,2': 'r', '1,1': 'r', '3,3': 'g', '-2,0': 'k' }, mapKind: 'builtin', map: { cols: 4, rows: 4, sx: 2, sy: 2 },
 };
 const expectFrom = (c) => ({
-  lang: c.lang, sound: c.sound, speed: c.speed, mode: c.mode, picked: cleanCustom(c.picked), showPath: c.showPath, program: c.program,
+  lang: c.lang, sound: c.sound, speed: c.speed, mode: c.mode, picked: cleanCustom(c.picked), showPath: c.showPath, showName: c.showName, program: c.program,
   target: c.target || null, floor: c.floor, map: { kind: c.mapKind, ...c.map },
 });
 
@@ -18,7 +18,7 @@ test('a configuration is text that starts with the name of the format, and nothi
   const text = encodeConfig(sample);
   assert.ok(text.startsWith(`${PREFIX};`));
   assert.match(text, /^[\x20-\x7e]+$/);
-  assert.equal(text, 'T3C1;l=de;s=0;v=2;m=c;k=FB()2r;d=1;p=FF(FR)3F2(rL);t=2,-1;f=r:1,1/0,2|g:3,3|k:-2,0;w=b,4,4,2,2');
+  assert.equal(text, 'T3C1;l=de;s=0;v=2;m=c;k=FB()2r;d=1;n=1;p=FF(FR)3F2(rL);t=2,-1;f=r:1,1/0,2|g:3,3|k:-2,0;w=b,4,4,2,2');
   assert.ok(text.length < 120, `${text.length} characters: a small code, easy to scan`);
 });
 
@@ -27,9 +27,9 @@ test('what is encoded is decoded, field by field', () => {
 });
 
 test('a page with nothing in it: no flag, no colours, the plain mat', () => {
-  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
+  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, showName: false, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
   const text = encodeConfig(c);
-  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;p=;t=-;f=;w=n,4,4,2,2');
+  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;n=0;p=;t=-;f=;w=n,4,4,2,2');
   assert.deepEqual(decodeConfig(text), { ...expectFrom(c), map: { kind: 'none', cols: 4, rows: 4, sx: 2, sy: 2 } });
   assert.equal(decodeConfig(text).target, null, 'no flag is said, it is not left out');
   assert.deepEqual(decodeConfig(text).floor, {});
@@ -44,7 +44,7 @@ test('random configurations come back as they went', () => {
     for (let k = rnd(30); k > 0; k--) floor[`${rnd(41) - 20},${rnd(41) - 20}`] = pick(COLOR_CODES);
     const c = {
       lang: pick(['fr', 'en', 'de', 'it']), sound: rnd(2) === 1, speed: pick([1, 2, 4]), mode: pick(['normal', 'advanced', 'custom']),
-      picked: CARD_KINDS.filter(() => rnd(2) === 1), showPath: rnd(2) === 1,
+      picked: CARD_KINDS.filter(() => rnd(2) === 1), showPath: rnd(2) === 1, showName: rnd(2) === 1,
       program: Array.from({ length: rnd(51) }, () => pick(TOKEN_ALPHABET)).join(''),
       target: rnd(3) ? { x: rnd(41) - 20, y: rnd(41) - 20 } : null, floor, mapKind: pick(['none', 'builtin', 'custom']),
       map: { cols: 1 + rnd(40), rows: 1 + rnd(40), sx: 0, sy: 0 },
@@ -65,6 +65,19 @@ test('the most a page holds: 50 cards and many painted squares still fit a QR co
   const huge = {};
   for (let x = -50; x <= 50; x++) for (let y = -20; y <= 20; y++) huge[`${x},${y}`] = COLOR_CODES[(x + y + 200) % 8];     // 4000 squares
   assert.ok(encodeConfig({ ...sample, floor: huge }).length > MAX_PAYLOAD, 'too much for a code: the caller says so');
+});
+
+test('the flag that shows the name travels, the name does not', () => {
+  const on = encodeConfig({ ...sample, showName: true }), off = encodeConfig({ ...sample, showName: false });
+  assert.equal(decodeConfig(on).showName, true);
+  assert.equal(decodeConfig(off).showName, false, 'off is said, it is not left out');
+  assert.equal(encodeConfig({ ...sample, showName: undefined }), off, 'a page that does not know the flag says off, like the app does at the start');
+  assert.ok(!on.includes('name') && !on.includes('Léa'), 'no name in the code');
+  assert.equal(on.length, off.length, 'one character, whatever its value');
+  // a code from before the flag leaves the setting of the page that scans it as it is; a value that is not 0 or 1 is dropped
+  const before = on.replace(';n=1', '');
+  assert.ok(!before.includes('n=') && !('showName' in decodeConfig(before)), 'no field, no change');
+  for (const bad of ['n=', 'n=2', 'n=yes', 'n=01', 'n=true']) assert.ok(!('showName' in decodeConfig(on.replace('n=1', bad))), bad);
 });
 
 test('what is not ours is not read', () => {

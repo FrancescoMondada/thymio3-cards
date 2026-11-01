@@ -1,8 +1,9 @@
 // The whole configuration of the page as a short text, for a QR code, and back. One page shows the code, another
 // scans it and ends up the same: the cards of the program, the target flag, the colours of the floor, the mode
-// and the cards it gives, the language, the sound, the speed, the path, and the picture under the mat.
+// and the cards it gives, the language, the sound, the speed, the path, whether the name of the tablet is shown (the name
+// itself is not: every tablet keeps its own), and the picture under the mat.
 //
-//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
+//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
 //
 // The first word names the format and its version. A field is `letter=value`; the order does not matter, a
 // field that is missing leaves that part of the page as it is, and a field that is not valid is dropped: what
@@ -42,7 +43,7 @@ const int = (s) => (INT.test(s) ? Number(s) : NaN);
 const inRange = (n) => Number.isInteger(n) && Math.abs(n) <= MAX_CELLS;
 const pair = (s) => { const [x, y, ...rest] = String(s).split(','); const p = { x: int(x), y: int(y) }; return !rest.length && inRange(p.x) && inRange(p.y) ? p : null; };
 
-// What the page holds -> the text. `c`: { lang, sound, speed, mode, picked, showPath, program, target, floor, map }
+// What the page holds -> the text. `c`: { lang, sound, speed, mode, picked, showPath, showName, program, target, floor, mapKind, map }
 export function encodeConfig(c) {
   const floor = new Map();
   for (const [key, colour] of Object.entries(c.floor || {})) {
@@ -60,6 +61,7 @@ export function encodeConfig(c) {
     `m=${MODE_CHAR[MODES.includes(c.mode) ? c.mode : 'normal']}`,
     `k=${cleanCustom(c.picked).map((k) => PALETTE_CODE[k]).join('')}`,
     `d=${c.showPath ? 1 : 0}`,
+    `n=${c.showName ? 1 : 0}`,
     `p=${cleanProgram(c.program)}`,
     `t=${c.target && inRange(c.target.x) && inRange(c.target.y) ? `${c.target.x},${c.target.y}` : '-'}`,
     `f=${floorText}`,
@@ -84,6 +86,7 @@ export function decodeConfig(text) {
       case 'm': if (MODE_OF[v]) out.mode = MODE_OF[v]; break;
       case 'k': out.picked = cleanCustom([...v].map((ch) => KIND_OF[ch]).filter(Boolean)); break;
       case 'd': if (v === '0' || v === '1') out.showPath = v === '1'; break;
+      case 'n': if (v === '0' || v === '1') out.showName = v === '1'; break;
       case 'p': if (/^[^;]*$/.test(v)) out.program = cleanProgram(v); break;
       case 't': if (v === '-') out.target = null; else { const p = pair(v); if (p) out.target = p; } break;
       case 'f': out.floor = readFloor(v); break;

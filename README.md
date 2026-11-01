@@ -310,21 +310,22 @@ droite des deux boutons de code QR** : c'est le seul texte de l'écran principal
 réglages en direct ; sur un téléphone étroit il passe sur deux lignes puis se coupe par « … » plutôt que de pousser le bouton du robot, et il
 disparaît quand le champ est vide. **Un seul réglage, « Afficher le nom » (Oui / Non, sous le champ), montre ou cache le nom aux deux endroits à la fois**, la barre
 du haut et la légende du code QR. Il est sur **Non au départ** : tant que l'adulte ne l'allume pas, le nom (tiré ou saisi) n'est écrit
-ni en haut ni sous le code, où seules la date et l'heure restent. Sur « Non », le nom reste dans le champ et on le retrouve en revenant à « Oui ». Comme le nom, ce réglage est propre à la tablette
-(`cards.showname`) : il ne voyage pas dans le code QR de la page. Les codes « application » et Bluefy n'ont pas de légende. Le nom n'est
-**pas** dans le code : scanner la photo d'un code règle la page comme avant et ne rapporte pas le nom. Le tirage est dans `src/names.js`
+ni en haut ni sous le code, où seules la date et l'heure restent. Sur « Non », le nom reste dans le champ et on le retrouve en revenant à « Oui ». Le réglage est gardé sur la tablette
+(`cards.showname`) et **voyage dans le code QR de la page** (champ `n=0` ou `n=1`) : une tablette qui scanne le code d'une autre allume ou
+éteint l'affichage du nom chez elle, comme la langue ou le son. Les codes « application » et Bluefy n'ont pas de légende. Le nom lui-même n'est
+**pas** dans le code : scanner la photo d'un code règle la page comme avant (l'affichage du nom compris) et ne rapporte pas le nom, chaque tablette garde le sien. Le tirage est dans `src/names.js`
 (`tests/names.test.js`).
 
 Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
 le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la
-**vitesse** du robot virtuel, le chemin affiché (D), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
+**vitesse** du robot virtuel, le chemin affiché (D), le réglage **« Afficher le nom »** (pas le nom), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
 partent tels quels avec les carrés couverts et la case de départ ; une image choisie par l'adulte ne peut pas
 voyager dans un code, seuls ses carrés et la case de départ sont appliqués, et seulement sur une page qui a elle-même une image
 (sinon son tapis reste). La connexion au robot n'en fait pas partie.
 
 Le texte du code est court (une quarantaine de caractères pour un programme simple, un code de 45 modules, facile à scanner à
 travers une salle) :
-`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
+`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
 (format `T3C1`, des champs `lettre=valeur` dans n'importe quel ordre ; un champ absent laisse la page comme elle est, un champ
 invalide est écarté). Ce qui vient d'un code est lu comme une donnée, strictement (jamais exécuté) : un programme est
 nettoyé carte par carte, les nombres sont des entiers à moins de 99 cases du départ. Un sol peint partout (plus d'environ 400 cases)

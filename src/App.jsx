@@ -431,7 +431,7 @@ export default function App() {
   const removeMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
-  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
+  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, showName, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
   const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
   const applyScanned = useCallback((text) => {
@@ -443,6 +443,7 @@ export default function App() {
     if (cfg.mode) setMode(cfg.mode);
     if (cfg.picked) setPicked(cfg.picked);
     if (cfg.showPath !== undefined) setShowPath(cfg.showPath);
+    if (cfg.showName !== undefined) setShowName(cfg.showName);
     if (cfg.program !== undefined) setCards(toCards(cfg.program));
     if (cfg.target !== undefined) setTarget(cfg.target);
     if (cfg.floor) setFloor(cfg.floor);
