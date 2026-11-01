@@ -90,14 +90,17 @@ function startMode(program, autoplay, phase = 0) {
     if (run !== r) return;
     mode.start({ autoplay, phase });
     say('bat', 3900);
-    r.timer = setInterval(() => {
-      for (let i = 0; i < 10; i++) {
-        if (i === 0) mode.tick();
-        robot.step();
-      }
-    }, 20 / flags.slow);
+    r.timer = loop(r);
   }, 350);
 }
+
+// the 50 Hz of the mode: one tick, ten steps of the physics
+const loop = (r) => setInterval(() => {
+  for (let i = 0; i < 10; i++) {
+    if (i === 0) r.mode.tick();
+    r.robot.step();
+  }
+}, 20 / flags.slow);
 
 function execute(script) {
   const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
@@ -190,6 +193,25 @@ if (typeof window !== 'undefined') {
       lineOf({ type: 'prog', program: m.seq.slice(0, m.wr).join('') });
     },
     exit() { if (run?.mode) { say('exit'); stopRun(false); } },
+    // An object in the way of the step that is playing, as the real mode lives it: it says so at once and, a moment later, that the
+    // program is given up (the demo robot does not really go back), then waits for cards again.
+    block(percent = 40, holdMs = 1500) {
+      const r = run, m = r?.mode;
+      if (!m || m.state !== 1) return false;               // (1: the mode is playing)
+      clearInterval(r.timer);
+      m.r.setSpeed(0, 0);
+      m.r.timerPause();
+      m.sOn = false;
+      say('blocked', m.rd - 1, percent);
+      setTimeout(() => {
+        if (run !== r) return;
+        m.state = 0; m.rd = 0; m.machine = null;
+        say('state', 'record');
+        say('end', 'blocked');
+        r.timer = loop(r);
+      }, holdMs);
+      return true;
+    },
     reset() { files.clear(); persist(); },
   };
 }

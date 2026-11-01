@@ -643,6 +643,170 @@ def timeline(program, source=None, floor=None):
     }
 
 
+def put_wall(r, y_mm, near_mm=30, value=4000, ahead=lambda r: r.y):
+    """A wall across the way at y_mm (along the axis the robot goes `ahead` on): the five front sensors read `value` once the
+    robot's front is within near_mm of it. The sensors have their reading from the first tick, like on a robot."""
+    def hook(t):
+        v = value if y_mm - ahead(r) <= near_mm else 0
+        for i in range(5):
+            r.prox[i] = v
+    hook(0)
+    r.hooks.append(hook)
+
+
+def moves(r):
+    """The stretches of motion in the speed log: [(start ms, end ms, sign of the speed)]."""
+    out, start, sign = [], None, 0
+    for t, vl, vr in r.speed_log:
+        s = (vl + vr) // 2
+        if s != 0 and start is None:
+            start, sign = t, 1 if s > 0 else -1
+        elif s == 0 and start is not None:
+            out.append((start, t, sign))
+            start = None
+    return out
+
+
+class Obstacles(unittest.TestCase):
+    """An object in front of a forward step (the five front sensors above OBSTACLE): stop, red light and a sound, go back
+    to the square the step began on, give up the rest of the program. The firmware's own detection is commented out."""
+
+    def test_an_object_in_the_way_stops_the_step_and_the_robot_goes_back_to_its_square(self):
+        r = VirtualRobot()
+        put_wall(r, 100)                                  # the front is 30 mm from it when the robot is at y = 70
+        lines = run_script(r, "FF", max_ms=12000)
+        self.assertEqual(len(of_kind(lines, "step")), 1, "the second step is given up")
+        blocked = of_kind(lines, "blocked")
+        self.assertEqual(len(blocked), 1)
+        self.assertEqual(blocked[0][1][0], "0", "the card that was blocked")
+        self.assertAlmostEqual(int(blocked[0][1][1]), 47, delta=8, msg="about 70 mm of 150 were made")
+        reached = max(y for _, _, y, _ in r.trace)
+        self.assertAlmostEqual(reached, 70, delta=10, msg="it stopped before the wall")
+        self.assertLess(math.hypot(r.x, r.y), 12.0, "and is back on its square")
+        self.assertAlmostEqual(r.heading_deg(), 0.0, delta=2.0)
+        self.assertEqual(of_kind(lines, "moved"), [], "the way back is not a card done")
+
+    def test_the_robot_says_it_at_once_lights_red_and_plays_the_sound(self):
+        r = VirtualRobot()
+        put_wall(r, 100)
+        seen = []
+        r.hooks.append(lambda t: seen.append((t, r.rgb[0], r.rgb[3], r.vl, r.vr)))
+        lines = run_script(r, "F", max_ms=12000)
+        t_blocked = of_kind(lines, "blocked")[0][0]
+        sounds = [(t, i) for t, i in r.sounds]
+        self.assertEqual([i for _, i in sounds], [5], "the sound of the blocked step, and not the end-of-path sound")
+        self.assertAlmostEqual(sounds[0][0], t_blocked, delta=60)
+        t_end = of_kind(lines, "end")[0][0]
+        red = [t for t, a, b, _, _ in seen if a == (16, 0, 0) and b == (16, 0, 0)]
+        self.assertTrue(red and red[0] <= t_blocked + 60, "red from the moment it is blocked")
+        self.assertTrue(abs(red[-1] - t_end) <= 40, "and until the program is given up")
+        stopped = [t for t, _, _, vl, vr in seen if t >= t_blocked and vl == 0 and vr == 0]
+        self.assertTrue(stopped and stopped[0] <= t_blocked + 60, "the motors stop with it")
+        self.assertTrue(all(a != (16, 0, 0) for t, a, _, _, _ in seen if t > t_end + 60), "the light is back to the pulse after")
+
+    def test_the_sequence_is_given_up_the_cards_are_kept_and_the_mode_goes_on(self):
+        r = VirtualRobot()
+        put_wall(r, 100, ahead=lambda r: r.x)             # after the turn to the right the robot goes along +x
+        lines = run_script(r, "RFFL", max_ms=14000)
+        self.assertEqual([a for _, a in of_kind(lines, "step")], [["0", "R"], ["1", "F"]], "nothing after the blocked step")
+        self.assertEqual(of_kind(lines, "blocked")[0][1][0], "1", "the index of the card, not of the step count")
+        self.assertEqual(of_kind(lines, "end"), [(of_kind(lines, "end")[0][0], ["blocked"])], "an end that says why")
+        self.assertEqual(of_kind(lines, "state")[-1][1], ["record"], "back to waiting for cards")
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["RFFL"], "the cards are kept")
+        self.assertEqual([t for t, _ in of_kind(lines, "bye")], [14000], "the mode runs on: it is the end of the test that stops it")
+        self.assertLess(of_kind(lines, "end")[0][0], 12000)
+        self.assertAlmostEqual(r.heading_deg(), -90.0, delta=2.0, msg="the turn before was made")
+
+    def test_it_can_be_played_again_once_the_way_is_clear(self):
+        r = VirtualRobot()
+        put_wall(r, 100)
+        clear = []
+
+        def hook(t):
+            if t > 9000 and not clear:                    # the object is taken away, the child presses Go on the remote
+                clear.append(1)
+                r.hooks.pop(0)
+                for i in range(5):
+                    r.prox[i] = 0
+                r.rc5.append(53)
+        r.hooks.append(hook)
+        lines = run_script(r, "F", max_ms=20000)
+        self.assertEqual(len(of_kind(lines, "blocked")), 1)
+        self.assertEqual(of_kind(lines, "end")[-1][1], [], "the second run reaches its end")
+        self.assertAlmostEqual(r.y, 150.0, delta=8.0)
+
+    def test_an_object_that_is_already_there_keeps_the_robot_where_it_is(self):
+        r = VirtualRobot()
+        put_wall(r, 20)                                   # 20 mm in front of it: already above the threshold
+        lines = run_script(r, "FF", max_ms=8000)
+        self.assertEqual(of_kind(lines, "blocked")[0][1], ["0", "0"], "nothing of the step was made")
+        self.assertTrue(all(vl == 0 and vr == 0 for _, vl, vr in r.speed_log), "the motors never ran")
+        self.assertLess(math.hypot(r.x, r.y), 0.5)
+        self.assertEqual(of_kind(lines, "end")[0][1], ["blocked"])
+        self.assertEqual(len(of_kind(lines, "step")), 1)
+
+    def test_the_threshold_is_2000_and_any_of_the_five_front_sensors_counts(self):
+        for i in range(5):
+            r = VirtualRobot()
+            r.hooks.append(lambda t, i=i: r.prox.__setitem__(i, 2001))
+            lines = run_script(r, "F", max_ms=8000)
+            self.assertEqual(len(of_kind(lines, "blocked")), 1, "sensor %d at 2001" % i)
+        r = VirtualRobot()
+        r.hooks.append(lambda t: [r.prox.__setitem__(i, 2000) for i in range(5)])
+        lines = run_script(r, "F", max_ms=8000)
+        self.assertEqual(of_kind(lines, "blocked"), [], "2000 itself is not above the threshold")
+        self.assertAlmostEqual(r.y, 150.0, delta=6.0)
+
+    def test_the_two_rear_sensors_are_not_an_obstacle_for_a_forward_step(self):
+        r = VirtualRobot()
+        r.hooks.append(lambda t: [r.prox.__setitem__(i, 4500) for i in (5, 6)])
+        lines = run_script(r, "F", max_ms=8000)
+        self.assertEqual(of_kind(lines, "blocked"), [])
+        self.assertAlmostEqual(r.y, 150.0, delta=6.0)
+
+    def test_only_forward_steps_look_at_the_front(self):
+        for program, check in (("B", lambda r: self.assertAlmostEqual(r.y, -150.0, delta=6.0)),
+                               ("L", lambda r: self.assertAlmostEqual(r.heading_deg(), 90.0, delta=2.0)),
+                               ("R", lambda r: self.assertAlmostEqual(r.heading_deg(), -90.0, delta=2.0))):
+            r = VirtualRobot()
+            r.hooks.append(lambda t: [r.prox.__setitem__(i, 4500) for i in range(5)])
+            lines = run_script(r, program, max_ms=9000)
+            self.assertEqual(of_kind(lines, "blocked"), [], program)
+            self.assertEqual(of_kind(lines, "end"), [(of_kind(lines, "end")[0][0], [])], program)
+            check(r)
+
+    def test_the_way_back_takes_the_time_of_a_backward_step_for_the_part_that_was_made(self):
+        # a robot whose backward 15 cm takes 10 % longer than its forward 15 cm (a calibration): the same part of the way, 10 % longer
+        r = VirtualRobot(dur_fw=9000000, dur_bw=9900000)
+        put_wall(r, 100)
+        lines = run_script(r, "F", max_ms=12000)
+        runs = moves(r)
+        self.assertEqual([sign for _, _, sign in runs], [1, -1])
+        (a, b, _), (c, d, _) = runs
+        self.assertAlmostEqual((d - c) / (b - a), 1.1, delta=0.06)
+
+    def test_a_wall_a_little_further_makes_a_longer_way_back(self):
+        durations = []
+        for wall in (80, 120):
+            r = VirtualRobot()
+            put_wall(r, wall)
+            run_script(r, "F", max_ms=12000)
+            runs = moves(r)
+            durations.append(runs[1][1] - runs[1][0])
+            self.assertLess(math.hypot(r.x, r.y), 12.0, "back on its square (wall at %d)" % wall)
+        self.assertGreater(durations[1], durations[0] + 300)
+
+    def test_a_tilt_during_the_pause_clears_the_red_light(self):
+        r = VirtualRobot()
+        put_wall(r, 100)
+        r.hooks.append(lambda t: r.acc.__setitem__(1, 16000 if 2000 <= t < 6000 else 0))
+        seen = []
+        r.hooks.append(lambda t: seen.append((t, r.rgb[0])))
+        lines = run_script(r, "F", max_ms=9000)
+        self.assertTrue(any(t < 2000 and c == (16, 0, 0) for t, c in seen), "red before the tilt")
+        self.assertTrue(all(c != (16, 0, 0) for t, c in seen if t > 2800), "and not after it: the erase lights take over")
+
+
 class Cards(unittest.TestCase):
     """The advanced cards: groups, repeats and ifs on the colour of the ground."""
 

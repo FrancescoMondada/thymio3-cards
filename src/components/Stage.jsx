@@ -147,6 +147,7 @@ export default function Stage({ ref, program, cursor, doneUpTo, showPath, target
       const el = robot.current;
       if (!el) return;
       el.style.setProperty('--pulse', String(leds ? leds.pulse : 0));
+      el.classList.toggle('alert', Boolean(leds?.alert));
       for (let k = 0; k < 8; k++) {
         const d = dots.current[k];
         if (d) d.style.opacity = String(0.18 + 0.82 * ((leds?.circle?.[k] || 0) / 16));

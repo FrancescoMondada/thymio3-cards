@@ -226,7 +226,13 @@ export default function App() {
         setCursor(-1);
         setDoneUpTo((d) => Math.max(d, e.index));
         break;
-      case 'end': anim.current.onEnd(); finish(true); break;
+      case 'blocked':                                                 // an object in the way: the robot stops, lights red, goes back to the square the step began on
+        setCheck({ index: e.index, taken: false, key: Date.now() });   // the red flash of a card
+        setCursor(e.index);
+        anim.current.onBlocked(e.percent, performance.now());
+        sfx('oops');
+        break;
+      case 'end': anim.current.onEnd(); finish(!e.blocked); break;      // (a program given up is not one that reached its end)
       case 'bye': case 'script-ended': case 'exit':
         // while a script is being replaced ('sending') the old one ending is expected
         if (s.phase === 'playing') finish(false);

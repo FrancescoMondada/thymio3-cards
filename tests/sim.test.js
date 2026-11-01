@@ -67,7 +67,7 @@ test('the robot script carries the program and stays small', () => {
   assert.match(idle, /^AUTOPLAY = 0$/m);
   const small = buildScriptFrom(SOURCE, 'FFLR');
   assert.ok(small.length < SOURCE.length * 0.7, `minified ${small.length} of ${SOURCE.length}`);
-  assert.ok(small.length < 21000, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it)');
+  assert.ok(small.length < 23000, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it, the obstacle stop about 2 KB)');
   assert.ok(!/^\s*#/m.test(small));
   assert.ok(small.trimEnd().endsWith('\nrun()'), 'the whole mode ends by running');
   assert.ok(minify('a = 1  # one\nb = "#"  # two\n\n# c\n').startsWith('a = 1\nb = "#"  # two\n'));
@@ -151,7 +151,7 @@ test('the module: no call at the end, a name from its content, a two-line launch
   assert.equal(launcherFor(name, 'F', { autoplay: false }), `import ${name}\n${name}.run("F", 0)\n`);
   assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123 }), `import ${name}\n${name}.run("F", 0, 123)\n`, 'with where the lights are');
   assert.ok(launcher.length < 80, 'two lines instead of the whole mode');
-  assert.ok(mod.length < 21000);
+  assert.ok(mod.length < 23000);
 });
 
 test('the phase of the lights comes from one clock, so that restarts continue them', () => {

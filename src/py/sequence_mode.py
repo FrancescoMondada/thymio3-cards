@@ -12,6 +12,9 @@
 #           which the cards web interface sets when the child presses GO.
 #   ERASE   robot on its side = erase the last step, robot upside down = erase
 #           everything (or Stop on the remote).
+#   BLOCKED (new) an object in front of a forward step: the robot stops, lights red and plays
+#           a sound, goes back to the square where the step began, and gives up the rest of
+#           the sequence (the firmware's own obstacle detection is commented out).
 #
 # Movements are driven here, like the firmware does:
 #   - turns: the firmware angle controller, started with rotate_deg_absolute()
@@ -41,6 +44,10 @@ MAX_ROT_SPEED = 500     # MAX_ROTATION_SPEED
 STOP_MOVE_MS = 500      # pause after a straight segment (behavior.c STOP_DURATION_US)
 STOP_ROT_MS = 700       # pause after a rotation (sequence.c STOP_DURATION_us)
 PROX_THRESHOLD = 1500
+OBSTACLE = 2000         # a front proximity sensor above this: an object is in the way of a forward step (not in the firmware)
+BLOCKED_HOLD_MS = 1000  # the red light stays on this long after the robot is back on its square and at rest
+BLOCKED_MIN_TICKS = 100000   # less than 20 ms of a step done: it is not worth going back
+SND_BLOCKED = 5         # onboard sound of the blocked step (the firmware plays it when the last step is erased); to listen to on a robot
 SND_UPDATE = 12         # onboard sound "arrows" (a short click): the cards were changed from the interface (-1: none)
 SIDE_ACC = 15000        # robot on its side
 UPSIDE_ACC = -13000     # robot upside down
@@ -71,6 +78,7 @@ PS_REPLAY = 0
 PS_MOVEMENT = 1
 PS_ROTATION = 2
 PS_SENSE = 3
+PS_BLOCKED = 4
 
 # The cards (one character each, see src/spec.js and src/lang.js, which this follows exactly):
 #   F B L R   the steps          ( )   a group          2..9   repeat the next card or group
@@ -110,6 +118,7 @@ lego_f = [thymio.LEDS_LEGO_FRONT(i) for i in range(8)]
 lego_b = [thymio.LEDS_LEGO_BACK(i) for i in range(8)]
 prox_bl = thymio.PROXIMITY(5)
 prox_br = thymio.PROXIMITY(6)
+prox_front = [thymio.PROXIMITY(i) for i in range(5)]    # the five at the front, left to right
 ground = None           # the colour sensor, made when an "if" first needs it (a firmware without one still runs the other cards)
 
 
@@ -389,6 +398,10 @@ class Sequence:
         self.blink = 0
         self.prox_state = 0
         self.prox_count = 0
+        self.alert = False              # the red light of a blocked step
+        self.back = 0                   # what a blocked step goes back: the ticks of a backward timer
+        self.blocked_phase = 0
+        self.blocked_at = 0
         self.erase_all = 0
         self.erase_last = 0
         self.cnt_all = 0
@@ -482,6 +495,8 @@ class Sequence:
     def set_state(self, state):
         if state != self.state:
             self.state = state
+            if state != ST_PLAY:
+                self.alert = False          # (the red light of a blocked step does not outlive the replay)
             say("state", STATE_NAMES[state])
 
     # ---- LEDs ---------------------------------------------------------------------
@@ -602,8 +617,9 @@ class Sequence:
         corr = clamp(S_KP * err + S_KI * self.s_int, self.s_maxcorr)
         self.apply_speeds(self.s_base, corr)
 
-    def start_move(self, direction):
-        dur = self.dur_fw if direction > 0 else self.dur_bw
+    def start_move(self, direction, dur=None):
+        if dur is None:
+            dur = self.dur_fw if direction > 0 else self.dur_bw
         mot.distance_calib_timer_set(dur)
         mot.distance_calib_timer_reset()
         mot.distance_calib_timer_start()
@@ -621,7 +637,8 @@ class Sequence:
         mot.set_speed(0, 0)
         mot.distance_calib_timer_pause()
         self.t_stop = time.ticks_ms()
-        say("moved", self.rd - 1)
+        if self.play_state != PS_BLOCKED:       # (going back after a blocked step is not a card done)
+            say("moved", self.rd - 1)
 
     def rotate_to_next(self, step_deg, speed):
         # RotateToNextHeading(): the target heading accumulates the steps
@@ -648,6 +665,8 @@ class Sequence:
             self.play()
         else:
             set_circle(0, 0, 0, 0, 0, 0, 0, 0)
+        if self.alert:
+            set_body(MAXB, 0, 0)
         self.process_erase(command)
         self.straight_update()
         if self.motion_in_progress and not self.motion_running:
@@ -662,6 +681,7 @@ class Sequence:
         self.report_prog()
 
     def start_play(self):
+        self.alert = False
         self.set_state(ST_PLAY)
         imu.reset_angle()           # StartSequenceHeading(): every replay starts at 0
         self.target_heading = 0
@@ -709,7 +729,9 @@ class Sequence:
             self.handle_replay()
             self.update_lego(self.wr, self.rd)
         elif self.play_state == PS_MOVEMENT:
-            if not self.motion_in_progress:
+            if self.motion_running and self.current == FWD and self.obstacle():
+                self.blocked_start(mot.distance_calib_timer_get())
+            elif not self.motion_in_progress:
                 self.play_state = PS_REPLAY
             self.update_lego(self.wr, self.rd)
         elif self.play_state == PS_ROTATION:
@@ -725,6 +747,60 @@ class Sequence:
         elif self.play_state == PS_SENSE:
             self.sense()
             self.update_lego(self.wr, self.rd)
+        elif self.play_state == PS_BLOCKED:
+            self.blocked_run()
+            self.update_lego(self.wr, self.rd)
+
+    # ---- an object in the way ------------------------------------------------------------------
+    def obstacle(self):
+        # any of the five sensors at the front sees something close
+        for p in prox_front:
+            if p.value() > OBSTACLE:
+                return True
+        return False
+
+    def blocked_start(self, done):
+        # `done`: how much of the step was made, in ticks of its timer (0: the object was there before it began).
+        # Stop, light red, a sound; the way back is the same part of the way, in the time of a backward step.
+        mot.set_speed(0, 0)
+        mot.distance_calib_timer_pause()
+        self.motion_running = False
+        self.s_on = False
+        self.rotation_in_progress = False
+        self.motion_in_progress = True          # (the pause before the robot goes back, see tick)
+        self.t_stop = time.ticks_ms()
+        if done > self.dur_fw:
+            done = self.dur_fw
+        self.back = int(done * (self.dur_bw / self.dur_fw))
+        if self.back < BLOCKED_MIN_TICKS:
+            self.back = 0
+        self.alert = True
+        self.play_state = PS_BLOCKED
+        self.blocked_phase = 0
+        # (the part of the step that was made, in percent)
+        say("blocked", self.rd - 1, done // (self.dur_fw // 100 or 1))
+        play_sound(SND_BLOCKED)
+
+    def blocked_run(self):
+        now = time.ticks_ms()
+        if self.motion_in_progress:
+            return                              # at rest for a moment, or going back
+        if self.blocked_phase == 0 and self.back > 0:
+            self.blocked_phase = 1
+            self.start_move(-1, self.back)
+            return
+        if self.blocked_phase < 2:
+            self.blocked_phase = 2
+            self.blocked_at = now
+        if time.ticks_diff(now, self.blocked_at) < BLOCKED_HOLD_MS:
+            return
+        # on its square again: the rest of the program is given up, the cards are kept
+        self.alert = False
+        self.machine = None
+        self.rd = 0
+        self.set_state(ST_RECORD)
+        lego_off()
+        say("end", "blocked")
 
     def sense(self):
         # An "if" or a "while": the ground is read on SENSE_TICKS ticks, the colour seen most often counts (a tie goes
@@ -773,6 +849,9 @@ class Sequence:
                     self.start_move(-1)
                     self.play_state = PS_MOVEMENT
                 elif self.current == FWD:
+                    if self.obstacle():
+                        self.blocked_start(0)
+                        return
                     self.start_move(1)
                     self.play_state = PS_MOVEMENT
                 elif self.current == LEFT:

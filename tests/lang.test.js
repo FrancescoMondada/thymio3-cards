@@ -216,6 +216,38 @@ test('the pose of a real robot is the sum of the steps it says it takes, whateve
   assert.equal(b.pose(100000).y, 2);
 });
 
+test('a step blocked by an object: the avatar goes back to the square the step began on, after a pause, in the time of a backward step', () => {
+  const cal = { fw: 9000000, bw: 9000000 };                // 1800 ms for 15 cm
+  const a = new PoseAnimator();
+  a.reset('FF', cal);
+  a.setCal(cal);
+  a.begin(0);
+  a.onStep(0, 'F', 0);
+  a.onMoved(0); a.onStep(1, 'F', 2500);                    // a first square done, the second begun
+  assert.equal(a.leds(2600).alert, false, 'no red light while nothing is in the way');
+  a.onBlocked(50, 3400);                                   // stopped half way through it
+  const where = a.pose(3400);
+  assert.ok(Math.abs(where.y - 1.5) < 1e-9 && Math.abs(where.x) < 1e-9, `half of the second square: ${where.y}`);
+  assert.equal(a.leds(3400).alert, true, 'red from the moment it is blocked');
+  assert.ok(Math.abs(a.pose(3400 + 500 - 1).y - 1.5) < 1e-3, 'at rest for the pause of the mode (500 ms)');
+  const mid = a.pose(3400 + 500 + 450);                    // a quarter of the way back (half a square: 900 ms in all)
+  assert.ok(mid.y > 1.2 && mid.y < 1.3, `on its way back: ${mid.y}`);
+  assert.equal(a.pose(3400 + 500 + 900).y, 1, 'on the square the step began on');
+  assert.equal(a.pose(99999).y, 1, 'and stays there');
+  a.onEnd();
+  assert.equal(a.pose(99999).y, 1, 'the end of the program given up does not move it on to the end of the step');
+  // nothing was made: nothing to go back
+  const b = new PoseAnimator();
+  b.reset('F', cal); b.setCal(cal); b.onStep(0, 'F', 0); b.onBlocked(0, 100);
+  assert.deepEqual([b.pose(100).y, b.pose(5000).y], [0, 0]);
+  // a turn that was not blocked is as before, and a new run forgets the way back
+  const c = new PoseAnimator();
+  c.reset('F', cal); c.setCal(cal); c.onStep(0, 'F', 0); c.onBlocked(60, 0);
+  c.reset('F', cal); c.onStep(0, 'F', 10);
+  assert.equal(c.leds(20).alert, false);
+  assert.ok(c.pose(20).y > 0, 'moving forward again');
+});
+
 // ---- a repeat with a colour: while the ground is that colour ---------------------------------------------------
 test('a repeat with a colour does the next card again and again while the ground is that colour', () => {
   const redLine = (x, y) => (x === 0 && y >= 0 && y <= 1 ? 'r' : undefined);
@@ -242,4 +274,8 @@ test('the line of an if carries what the sensor read, and old lines without it s
   assert.deepEqual(parseRobotLine('@@if 3 1 r 3 90 70'), { type: 'if', index: 3, taken: true, seen: 'r', hsv: [3, 90, 70] });
   assert.deepEqual(parseRobotLine('@@if 3 0 ?'), { type: 'if', index: 3, taken: false, seen: '?', hsv: null });
   assert.deepEqual(parseRobotLine('@@sense 7'), { type: 'sense', index: 7 });
+  assert.deepEqual(parseRobotLine('@@blocked 2 47'), { type: 'blocked', index: 2, percent: 47 }, 'an object in the way of a step, and how much of it was made');
+  assert.deepEqual(parseRobotLine('@@blocked 0 0'), { type: 'blocked', index: 0, percent: 0 });
+  assert.deepEqual(parseRobotLine('@@end'), { type: 'end' }, 'the end of a program is as it was');
+  assert.deepEqual(parseRobotLine('@@end blocked'), { type: 'end', blocked: true }, 'a program given up says so');
 });

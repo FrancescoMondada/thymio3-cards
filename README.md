@@ -67,9 +67,32 @@ En plus du firmware : insérer une carte entre deux autres, déplacer, supprimer
 voir le chemin prévu sur le tapis sur demande, voir la carte en cours, des sons, des programmes
 d'exemple, et une page pour l'adulte en quatre langues (FR / EN / DE / IT).
 
-Non reproduit : la détection d'obstacle de `sequence.c` est entièrement commentée dans le firmware
-(`CheckCollisionStatus`), elle ne l'est pas ici non plus ; deux flèches pressées dans le même
-instant ne créent pas de pas « double ».
+La détection d'obstacle de `sequence.c` est entièrement commentée dans le firmware
+(`CheckCollisionStatus`) : celle de cette application est un **ajout**, décrite juste dessous. Non
+reproduit : deux flèches pressées dans le même instant ne créent pas de pas « double ».
+
+### Un objet sur le chemin (ajout, pas dans le firmware)
+
+Pendant un pas **en avant**, le robot lit ses **cinq capteurs de proximité avant** (`PROXIMITY(0..4)`, à chaque
+tick de 20 ms, et une fois avant de partir). Si l'un d'eux dépasse **2000** (`OBSTACLE` dans `src/py/sequence_mode.py`),
+il y a un objet sur le chemin. Alors, dans cet ordre :
+
+1. le robot **s'arrête** (le pas est interrompu) ; la **lumière du corps passe au rouge** et il joue un **son** (`SND_BLOCKED = 5`) ;
+2. après la pause habituelle de 0,5 s, il **recule jusqu'à la case d'où le pas était parti** : la même part du chemin que celle
+   qui avait été faite (le minuteur du pas, mesuré en ticks, converti à la durée d'un pas en arrière de l'étalonnage), au même cap ;
+3. il reste rouge 1 s de plus, puis **abandonne la séquence** : retour à l'enregistrement, **les cartes sont gardées**, on peut relancer
+   quand le chemin est libre. Il dit `@@blocked i p` (la carte `i`, `p` % du pas fait) à l'arrêt, puis `@@end blocked` à la fin.
+
+Un objet déjà là avant le départ du pas : le robot ne bouge pas du tout (rouge, son, séquence abandonnée). Les pas en arrière, les
+virages et les capteurs arrière ne sont **pas** surveillés. Sur l'écran, la carte du pas bloqué **clignote en rouge** avec un petit son
+de la tablette, l'avatar a le corps rouge et **recule** lui aussi (en temps de pas en arrière pour la part faite), puis la lecture
+s'arrête sans la fête de fin ; le robot virtuel n'a pas d'obstacles (rien ne se passe avec lui). Le robot de démonstration
+(`?fakerobot`) offre `window.fakeRobot.block(pourcent, millisecondes)` pour voir cette réaction de la page.
+
+**Pas essayé sur un vrai robot.** À régler là : le seuil 2000 (la distance à laquelle le robot s'arrête dépend de l'objet et de la
+lumière ; les valeurs vont à peu près de 0 à 4500), le numéro du son (5 est celui que le firmware joue pour « dernier pas effacé » ;
+la liste des sons de la Thymio 3 n'a pas été vérifiée), et la précision du retour (la durée est proportionnelle au temps, pas
+mesurée en distance). Ce code ajoute environ 2 Ko au module envoyé au robot (≈ 22 Ko), le budget de taille des tests est passé de 21 à 23 Ko.
 
 ## Les cartes à disposition : modes normal, avancé et personnalisé
 
@@ -130,8 +153,8 @@ sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pou
   appelle « inconnu » un sol gris et sombre, ici un sol sombre et gris (valeur ≤ 20) est noir. Le
   capteur est créé à la première lecture : un micrologiciel qui n'en a pas fait quand même tourner les
   autres cartes (un « si » ne voit alors aucune couleur).
-- **Ce que le robot dit** en plus : `@@sense i` (il regarde le sol pour la carte `i`) et `@@if i 1|0 c`
-  (le test, et la couleur vue ou `?`). Sur l'écran, la carte active suit le déroulement (une carte
+- **Ce que le robot dit** en plus : `@@sense i` (il regarde le sol pour la carte `i`), `@@if i 1|0 c`
+  (le test, et la couleur vue ou `?`), `@@blocked i p` et `@@end blocked` (un objet sur le chemin, voir plus haut). Sur l'écran, la carte active suit le déroulement (une carte
   refaite dans une boucle redevient « à faire » puis active) et la carte « si » **clignote en vert
   (vrai) ou en rouge (faux)**. Le chemin affiché (touche **D**) est celui que le robot suivrait sur le
   sol peint. La position du vrai robot est la somme des pas qu'il annonce, pas une place dans le

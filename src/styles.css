@@ -151,6 +151,8 @@ svg { display: block; }
 .avatar .led { stroke-width: .05; }
 .avatar .led.front { fill: #e040fb; stroke: #e040fb; fill-opacity: calc(.3 + .7 * var(--pulse)); stroke-opacity: calc(.55 * var(--pulse)); }
 .avatar .led.back { fill: #18d6e0; stroke: #18d6e0; fill-opacity: calc(.3 + .7 * var(--pulse)); stroke-opacity: calc(.55 * var(--pulse)); }
+/* a step blocked by an object: the body of the robot is red, as it is on the robot */
+.avatar.alert .led.front, .avatar.alert .led.back { fill: #ef4444; stroke: #ef4444; fill-opacity: 1; stroke-opacity: .6; }
 
 .stage-note {
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);

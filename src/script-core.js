@@ -217,7 +217,8 @@ export function parseRobotLine(line) {
     case 'moved': return { type: 'moved', index: Number(a[0]) };
     case 'sense': return { type: 'sense', index: Number(a[0]) };
     case 'if': return { type: 'if', index: Number(a[0]), taken: a[1] === '1', seen: a[2] || '?', hsv: a.length >= 6 ? [Number(a[3]), Number(a[4]), Number(a[5])] : null };
-    case 'end': return { type: 'end' };
+    case 'blocked': return { type: 'blocked', index: Number(a[0]), percent: Number(a[1]) || 0 };       // an object in the way of the step; the part of it that was made
+    case 'end': return a[0] === 'blocked' ? { type: 'end', blocked: true } : { type: 'end' };            // ("end blocked": the program was given up)
     case 'exit': return { type: 'exit' };
     case 'bye': return { type: 'bye' };
     default: return null;

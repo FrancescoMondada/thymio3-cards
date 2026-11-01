@@ -4,6 +4,7 @@ import { TICKS_PER_MS } from '../spec.js';
 const TURN_MS = 1500;                      // a 90 degree turn of the firmware angle controller
 const PULSE_UP_MS = 1280, PULSE_DOWN_MS = 2560;   // Common_GetBodyColorPulse()
 const HOME = { x: 0, y: 0, th: 0 };
+const BLOCKED_PAUSE_MS = 500;              // the robot stands still this long before it goes back (STOP_MOVE_MS of the mode)
 
 const lerp = (a, b, p) => a + (b - a) * p;
 const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p));
@@ -53,6 +54,7 @@ export class PoseAnimator {
     this.t0 = 0;
     this.moved = true;
     this.ended = false;
+    this.back = null;                      // a step blocked by an object: where it got to, and when the way back begins and how long it takes
     this.startedAt = 0;
   }
 
@@ -63,12 +65,22 @@ export class PoseAnimator {
   onStep(index, code, now) {
     this.from = this.to;                   // the step before is over, whether or not its "moved" arrived
     this.to = applyStep(this.from, code);
-    this.index = index; this.code = code; this.t0 = now; this.moved = false;
+    this.index = index; this.code = code; this.t0 = now; this.moved = false; this.back = null;
   }
 
   onMoved(index) { if (index === this.index) this.moved = true; }
 
   onEnd() { this.ended = true; this.moved = true; }
+
+  // An object stopped the step after `percent` of the way: the robot goes back, in the time of a backward step for that
+  // part, to the square the step began on (the one the cards will start again from).
+  onBlocked(percent, now) {
+    const p = Math.max(0, Math.min(1, percent / 100));
+    const at = { x: lerp(this.from.x, this.to.x, p), y: lerp(this.from.y, this.to.y, p), h: lerp(this.from.h, this.to.h, p) };
+    this.back = { at, t0: now + BLOCKED_PAUSE_MS, ms: p * this.cal.bw / TICKS_PER_MS };
+    this.to = this.from;
+    this.moved = true;
+  }
 
   duration() {
     if (this.code === 'F') return this.cal.fw / TICKS_PER_MS;
@@ -78,6 +90,11 @@ export class PoseAnimator {
 
   pose(now) {
     if (this.index < 0) return { x: 0, y: 0, th: 0 };
+    if (this.back) {
+      const { at, t0, ms } = this.back;
+      const q = ms > 0 ? Math.max(0, Math.min(1, (now - t0) / ms)) : 1;
+      return { x: lerp(at.x, this.from.x, q), y: lerp(at.y, this.from.y, q), th: lerp(at.h, this.from.h, q) * 90 };
+    }
     let p = this.moved ? 1 : Math.min(0.985, (now - this.t0) / this.duration());
     if (this.code === 'L' || this.code === 'R') p = ease(p);
     return { x: lerp(this.from.x, this.to.x, p), y: lerp(this.from.y, this.to.y, p), th: lerp(this.from.h, this.to.h, p) * 90 };
@@ -90,6 +107,6 @@ export class PoseAnimator {
     const pulse = t < PULSE_UP_MS ? t / PULSE_UP_MS : 1 - (t - PULSE_UP_MS) / PULSE_DOWN_MS;
     const circle = new Array(8).fill(0);
     if (!this.ended && this.index >= 0 && this.code in CIRCLE_OF) circle[CIRCLE_OF[this.code]] = 16;
-    return { pulse: this.ended ? 0 : pulse, circle };
+    return { pulse: this.ended ? 0 : pulse, circle, alert: Boolean(this.back) };     // (red while a step is blocked)
   }
 }
