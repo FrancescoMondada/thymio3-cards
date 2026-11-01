@@ -122,21 +122,21 @@ export function KeysArt({ labels, or }) {
   const rows = [['F', labels.forward, '15 cm'], ['B', labels.backward, '15 cm'], ['L', labels.left, '90°'], ['R', labels.right, '90°']];
   return (
     <svg viewBox="0 0 320 200" aria-hidden="true" focusable="false">
-      <g transform="translate(52 104) scale(1.05)"><RobotTop press="F" exit /></g>
-      <Or x={112} y={104} or={or} />
+      <g transform="translate(57 104) scale(1.05)"><RobotTop press="F" exit /></g>
       <g transform="translate(152 104) scale(.7)"><Remote /></g>
+      <Or x={115} y={104} or={or} />
       {rows.map(([code, word, what], i) => (
         <g key={code}>
-          <Tile code={code} x={190} y={8 + 34 * i} s={30} />
-          <text x="226" y={8 + 34 * i + 14} fontSize="16" fontWeight="900" fill={INK}>{word}</text>
-          <text x="226" y={8 + 34 * i + 28} fontSize="12.5" fontWeight="800" fill={MUTED}>{what}</text>
+          <Tile code={code} x={202} y={8 + 34 * i} s={30} />
+          <text x="238" y={8 + 34 * i + 14} fontSize="16" fontWeight="900" fill={INK}>{word}</text>
+          <text x="238" y={8 + 34 * i + 28} fontSize="12.5" fontWeight="800" fill={MUTED}>{what}</text>
         </g>
       ))}
-      <g transform="translate(190 150)">
+      <g transform="translate(202 150)">
         <rect width="30" height="30" rx="8" fill={INK} />
         <g transform="translate(15 15) scale(.62)"><ExitGlyph /></g>
       </g>
-      <text x="226" y="171" fontSize="16" fontWeight="900" fill={INK}>{labels.centre}</text>
+      <text x="238" y="171" fontSize="16" fontWeight="900" fill={INK}>{labels.centre}</text>
     </svg>
   );
 }
