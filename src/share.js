@@ -4,7 +4,7 @@
 // itself is not: every tablet keeps its own), whether an object in the way of the robot is looked for and at what limit, and the
 // picture under the mat.
 //
-//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3000;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
+//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3990;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
 //
 // The first word names the format and its version. A field is `letter=value`; the order does not matter, a
 // field that is missing leaves that part of the page as it is, and a field that is not valid is dropped: what

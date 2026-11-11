@@ -8,7 +8,7 @@ import { THYMIO_MAP } from '../worldmap.js';
 import { APP_URL } from '../share.js';
 import { NAME_MAX } from '../names.js';
 import { buildRobotScript } from '../script.js';
-import { OBSTACLE_MIN, OBSTACLE_MAX } from '../obstacle.js';
+import { OBSTACLE_DEFAULT, OBSTACLE_MIN, OBSTACLE_MAX } from '../obstacle.js';
 import { ArrowIcon } from '../icons.jsx';
 
 const SPEEDS = [1, 2, 4];
@@ -32,7 +32,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  name = '', onName, onNewName, showName = false, onShowName, obstacle = false, onObstacle, obstacleLimit = 3000, onObstacleLimit, log, onClearLog, onTest, testing, canTest, onShowLink, onShowManual, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, showName = false, onShowName, obstacle = false, onObstacle, obstacleLimit = OBSTACLE_DEFAULT, onObstacleLimit, log, onClearLog, onTest, testing, canTest, onShowLink, onShowManual, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);

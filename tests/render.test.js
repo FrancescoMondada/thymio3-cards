@@ -611,13 +611,13 @@ test('the settings, in the order of the adult: link, language, mode, sounds, nam
   }
 });
 
-test('the settings for the detection of an object in the way: off by default, a limit of 3000, in the four languages', async () => {
+test('the settings for the detection of an object in the way: off by default, a limit of 3990, in the four languages', async () => {
   const { default: Panel } = await load('/src/components/Panel.jsx');
   const { OBSTACLE_DEFAULT, OBSTACLE_MIN, OBSTACLE_MAX, cleanObstacleLimit } = await load('/src/obstacle.js');
   const { I18N } = await load('/src/i18n.js');
-  assert.deepEqual([OBSTACLE_DEFAULT, OBSTACLE_MIN, OBSTACLE_MAX], [3000, 100, 4500]);
+  assert.deepEqual([OBSTACLE_DEFAULT, OBSTACLE_MIN, OBSTACLE_MAX], [3990, 100, 4500]);
   assert.equal(cleanObstacleLimit('2500'), 2500);
-  for (const bad of [undefined, null, '', 'x', 0, 99, 4501, -3000, 1.5, NaN]) assert.equal(cleanObstacleLimit(bad), 3000, `${bad} is the default`);
+  for (const bad of [undefined, null, '', 'x', 0, 99, 4501, -3000, 1.5, NaN]) assert.equal(cleanObstacleLimit(bad), 3990, `${bad} is the default`);
   for (const [lang, t] of Object.entries(I18N)) {
     for (const key of ['row', 'limit', 'hint']) assert.ok(t.obstacle[key] && t.obstacle[key].length > 5, `${key} (${lang})`);
     const base = {
@@ -630,7 +630,7 @@ test('the settings for the detection of an object in the way: off by default, a 
     const row = (markup) => markup.slice(markup.indexOf(`<label>${t.obstacle.row}</label>`), markup.indexOf(t.obstacle.hint));
     const unset = renderToStaticMarkup(h(Panel, base));                                              // nothing said: the defaults
     assert.ok(row(unset).includes(`<button class="" aria-pressed="false">${t.panel.on}</button>`) && row(unset).includes(`<button class="on" aria-pressed="true">${t.panel.off}</button>`), `off by default (${lang})`);
-    assert.ok(/<input[^>]*value="3000"[^>]*disabled=""|<input[^>]*disabled=""[^>]*value="3000"/.test(row(unset)), `the limit, 3000, can be seen but not changed while it is off (${lang})`);
+    assert.ok(/<input[^>]*value="3990"[^>]*disabled=""|<input[^>]*disabled=""[^>]*value="3990"/.test(row(unset)), `the limit, 3990, can be seen but not changed while it is off (${lang})`);
     const on = renderToStaticMarkup(h(Panel, { ...base, obstacle: true, obstacleLimit: 2500 }));
     assert.ok(row(on).includes(`<button class="on" aria-pressed="true">${t.panel.on}</button>`), `on (${lang})`);
     assert.ok(/<input[^>]*value="2500"/.test(row(on)) && !/<input[^>]*disabled/.test(row(on)), `the limit can be changed once it is on (${lang})`);

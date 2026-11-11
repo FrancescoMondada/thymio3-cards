@@ -27,9 +27,9 @@ test('what is encoded is decoded, field by field', () => {
 });
 
 test('a page with nothing in it: no flag, no colours, the plain mat', () => {
-  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, showName: false, obstacle: false, obstacleLimit: 3000, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
+  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, showName: false, obstacle: false, obstacleLimit: 3990, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
   const text = encodeConfig(c);
-  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;n=0;o=0,3000;p=;t=-;f=;w=n,4,4,2,2');
+  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;n=0;o=0,3990;p=;t=-;f=;w=n,4,4,2,2');
   assert.deepEqual(decodeConfig(text), { ...expectFrom(c), map: { kind: 'none', cols: 4, rows: 4, sx: 2, sy: 2 } });
   assert.equal(decodeConfig(text).target, null, 'no flag is said, it is not left out');
   assert.deepEqual(decodeConfig(text).floor, {});
@@ -85,10 +85,10 @@ test('the detection of an object in the way travels: the switch and the limit, e
   assert.deepEqual([on.obstacle, on.obstacleLimit], [true, 2500]);
   const off = decodeConfig(encodeConfig({ ...sample, obstacle: false, obstacleLimit: 1800 }));
   assert.deepEqual([off.obstacle, off.obstacleLimit], [false, 1800], 'the limit goes also when the switch is off: it is a setting of its own');
-  // what a page that does not say anything about it sends: not looked for, 3000
+  // what a page that does not say anything about it sends: not looked for, 3990
   const none = encodeConfig({ ...sample, obstacle: undefined, obstacleLimit: undefined });
-  assert.ok(none.includes(';o=0,3000;'));
-  for (const bad of [0, 99, 4501, -2500, 12.5, 'x', NaN, null]) assert.ok(encodeConfig({ ...sample, obstacleLimit: bad }).includes(';o=1,3000;'), `a limit that is not between 100 and 4500 is the default (${bad})`);
+  assert.ok(none.includes(';o=0,3990;'));
+  for (const bad of [0, 99, 4501, -2500, 12.5, 'x', NaN, null]) assert.ok(encodeConfig({ ...sample, obstacleLimit: bad }).includes(';o=1,3990;'), `a limit that is not between 100 and 4500 is the default (${bad})`);
   assert.ok(encodeConfig({ ...sample, obstacleLimit: 100 }).includes(';o=1,100;') && encodeConfig({ ...sample, obstacleLimit: 4500 }).includes(';o=1,4500;'), 'the two ends are valid');
   // a code from before the field leaves both settings of the page that scans it as they are
   const before = encodeConfig(sample).replace(';o=1,2500', '');

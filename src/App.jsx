@@ -44,7 +44,7 @@ export default function App() {
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [name, setName] = useState(() => { const kept = load('cards.name', null); return kept === null ? randomName(lang) : cleanName(kept); });   // beside the QR code of the page, drawn at random the first time
   const [obstacle, setObstacle] = useState(() => load('cards.obstacle', '0') === '1');                 // objects in the way of a forward step are looked for (the real robot): off unless asked
-  const [obstacleLimit, setObstacleLimit] = useState(() => cleanObstacleLimit(load('cards.obstaclelimit', OBSTACLE_DEFAULT)));   // what the middle front sensor must read
+  const [obstacleLimit, setObstacleLimit] = useState(() => cleanObstacleLimit(load('cards.obstaclethreshold', OBSTACLE_DEFAULT)));   // what the middle front sensor must read
   const [showName, setShowName] = useState(() => load('cards.showname', '0') === '1');   // one flag for the two places, the top bar and the caption of the QR code; hidden until the adult asks
   const [speed, setSpeed] = useState(1);
   // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
@@ -124,7 +124,15 @@ export default function App() {
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
   useEffect(() => { save('cards.name', name); }, [name]);
   useEffect(() => { save('cards.showname', showName ? '1' : '0'); }, [showName]);
-  useEffect(() => { save('cards.obstacle', obstacle ? '1' : '0'); save('cards.obstaclelimit', String(obstacleLimit)); }, [obstacle, obstacleLimit]);
+  useEffect(() => {
+    save('cards.obstacle', obstacle ? '1' : '0');
+    // only a limit the adult chose is kept, so that the default can change and reach the tablets that never touched it (it went from
+    // 3000 to 3990, and the first name of the key kept 3000 for everyone: it is forgotten)
+    try {
+      if (obstacleLimit === OBSTACLE_DEFAULT) localStorage.removeItem('cards.obstaclethreshold'); else localStorage.setItem('cards.obstaclethreshold', String(obstacleLimit));
+      localStorage.removeItem('cards.obstaclelimit');
+    } catch { /* private mode */ }
+  }, [obstacle, obstacleLimit]);
   const limit = obstacle ? obstacleLimit : 0;                 // what the robot is given: 0 for "not looked for"
   useEffect(() => { save('cards.mode', mode); }, [mode]);
   useEffect(() => { save('cards.custom', JSON.stringify(picked)); }, [picked]);

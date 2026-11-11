@@ -74,7 +74,7 @@ reproduit : deux flèches pressées dans le même instant ne créent pas de pas 
 ### Un objet sur le chemin (ajout, pas dans le firmware)
 
 **Désactivée au départ** : sans réglage, le robot ne cherche aucun obstacle (comme le firmware). Réglages → **« Détection d'obstacle »**
-(Oui / Non, Non au départ) et **« Seuil de détection »** (3000 au départ, de 100 à 4500 ; grisé tant que la détection est éteinte).
+(Oui / Non, Non au départ) et **« Seuil de détection »** (**3990** au départ, de 100 à 4500 ; grisé tant que la détection est éteinte).
 Activée, pendant un pas **en avant**, le robot lit **le capteur de proximité avant du milieu seul** (`PROXIMITY(2)`, à chaque tick de
 20 ms, et une fois avant de partir) : les quatre autres regardent de côté, vers ce qui n'est pas sur le chemin (un mur de la pièce, un pied de
 table), et la première version, qui les lisait tous les cinq avec un seuil de 2000, voyait trop loin, jusque dans la case d'après. Si ce capteur
@@ -92,9 +92,9 @@ de la tablette, l'avatar a le corps rouge et **recule** lui aussi (en temps de p
 s'arrête sans la fête de fin ; le robot virtuel n'a pas d'obstacles (rien ne se passe avec lui). Le robot de démonstration
 (`?fakerobot`) offre `window.fakeRobot.block(pourcent, millisecondes)` pour voir cette réaction de la page.
 
-**Le comportement (arrêt, rouge, son, retour, abandon) a été essayé sur un vrai robot et convient** ; le réglage actuel (capteur du milieu,
-seuil 3000, désactivé au départ) n'a pas encore été essayé. L'interrupteur et le seuil sont gardés sur la tablette (`cards.obstacle`,
-`cards.obstaclelimit`) et **voyagent dans le code QR de la page** (champ `o=interrupteur,seuil`, par exemple `o=1,2500`) : une tablette qui scanne le code
+**Le comportement (arrêt, rouge, son, retour, abandon) a été essayé sur un vrai robot et convient**, avec le capteur du milieu seul ; c'est cet essai
+qui a donné le seuil par défaut, **3990** (3000 voyait trop loin). L'interrupteur et le seuil sont gardés sur la tablette (`cards.obstacle`,
+`cards.obstaclethreshold`, seulement quand le seuil a été choisi : tant qu'il est celui par défaut rien n'est gardé, et le défaut peut changer) et **voyagent dans le code QR de la page** (champ `o=interrupteur,seuil`, par exemple `o=1,2500`) : une tablette qui scanne le code
 d'une autre prend les deux, le seuil aussi quand la détection est éteinte, et le mode se relance chez elle si un robot est connecté. Ils arrivent au robot au démarrage du mode : dernier argument de `run(programme, go, phase, seuil)`
 (seulement quand la détection est allumée), ou `OBSTACLE = …` dans l'en-tête du script entier. **Les changer relance le mode**, car, contrairement aux
 cartes, ils ne peuvent pas être écrits dans le mode qui tourne. Dans `src/py/sequence_mode.py` : le numéro du son `SND_BLOCKED` (5 est celui que le
@@ -373,7 +373,7 @@ voyager dans un code, seuls ses carrés et la case de départ sont appliqués, e
 
 Le texte du code est court (une quarantaine de caractères pour un programme simple, un code de 45 modules, facile à scanner à
 travers une salle) :
-`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3000;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
+`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3990;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
 (format `T3C1`, des champs `lettre=valeur` dans n'importe quel ordre ; un champ absent laisse la page comme elle est, un champ
 invalide est écarté). Ce qui vient d'un code est lu comme une donnée, strictement (jamais exécuté) : un programme est
 nettoyé carte par carte, les nombres sont des entiers à moins de 99 cases du départ. Un sol peint partout (plus d'environ 400 cases)
