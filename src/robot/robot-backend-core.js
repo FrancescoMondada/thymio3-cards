@@ -390,16 +390,17 @@ export class RobotBackendCore {
     await hello;
   }
 
-  // Start the mode on the robot with this program; `autoplay` makes it replay at once.
+  // Start the mode on the robot with this program; `autoplay` makes it replay at once, `limit` is what the
+  // middle front sensor must read for an object to be in the way (0 or none: not looked for).
   // Resolves when the mode has said hello.
-  run(program, { autoplay }) {
+  run(program, { autoplay, limit = 0 }) {
     const mode = autoplay ? 'play' : 'wait';
     return this.enqueue(`run ${mode}`, async () => {
       await this.halt();
       if (this.moduleName && this.launcher) {
         this.quietErrors++;
         try {
-          await this.start(this.launcher(this.moduleName, program, { autoplay }), `launcher "${program}" (${mode})`, this.opt.moduleHelloTimeoutMs);
+          await this.start(this.launcher(this.moduleName, program, { autoplay, limit }), `launcher "${program}" (${mode})`, this.opt.moduleHelloTimeoutMs);
           return;
         } catch (err) {
           // a failing link would fail the whole mode too, and the whole mode is a lot more to send
@@ -411,7 +412,7 @@ export class RobotBackendCore {
           this.quietErrors--;
         }
       }
-      await this.start(this.buildScript(program, { autoplay }), `mode "${program}" (${mode})`, this.opt.helloTimeoutMs);
+      await this.start(this.buildScript(program, { autoplay, limit }), `mode "${program}" (${mode})`, this.opt.helloTimeoutMs);
     });
   }
 
@@ -465,10 +466,10 @@ export class RobotBackendCore {
     };
   }
 
-  play(program) { return this.run(program, { autoplay: true }); }
+  play(program, options = {}) { return this.run(program, { ...options, autoplay: true }); }
 
   // The robot shows the mode (pulsing colours) and waits; its own buttons record steps.
-  idle(program) { return this.run(program, { autoplay: false }); }
+  idle(program, options = {}) { return this.run(program, { ...options, autoplay: false }); }
 
   stop() {
     return this.enqueue('stop', async () => {

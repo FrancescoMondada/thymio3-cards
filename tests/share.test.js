@@ -6,11 +6,11 @@ import { TOKEN_ALPHABET, COLOR_CODES } from '../src/spec.js';
 import { CARD_KINDS, cleanCustom } from '../src/modes.js';
 
 const sample = {
-  lang: 'de', sound: false, speed: 2, mode: 'custom', picked: ['F', 'B', 'open', 'close', 'repeat', 'if'], showPath: true, showName: true,
+  lang: 'de', sound: false, speed: 2, mode: 'custom', picked: ['F', 'B', 'open', 'close', 'repeat', 'if'], showPath: true, showName: true, obstacle: true, obstacleLimit: 2500,
   program: 'FF(FR)3F2(rL)', target: { x: 2, y: -1 }, floor: { '0,2': 'r', '1,1': 'r', '3,3': 'g', '-2,0': 'k' }, mapKind: 'builtin', map: { cols: 4, rows: 4, sx: 2, sy: 2 },
 };
 const expectFrom = (c) => ({
-  lang: c.lang, sound: c.sound, speed: c.speed, mode: c.mode, picked: cleanCustom(c.picked), showPath: c.showPath, showName: c.showName, program: c.program,
+  lang: c.lang, sound: c.sound, speed: c.speed, mode: c.mode, picked: cleanCustom(c.picked), showPath: c.showPath, showName: c.showName, obstacle: c.obstacle, obstacleLimit: c.obstacleLimit, program: c.program,
   target: c.target || null, floor: c.floor, map: { kind: c.mapKind, ...c.map },
 });
 
@@ -18,7 +18,7 @@ test('a configuration is text that starts with the name of the format, and nothi
   const text = encodeConfig(sample);
   assert.ok(text.startsWith(`${PREFIX};`));
   assert.match(text, /^[\x20-\x7e]+$/);
-  assert.equal(text, 'T3C1;l=de;s=0;v=2;m=c;k=FB()2r;d=1;n=1;p=FF(FR)3F2(rL);t=2,-1;f=r:1,1/0,2|g:3,3|k:-2,0;w=b,4,4,2,2');
+  assert.equal(text, 'T3C1;l=de;s=0;v=2;m=c;k=FB()2r;d=1;n=1;o=1,2500;p=FF(FR)3F2(rL);t=2,-1;f=r:1,1/0,2|g:3,3|k:-2,0;w=b,4,4,2,2');
   assert.ok(text.length < 120, `${text.length} characters: a small code, easy to scan`);
 });
 
@@ -27,9 +27,9 @@ test('what is encoded is decoded, field by field', () => {
 });
 
 test('a page with nothing in it: no flag, no colours, the plain mat', () => {
-  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, showName: false, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
+  const c = { lang: 'fr', sound: true, speed: 1, mode: 'normal', picked: ['F', 'B', 'L', 'R'], showPath: false, showName: false, obstacle: false, obstacleLimit: 3000, program: '', target: null, floor: {}, mapKind: 'none', map: { cols: 4, rows: 4, sx: 2, sy: 2 } };
   const text = encodeConfig(c);
-  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;n=0;p=;t=-;f=;w=n,4,4,2,2');
+  assert.equal(text, 'T3C1;l=fr;s=1;v=1;m=n;k=FBLR;d=0;n=0;o=0,3000;p=;t=-;f=;w=n,4,4,2,2');
   assert.deepEqual(decodeConfig(text), { ...expectFrom(c), map: { kind: 'none', cols: 4, rows: 4, sx: 2, sy: 2 } });
   assert.equal(decodeConfig(text).target, null, 'no flag is said, it is not left out');
   assert.deepEqual(decodeConfig(text).floor, {});
@@ -44,7 +44,7 @@ test('random configurations come back as they went', () => {
     for (let k = rnd(30); k > 0; k--) floor[`${rnd(41) - 20},${rnd(41) - 20}`] = pick(COLOR_CODES);
     const c = {
       lang: pick(['fr', 'en', 'de', 'it']), sound: rnd(2) === 1, speed: pick([1, 2, 4]), mode: pick(['normal', 'advanced', 'custom']),
-      picked: CARD_KINDS.filter(() => rnd(2) === 1), showPath: rnd(2) === 1, showName: rnd(2) === 1,
+      picked: CARD_KINDS.filter(() => rnd(2) === 1), showPath: rnd(2) === 1, showName: rnd(2) === 1, obstacle: rnd(2) === 1, obstacleLimit: 100 + rnd(4401),
       program: Array.from({ length: rnd(51) }, () => pick(TOKEN_ALPHABET)).join(''),
       target: rnd(3) ? { x: rnd(41) - 20, y: rnd(41) - 20 } : null, floor, mapKind: pick(['none', 'builtin', 'custom']),
       map: { cols: 1 + rnd(40), rows: 1 + rnd(40), sx: 0, sy: 0 },
@@ -78,6 +78,30 @@ test('the flag that shows the name travels, the name does not', () => {
   const before = on.replace(';n=1', '');
   assert.ok(!before.includes('n=') && !('showName' in decodeConfig(before)), 'no field, no change');
   for (const bad of ['n=', 'n=2', 'n=yes', 'n=01', 'n=true']) assert.ok(!('showName' in decodeConfig(on.replace('n=1', bad))), bad);
+});
+
+test('the detection of an object in the way travels: the switch and the limit, each in its own right', () => {
+  const on = decodeConfig(encodeConfig({ ...sample, obstacle: true, obstacleLimit: 2500 }));
+  assert.deepEqual([on.obstacle, on.obstacleLimit], [true, 2500]);
+  const off = decodeConfig(encodeConfig({ ...sample, obstacle: false, obstacleLimit: 1800 }));
+  assert.deepEqual([off.obstacle, off.obstacleLimit], [false, 1800], 'the limit goes also when the switch is off: it is a setting of its own');
+  // what a page that does not say anything about it sends: not looked for, 3000
+  const none = encodeConfig({ ...sample, obstacle: undefined, obstacleLimit: undefined });
+  assert.ok(none.includes(';o=0,3000;'));
+  for (const bad of [0, 99, 4501, -2500, 12.5, 'x', NaN, null]) assert.ok(encodeConfig({ ...sample, obstacleLimit: bad }).includes(';o=1,3000;'), `a limit that is not between 100 and 4500 is the default (${bad})`);
+  assert.ok(encodeConfig({ ...sample, obstacleLimit: 100 }).includes(';o=1,100;') && encodeConfig({ ...sample, obstacleLimit: 4500 }).includes(';o=1,4500;'), 'the two ends are valid');
+  // a code from before the field leaves both settings of the page that scans it as they are
+  const before = encodeConfig(sample).replace(';o=1,2500', '');
+  assert.ok(!before.includes(';o=') && !('obstacle' in decodeConfig(before)) && !('obstacleLimit' in decodeConfig(before)), 'no field, no change');
+  // each value is kept if it is valid, the other is dropped; a field with more than two values is dropped whole
+  const read = (value) => decodeConfig(encodeConfig(sample).replace('o=1,2500', `o=${value}`));
+  assert.deepEqual([read('1,x').obstacle, 'obstacleLimit' in read('1,x')], [true, false]);
+  assert.deepEqual([read('1,99').obstacle, 'obstacleLimit' in read('1,99')], [true, false], 'below 100');
+  assert.deepEqual([read('1,4501').obstacle, 'obstacleLimit' in read('1,4501')], [true, false], 'above 4500');
+  assert.deepEqual([read('2,2000').obstacleLimit, 'obstacle' in read('2,2000')], [2000, false], 'a switch that is not 0 or 1');
+  assert.deepEqual([read('1').obstacle, 'obstacleLimit' in read('1')], [true, false], 'a switch alone');
+  for (const bad of ['', ',', '1,2000,5', 'yes,low', 'on,3000x']) assert.ok(!('obstacle' in read(bad)) && !('obstacleLimit' in read(bad)), `nothing from "${bad}"`);
+  assert.equal(encodeConfig(sample).length < 120, true, 'the text stays short');
 });
 
 test('what is not ours is not read', () => {

@@ -489,6 +489,7 @@ kbd { display: inline-block; min-width: 34px; padding: 5px 9px; border-radius: 9
 .app.placing .right { opacity: .35; pointer-events: none; }
 .map-thumb { width: 96px; height: 72px; object-fit: cover; border-radius: 12px; border: 2px solid #ece6f8; background: #faf7ff; }
 .size { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; flex-wrap: wrap; }
+.size input:disabled { opacity: .4; }
 .size input { width: 62px; padding: 9px 8px; border-radius: 12px; border: 2px solid #e2dcf2; background: #fff; font: 800 15px var(--font); text-align: center; color: var(--ink); }
 .read-dot { stroke: #fff; stroke-width: .045; pointer-events: none; opacity: .95; }
 

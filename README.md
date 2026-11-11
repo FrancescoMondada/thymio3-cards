@@ -73,9 +73,12 @@ reproduit : deux flèches pressées dans le même instant ne créent pas de pas 
 
 ### Un objet sur le chemin (ajout, pas dans le firmware)
 
-Pendant un pas **en avant**, le robot lit ses **cinq capteurs de proximité avant** (`PROXIMITY(0..4)`, à chaque
-tick de 20 ms, et une fois avant de partir). Si l'un d'eux dépasse **2000** (`OBSTACLE` dans `src/py/sequence_mode.py`),
-il y a un objet sur le chemin. Alors, dans cet ordre :
+**Désactivée au départ** : sans réglage, le robot ne cherche aucun obstacle (comme le firmware). Réglages → **« Détection d'obstacle »**
+(Oui / Non, Non au départ) et **« Seuil de détection »** (3000 au départ, de 100 à 4500 ; grisé tant que la détection est éteinte).
+Activée, pendant un pas **en avant**, le robot lit **le capteur de proximité avant du milieu seul** (`PROXIMITY(2)`, à chaque tick de
+20 ms, et une fois avant de partir) : les quatre autres regardent de côté, vers ce qui n'est pas sur le chemin (un mur de la pièce, un pied de
+table), et la première version, qui les lisait tous les cinq avec un seuil de 2000, voyait trop loin, jusque dans la case d'après. Si ce capteur
+dépasse le seuil, il y a un objet sur le chemin ; plus le seuil est haut, plus l'objet doit être proche. Alors, dans cet ordre :
 
 1. le robot **s'arrête** (le pas est interrompu) ; la **lumière du corps passe au rouge** et il joue un **son** (`SND_BLOCKED = 5`) ;
 2. après la pause habituelle de 0,5 s, il **recule jusqu'à la case d'où le pas était parti** : la même part du chemin que celle
@@ -89,8 +92,12 @@ de la tablette, l'avatar a le corps rouge et **recule** lui aussi (en temps de p
 s'arrête sans la fête de fin ; le robot virtuel n'a pas d'obstacles (rien ne se passe avec lui). Le robot de démonstration
 (`?fakerobot`) offre `window.fakeRobot.block(pourcent, millisecondes)` pour voir cette réaction de la page.
 
-**Essayé sur un vrai robot : le comportement convient.** Réglages, au besoin, dans `src/py/sequence_mode.py` : le seuil `OBSTACLE` (la distance
-d'arrêt dépend de l'objet et de la lumière ; les valeurs vont à peu près de 0 à 4500), le numéro du son `SND_BLOCKED` (5 est celui que le
+**Le comportement (arrêt, rouge, son, retour, abandon) a été essayé sur un vrai robot et convient** ; le réglage actuel (capteur du milieu,
+seuil 3000, désactivé au départ) n'a pas encore été essayé. L'interrupteur et le seuil sont gardés sur la tablette (`cards.obstacle`,
+`cards.obstaclelimit`) et **voyagent dans le code QR de la page** (champ `o=interrupteur,seuil`, par exemple `o=1,2500`) : une tablette qui scanne le code
+d'une autre prend les deux, le seuil aussi quand la détection est éteinte, et le mode se relance chez elle si un robot est connecté. Ils arrivent au robot au démarrage du mode : dernier argument de `run(programme, go, phase, seuil)`
+(seulement quand la détection est allumée), ou `OBSTACLE = …` dans l'en-tête du script entier. **Les changer relance le mode**, car, contrairement aux
+cartes, ils ne peuvent pas être écrits dans le mode qui tourne. Dans `src/py/sequence_mode.py` : le numéro du son `SND_BLOCKED` (5 est celui que le
 firmware joue pour « dernier pas effacé »), la durée du rouge `BLOCKED_HOLD_MS`. Le retour est proportionnel au temps, pas mesuré en distance.
 Ce code ajoute environ 2 Ko au module envoyé au robot (≈ 22 Ko), le budget de taille des tests est passé de 21 à 23 Ko.
 
@@ -359,14 +366,14 @@ ni en haut ni sous le code, où seules la date et l'heure restent. Sur « Non »
 
 Ce que contient le code : les **cartes du programme**, le **drapeau d'arrivée**, les **couleurs du sol** peint,
 le **mode** (normal, avancé, personnalisé) et les cartes données en personnalisé, la **langue**, le **son**, la
-**vitesse** du robot virtuel, le chemin affiché (D), le réglage **« Afficher le nom »** (pas le nom), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
+**vitesse** du robot virtuel, le chemin affiché (D), le réglage **« Afficher le nom »** (pas le nom), la **détection d'obstacle** (l'interrupteur et le seuil), et **l'image sous le tapis** : « Carte Thymio » ou tapis uni
 partent tels quels avec les carrés couverts et la case de départ ; une image choisie par l'adulte ne peut pas
 voyager dans un code, seuls ses carrés et la case de départ sont appliqués, et seulement sur une page qui a elle-même une image
 (sinon son tapis reste). La connexion au robot n'en fait pas partie.
 
 Le texte du code est court (une quarantaine de caractères pour un programme simple, un code de 45 modules, facile à scanner à
 travers une salle) :
-`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
+`T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3000;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2`
 (format `T3C1`, des champs `lettre=valeur` dans n'importe quel ordre ; un champ absent laisse la page comme elle est, un champ
 invalide est écarté). Ce qui vient d'un code est lu comme une donnée, strictement (jamais exécuté) : un programme est
 nettoyé carte par carte, les nombres sont des entiers à moins de 99 cases du départ. Un sol peint partout (plus d'environ 400 cases)

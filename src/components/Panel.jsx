@@ -8,18 +8,19 @@ import { THYMIO_MAP } from '../worldmap.js';
 import { APP_URL } from '../share.js';
 import { NAME_MAX } from '../names.js';
 import { buildRobotScript } from '../script.js';
+import { OBSTACLE_MIN, OBSTACLE_MAX } from '../obstacle.js';
 import { ArrowIcon } from '../icons.jsx';
 
 const SPEEDS = [1, 2, 4];
 
-// A number of squares: it can be emptied while typing, and goes back to the real value when left.
-function SizeField({ value, label, onCommit }) {
+// A number (of squares, or a limit): it can be emptied while typing, only a value in its range is taken, and it goes back to the real value when left.
+function SizeField({ value, label, onCommit, min = 1, max = Infinity, disabled = false }) {
   const [text, setText] = useState(String(value));
   useEffect(() => { setText(String(value)); }, [value]);
   return (
     <input
-      type="text" inputMode="numeric" pattern="[0-9]*" aria-label={label} value={text}
-      onChange={(e) => { setText(e.target.value); const n = parseInt(e.target.value, 10); if (n >= 1) onCommit(n); }}
+      type="text" inputMode="numeric" pattern="[0-9]*" aria-label={label} value={text} disabled={disabled}
+      onChange={(e) => { setText(e.target.value); const n = parseInt(e.target.value, 10); if (n >= min && n <= max) onCommit(n); }}
       onBlur={() => setText(String(value))}
     />
   );
@@ -31,7 +32,7 @@ export default function Panel({
   t, lang, onLang, sound, onSound, speed, onSpeed, live, bluetooth, conn, cal, program, lastError,
   showPath, onTogglePath, canReset, onResetRobot, mode = 'normal', onMode, kinds = NORMAL_KINDS, custom = NORMAL_KINDS, onToggleCard,
   picture, mapImage, mapKind, onMapThymio, canPlace, onMapFile, onMapSize, onMapRatio, onMapPlace, onMapRecentre, onMapRemove,
-  name = '', onName, onNewName, showName = false, onShowName, log, onClearLog, onTest, testing, canTest, onShowLink, onShowManual, onExample, onConnect, onDisconnect, onClose,
+  name = '', onName, onNewName, showName = false, onShowName, obstacle = false, onObstacle, obstacleLimit = 3000, onObstacleLimit, log, onClearLog, onTest, testing, canTest, onShowLink, onShowManual, onExample, onConnect, onDisconnect, onClose,
 }) {
   const [showScript, setShowScript] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -55,7 +56,7 @@ export default function Panel({
   const copyLog = async () => {
     try { await navigator.clipboard.writeText(logText); setLogCopied(true); setTimeout(() => setLogCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
-  const script = showScript ? buildRobotScript(program, { autoplay: true, minified: false }) : '';
+  const script = showScript ? buildRobotScript(program, { autoplay: true, minified: false, limit: obstacle ? obstacleLimit : 0 }) : '';
 
   useEffect(() => {
     const esc = (e) => { if (e.key === 'Escape') onClose(); };
@@ -180,6 +181,20 @@ export default function Panel({
               </div>
             </div>
           )}
+          <div className="row">
+            <label>{t.obstacle.row}</label>
+            <div className="seg-ctl">
+              <button className={obstacle ? 'on' : ''} aria-pressed={obstacle} onClick={() => onObstacle(true)}>{t.panel.on}</button>
+              <button className={!obstacle ? 'on' : ''} aria-pressed={!obstacle} onClick={() => onObstacle(false)}>{t.panel.off}</button>
+            </div>
+          </div>
+          <div className="row">
+            <label>{t.obstacle.limit}</label>
+            <div className="size">
+              <SizeField value={obstacleLimit} label={t.obstacle.limit} min={OBSTACLE_MIN} max={OBSTACLE_MAX} disabled={!obstacle} onCommit={onObstacleLimit} />
+            </div>
+          </div>
+          <p className="hint">{t.obstacle.hint}</p>
           <div className="row">
             <label>{t.map.title}</label>
             <div className="quick">

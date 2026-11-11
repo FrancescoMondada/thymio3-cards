@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import { cleanProgram, MAX_STEPS } from '../src/spec.js';
 import { layout, bounds } from '../src/program.js';
-import { buildScriptFrom, buildModuleFrom, launcherFor, lightsFor, moduleNameFor, hash32, pulsePhase, minify, parseRobotLine, LineAssembler } from '../src/script-core.js';
+import { buildScriptFrom, buildModuleFrom, cleanLimit, launcherFor, lightsFor, moduleNameFor, hash32, pulsePhase, minify, parseRobotLine, LineAssembler } from '../src/script-core.js';
 import { VirtualThymio } from '../src/sim/physics.js';
 import { SimSequence } from '../src/sim/mode.js';
 
@@ -65,6 +65,9 @@ test('the robot script carries the program and stays small', () => {
   const idle = buildScriptFrom(SOURCE, 'zz', { autoplay: false, minified: false });
   assert.match(idle, /^PROGRAM = ""$/m);
   assert.match(idle, /^AUTOPLAY = 0$/m);
+  assert.match(idle, /^OBSTACLE = 0 /m, 'no detection by default');
+  assert.match(buildScriptFrom(SOURCE, 'F', { autoplay: true, minified: false, limit: 3000 }), /^OBSTACLE = 3000 /m, 'the limit is written in the header of the whole script');
+  assert.match(buildScriptFrom(SOURCE, 'F', { limit: -4 }), /^OBSTACLE = 0$/m, 'minified: the comment goes');
   const small = buildScriptFrom(SOURCE, 'FFLR');
   assert.ok(small.length < SOURCE.length * 0.7, `minified ${small.length} of ${SOURCE.length}`);
   assert.ok(small.length < 23000, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it, the obstacle stop about 2 KB)');
@@ -140,7 +143,8 @@ test('the simulator mirrors the events of the script', () => {
 test('the module: no call at the end, a name from its content, a two-line launcher', () => {
   const mod = buildModuleFrom(SOURCE);
   assert.ok(!/^run\(\)/m.test(mod), 'importing it runs nothing');
-  assert.match(mod, /^def run\(program=None, autoplay=None, phase=0\):$/m);
+  assert.match(mod, /^def run\(program=None, autoplay=None, phase=0, limit=None\):$/m);
+  assert.match(mod, /^OBSTACLE = 0$/m, 'an object in the way is not looked for unless the start says so');
   const name = moduleNameFor(mod);
   assert.match(name, /^cards_[0-9a-f]{8}$/);
   assert.ok(`${name}.py`.length <= 29, 'a robot file name is at most 30 bytes with its NUL');
@@ -150,6 +154,12 @@ test('the module: no call at the end, a name from its content, a two-line launch
   assert.equal(launcher, `import ${name}\n${name}.run("FFLR", 1)\n`);
   assert.equal(launcherFor(name, 'F', { autoplay: false }), `import ${name}\n${name}.run("F", 0)\n`);
   assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123 }), `import ${name}\n${name}.run("F", 0, 123)\n`, 'with where the lights are');
+  // the limit of the proximity sensor is in the launcher only when objects in the way are looked for, after the phase of the lights
+  assert.equal(launcherFor(name, 'F', { autoplay: true, limit: 0 }), `import ${name}\n${name}.run("F", 1)\n`, 'none: the launcher is the one it was');
+  assert.equal(launcherFor(name, 'F', { autoplay: true, limit: 3000 }), `import ${name}\n${name}.run("F", 1, 0, 3000)\n`);
+  assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123, limit: 3000 }), `import ${name}\n${name}.run("F", 0, 123, 3000)\n`);
+  for (const bad of [-5, 1.5, 'x', NaN, null, undefined]) assert.equal(launcherFor(name, 'F', { autoplay: true, limit: bad }), `import ${name}\n${name}.run("F", 1)\n`, `a limit that is not a whole number above 0 is no limit (${bad})`);
+  assert.equal(cleanLimit(99999), 9999);
   assert.ok(launcher.length < 80, 'two lines instead of the whole mode');
   assert.ok(mod.length < 23000);
 });

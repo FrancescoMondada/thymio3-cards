@@ -12,9 +12,10 @@
 #           which the cards web interface sets when the child presses GO.
 #   ERASE   robot on its side = erase the last step, robot upside down = erase
 #           everything (or Stop on the remote).
-#   BLOCKED (new) an object in front of a forward step: the robot stops, lights red and plays
-#           a sound, goes back to the square where the step began, and gives up the rest of
-#           the sequence (the firmware's own obstacle detection is commented out).
+#   BLOCKED (new, off unless asked for) an object in front of a forward step, seen by the middle
+#           sensor at the front above a limit: the robot stops, lights red and plays a sound, goes
+#           back to the square where the step began, and gives up the rest of the sequence (the
+#           firmware's own obstacle detection is commented out).
 #
 # Movements are driven here, like the firmware does:
 #   - turns: the firmware angle controller, started with rotate_deg_absolute()
@@ -28,13 +29,14 @@
 # The web interface and the robot hold the same program: the robot reports its buffer on stdout as
 # "@@prog ..." lines (and every other event as "@@word ..."), and the interface starts this mode
 # again, through run(program, autoplay), whenever its own cards change. The mode is installed once
-# on the robot as a module and started by a two-line script, or sent whole with PROGRAM / AUTOPLAY
-# written below and a final run().
+# on the robot as a module and started by a two-line script, or sent whole with PROGRAM / AUTOPLAY /
+# OBSTACLE written below and a final run().
 import thymio
 import time
 
 PROGRAM = ""
 AUTOPLAY = 0
+OBSTACLE = 0            # the middle front sensor above this: an object is in the way of a forward step; 0: not looked for
 
 # ---- constants of the firmware ---------------------------------------------
 BUFFER_SIZE = 50        # SEQUENCE_BUFFER_SIZE
@@ -44,7 +46,6 @@ MAX_ROT_SPEED = 500     # MAX_ROTATION_SPEED
 STOP_MOVE_MS = 500      # pause after a straight segment (behavior.c STOP_DURATION_US)
 STOP_ROT_MS = 700       # pause after a rotation (sequence.c STOP_DURATION_us)
 PROX_THRESHOLD = 1500
-OBSTACLE = 2000         # a front proximity sensor above this: an object is in the way of a forward step (not in the firmware)
 BLOCKED_HOLD_MS = 1000  # the red light stays on this long after the robot is back on its square and at rest
 BLOCKED_MIN_TICKS = 100000   # less than 20 ms of a step done: it is not worth going back
 SND_BLOCKED = 5         # onboard sound of the blocked step (the firmware plays it when the last step is erased); to listen to on a robot
@@ -118,7 +119,7 @@ lego_f = [thymio.LEDS_LEGO_FRONT(i) for i in range(8)]
 lego_b = [thymio.LEDS_LEGO_BACK(i) for i in range(8)]
 prox_bl = thymio.PROXIMITY(5)
 prox_br = thymio.PROXIMITY(6)
-prox_front = [thymio.PROXIMITY(i) for i in range(5)]    # the five at the front, left to right
+prox_centre = thymio.PROXIMITY(2)       # the one in the middle at the front (the others look sideways, at what is not on the way)
 ground = None           # the colour sensor, made when an "if" first needs it (a firmware without one still runs the other cards)
 
 
@@ -343,7 +344,7 @@ def ground_color(h, s, v):
 
 
 class Sequence:
-    def __init__(self, program, phase=0):
+    def __init__(self, program, phase=0, limit=0):
         self.seq = []
         for ch in program:
             if ch in TOKENS and len(self.seq) < BUFFER_SIZE:
@@ -398,6 +399,7 @@ class Sequence:
         self.blink = 0
         self.prox_state = 0
         self.prox_count = 0
+        self.limit = limit              # an object is in the way above this reading of the middle front sensor; 0: never looked for
         self.alert = False              # the red light of a blocked step
         self.back = 0                   # what a blocked step goes back: the ticks of a backward timer
         self.blocked_phase = 0
@@ -753,11 +755,8 @@ class Sequence:
 
     # ---- an object in the way ------------------------------------------------------------------
     def obstacle(self):
-        # any of the five sensors at the front sees something close
-        for p in prox_front:
-            if p.value() > OBSTACLE:
-                return True
-        return False
+        # the sensor in the middle at the front sees something close (nothing is read when it is not asked for)
+        return self.limit > 0 and prox_centre.value() > self.limit
 
     def blocked_start(self, done):
         # `done`: how much of the step was made, in ticks of its timer (0: the object was there before it began).
@@ -1015,17 +1014,20 @@ def cleanup():
         say("bye")
 
 
-def run(program=None, autoplay=None, phase=0):
-    # program: the steps the robot holds ("FFLR"), autoplay: replay at once (1) or wait (0), phase: see Sequence
+def run(program=None, autoplay=None, phase=0, limit=None):
+    # program: the steps the robot holds ("FFLR"), autoplay: replay at once (1) or wait (0), phase: see Sequence,
+    # limit: what the middle front sensor must read for an object to be in the way (0: not looked for)
     if program is None:
         program = PROGRAM
     if autoplay is None:
         autoplay = AUTOPLAY
+    if limit is None:
+        limit = OBSTACLE
     beh.disable_behaviors()
     beh.enable_leds_proximity()
     beh.enable_led_receiver()
     try:
-        seq = Sequence(program, phase)
+        seq = Sequence(program, phase, limit)
         seq.tick()                  # the lights first: the robot has been dark since the last script ended
         say("hello", 1)
         say("cal", seq.dur_fw, seq.dur_bw, seq.rot90)

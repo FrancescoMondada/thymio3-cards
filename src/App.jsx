@@ -13,6 +13,7 @@ import { cleanName, formatWhen, randomName } from './names.js';
 import QrShow from './components/QrShow.jsx';
 import QrScan from './components/QrScan.jsx';
 import Manual from './components/Manual.jsx';
+import { OBSTACLE_DEFAULT, cleanObstacleLimit } from './obstacle.js';
 import { SimBackend } from './sim/sim-backend.js';
 import { RobotBackend } from './robot/robot-backend.js';
 import { RobotSync } from './robot/sync.js';
@@ -42,6 +43,8 @@ export default function App() {
   const t = I18N[lang] || I18N.fr;
   const [sound, setSound] = useState(() => load('cards.sound', '1') === '1');
   const [name, setName] = useState(() => { const kept = load('cards.name', null); return kept === null ? randomName(lang) : cleanName(kept); });   // beside the QR code of the page, drawn at random the first time
+  const [obstacle, setObstacle] = useState(() => load('cards.obstacle', '0') === '1');                 // objects in the way of a forward step are looked for (the real robot): off unless asked
+  const [obstacleLimit, setObstacleLimit] = useState(() => cleanObstacleLimit(load('cards.obstaclelimit', OBSTACLE_DEFAULT)));   // what the middle front sensor must read
   const [showName, setShowName] = useState(() => load('cards.showname', '0') === '1');   // one flag for the two places, the top bar and the caption of the QR code; hidden until the adult asks
   const [speed, setSpeed] = useState(1);
   // The cards the children have at hand: normal (the four steps), advanced (all) or custom (the cards the adult picked).
@@ -121,6 +124,8 @@ export default function App() {
   useEffect(() => { setSoundEnabled(sound); save('cards.sound', sound ? '1' : '0'); }, [sound]);
   useEffect(() => { save('cards.name', name); }, [name]);
   useEffect(() => { save('cards.showname', showName ? '1' : '0'); }, [showName]);
+  useEffect(() => { save('cards.obstacle', obstacle ? '1' : '0'); save('cards.obstaclelimit', String(obstacleLimit)); }, [obstacle, obstacleLimit]);
+  const limit = obstacle ? obstacleLimit : 0;                 // what the robot is given: 0 for "not looked for"
   useEffect(() => { save('cards.mode', mode); }, [mode]);
   useEffect(() => { save('cards.custom', JSON.stringify(picked)); }, [picked]);
   useEffect(() => { if (!ground) setBrush(null); }, [ground]);
@@ -296,8 +301,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    sync.current?.update({ program, live, busy: phase !== 'idle' });
-  }, [program, live, phase]);
+    sync.current?.update({ program, live, busy: phase !== 'idle', limit });
+  }, [program, live, phase, limit]);
 
   // A safety net: while a robot is connected the decision is made again every second, so that a start
   // that was missed for any reason is made up for (it is idempotent, and writes to the journal only
@@ -439,7 +444,7 @@ export default function App() {
   const removeMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('none'); }, [forgetCustom]);                       // a plain mat
   const thymioMap = useCallback(() => { mapRequest.current++; forgetCustom(); setMapKind('builtin'); setMap(THYMIO_MAP); }, [forgetCustom]);   // the map of the Thymio town
   // ---- the QR code of the page: what it shows, and what a scanned one sets up (share.js) -----------
-  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, showName, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
+  const showQr = () => setQr({ show: encodeConfig({ lang, sound, speed, mode, picked, showPath, showName, obstacle, obstacleLimit, program, target, floor, mapKind, map }), caption: { name: showName ? name.trim() : '', when: formatWhen(new Date(), lang) } });
   const showManual = useCallback(() => { setPanel(false); setManual(true); }, []);       // from the settings: the manual, for the class
   const showLink = useCallback((kind) => { if (APP_LINKS[kind]) { setPanel(false); setQr({ show: APP_LINKS[kind], link: kind }); } }, []);   // from the settings: the link to the demo, for the tablets of the class
   const scanQr = useCallback(() => { if (S.current.phase === 'idle') { setPlacing(false); setPanel(false); setQr({ scan: true }); } }, []);
@@ -453,6 +458,8 @@ export default function App() {
     if (cfg.picked) setPicked(cfg.picked);
     if (cfg.showPath !== undefined) setShowPath(cfg.showPath);
     if (cfg.showName !== undefined) setShowName(cfg.showName);
+    if (cfg.obstacle !== undefined) setObstacle(cfg.obstacle);
+    if (cfg.obstacleLimit !== undefined) setObstacleLimit(cfg.obstacleLimit);
     if (cfg.program !== undefined) setCards(toCards(cfg.program));
     if (cfg.target !== undefined) setTarget(cfg.target);
     if (cfg.floor) setFloor(cfg.floor);
@@ -688,7 +695,7 @@ export default function App() {
           showPath={showPath} onTogglePath={togglePath} canReset={phase === 'idle'} onResetRobot={resetRobot} mode={mode} onMode={setMode} kinds={kinds} custom={picked} onToggleCard={(k) => setPicked((c) => toggleKind(c, k))}
           picture={mapPicture} mapImage={mapImage} mapKind={mapKind} onMapThymio={thymioMap} canPlace={phase === 'idle' && !live} onMapFile={pickMapFile} onMapSize={sizeMap} onMapRatio={keepProportions}
           onMapPlace={startPlacing} onMapRecentre={recentreRobot} onMapRemove={removeMap}
-          name={name} onName={(v) => setName(cleanName(v))} showName={showName} onShowName={setShowName} onNewName={() => setName(randomName(lang))} onShowLink={showLink} onShowManual={showManual} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
+          name={name} onName={(v) => setName(cleanName(v))} showName={showName} onShowName={setShowName} onNewName={() => setName(randomName(lang))} obstacle={obstacle} onObstacle={setObstacle} obstacleLimit={obstacleLimit} onObstacleLimit={setObstacleLimit} onShowLink={showLink} onShowManual={showManual} onExample={loadExample} onConnect={() => { setPanel(false); connect(); }} onDisconnect={disconnect} onClose={() => setPanel(false)}
         />
       )}
     </div>

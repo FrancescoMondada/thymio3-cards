@@ -16,9 +16,10 @@ function setup(opts = {}) {
   const states = [];
   const logs = [];
   const gate = { resolve: null };
+  const options = [];                  // what each start was given besides the program: { limit }
   const backend = {
-    idle: (p) => { calls.push(`idle ${p}`); return opts.manual ? new Promise((resolve, reject) => { gate.resolve = resolve; gate.reject = reject; }) : (opts.failIdle ? Promise.reject(new Error('boom')) : Promise.resolve()); },
-    play: (p) => { calls.push(`play ${p}`); return Promise.resolve(); },
+    idle: (p, o) => { options.push(o); calls.push(`idle ${p}`); return opts.manual ? new Promise((resolve, reject) => { gate.resolve = resolve; gate.reject = reject; }) : (opts.failIdle ? Promise.reject(new Error('boom')) : Promise.resolve()); },
+    play: (p, o) => { options.push(o); calls.push(`play ${p}`); return Promise.resolve(); },
     ...(opts.live ? { live: (p) => { calls.push(`live ${p}`); return opts.live === 'ok' ? Promise.resolve(120) : Promise.reject(new Error('live update: not acknowledged')); } } : {}),
   };
   const sync = new RobotSync({
@@ -38,7 +39,7 @@ function setup(opts = {}) {
     for (let i = 0; i < 5; i++) await Promise.resolve();
   };
   const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
-  return { sync, calls, adopted, errors, states, logs, advance, settle, gate, timers };
+  return { sync, calls, options, adopted, errors, states, logs, advance, settle, gate, timers };
 }
 
 // what the robot says when the mode is started again
@@ -193,6 +194,75 @@ test('a run replaces what was on its way; afterwards the robot holds the run\'s 
   sync.update({ program: 'FF', live: true, busy: false });              // played
   await advance(5000); await settle();
   assert.deepEqual(calls, ['play FF'], 'the robot already holds it');
+});
+
+// ---- the limit of the proximity sensor (0: an object in the way is not looked for) ---------------------------------
+test('a limit goes with the start; none is the default, and a limit that changes is a restart, not a live update', async () => {
+  const { sync, calls, options, advance, settle } = setup({ live: 'ok' });
+  sync.update({ program: 'FL', live: true, busy: false });              // no limit: the default
+  await advance(0); await settle();
+  robotRestarts(sync, 'FL');
+  assert.deepEqual(options, [{ limit: 0 }], 'the robot is told: nothing is looked for');
+  sync.update({ program: 'FL', live: true, busy: false, limit: 3000 }); // the same cards, objects in the way now looked for
+  await advance(449); await settle();
+  assert.equal(calls.length, 1, 'not before the pause');
+  await advance(2); await settle();
+  assert.deepEqual(calls, ['idle FL', 'idle FL'], 'the mode is started again, with the cards it has: a limit cannot be written into it');
+  assert.deepEqual(options.at(-1), { limit: 3000 });
+  robotRestarts(sync, 'FL');
+  await advance(5000); await settle();
+  assert.equal(calls.length, 2, 'and once it holds both, nothing more is done');
+  // the cards change: written into the running mode, without a restart, the limit being the same
+  sync.update({ program: 'FLF', live: true, busy: false, limit: 3000 });
+  await advance(451); await settle();
+  assert.deepEqual(calls.at(-1), 'live FLF');
+  // the limit is changed back: a restart again
+  sync.update({ program: 'FLF', live: true, busy: false, limit: 0 });
+  await advance(451); await settle();
+  assert.deepEqual(calls.slice(-1), ['idle FLF']);
+  assert.deepEqual(options.at(-1), { limit: 0 });
+});
+
+test('a limit that changes while the robot plays waits for the end of the run', async () => {
+  const { sync, calls, advance, settle } = setup();
+  sync.update({ program: 'F', live: true, busy: false });
+  await advance(0); await settle();
+  robotRestarts(sync, 'F');
+  calls.length = 0;
+  sync.update({ program: 'F', live: true, busy: true, limit: 2500 });   // playing
+  await advance(5000); await settle();
+  assert.deepEqual(calls, [], 'not while it plays');
+  sync.update({ program: 'F', live: true, busy: false, limit: 2500 });  // played
+  await advance(451); await settle();
+  assert.deepEqual(calls, ['idle F']);
+});
+
+test('GO carries the limit, and the robot then holds it', async () => {
+  const { sync, calls, options, advance, settle } = setup();
+  sync.update({ program: 'F', live: true, busy: false, limit: 3000 });
+  await advance(0); await settle();
+  robotRestarts(sync, 'F');
+  calls.length = 0; options.length = 0;
+  await sync.play('F');
+  assert.deepEqual(options, [{ limit: 3000 }]);
+  sync.update({ program: 'F', live: true, busy: true, limit: 3000 });
+  robotRestarts(sync, 'F');
+  sync.update({ program: 'F', live: true, busy: false, limit: 3000 });
+  await advance(5000); await settle();
+  assert.deepEqual(calls, ['play F'], 'it holds the cards and the limit: no start of the mode by itself');
+});
+
+test('a robot that was disconnected is told the limit again', async () => {
+  const { sync, calls, options, advance, settle } = setup();
+  sync.update({ program: 'F', live: true, busy: false, limit: 3000 });
+  await advance(0); await settle();
+  robotRestarts(sync, 'F');
+  sync.onEvent({ type: 'conn', status: 'disconnected' });
+  sync.update({ program: 'F', live: false, busy: false, limit: 3000 });
+  sync.update({ program: 'F', live: true, busy: false, limit: 3000 });
+  await advance(0); await settle();
+  assert.deepEqual(calls, ['idle F', 'idle F']);
+  assert.deepEqual(options, [{ limit: 3000 }, { limit: 3000 }]);
 });
 
 test('disconnecting forgets everything; connecting again starts the mode at once', async () => {

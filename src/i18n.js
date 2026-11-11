@@ -9,6 +9,7 @@ export const LANGS = [
 
 const fr = {
   title: 'Thymio · Cartes',
+  obstacle: { row: 'Détection d’obstacle', limit: 'Seuil de détection', hint: 'Robot réel seulement. Activée, le robot s’arrête devant un objet (le capteur avant du milieu dépasse le seuil), devient rouge, fait un son, recule jusqu’à sa case et abandonne la séquence. Plus le seuil est haut, plus l’objet doit être proche (de 0 à 4500 environ). Désactivée au départ.' },
   manual: {
     row: 'Manuel du robot', button: 'Afficher en grand', hint: 'Un écran illustré : les touches du robot, la télécommande, comment lancer et effacer.',
     title: 'Le robot tout seul', close: 'Fermer', or: 'ou',
@@ -60,6 +61,7 @@ const fr = {
 
 const en = {
   title: 'Thymio · Cards',
+  obstacle: { row: 'Obstacle detection', limit: 'Detection threshold', hint: 'Real robot only. When on, the robot stops in front of an object (the middle front sensor goes above the threshold), turns red, makes a sound, goes back to its square and gives up the sequence. The higher the threshold, the closer the object must be (about 0 to 4500). Off by default.' },
   manual: {
     row: 'Robot manual', button: 'Show full screen', hint: 'An illustrated screen: the robot’s buttons, the remote control, how to start and erase.',
     title: 'The robot on its own', close: 'Close', or: 'or',
@@ -111,6 +113,7 @@ const en = {
 
 const de = {
   title: 'Thymio · Karten',
+  obstacle: { row: 'Hinderniserkennung', limit: 'Erkennungsschwelle', hint: 'Nur echter Roboter. Eingeschaltet hält der Roboter vor einem Gegenstand an (der mittlere vordere Sensor überschreitet die Schwelle), wird rot, macht einen Ton, fährt auf sein Feld zurück und gibt die Sequenz auf. Je höher die Schwelle, desto näher muss der Gegenstand sein (etwa 0 bis 4500). Standardmäßig aus.' },
   manual: {
     row: 'Roboter-Handbuch', button: 'Groß anzeigen', hint: 'Ein bebilderter Bildschirm: die Tasten des Roboters, die Fernbedienung, Starten und Löschen.',
     title: 'Der Roboter allein', close: 'Schließen', or: 'oder',
@@ -162,6 +165,7 @@ const de = {
 
 const it = {
   title: 'Thymio · Carte',
+  obstacle: { row: 'Rilevamento ostacoli', limit: 'Soglia di rilevamento', hint: 'Solo robot reale. Se attivo, il robot si ferma davanti a un oggetto (il sensore centrale anteriore supera la soglia), diventa rosso, emette un suono, torna al suo quadrato e abbandona la sequenza. Più alta è la soglia, più vicino deve essere l’oggetto (circa da 0 a 4500). Disattivato di default.' },
   manual: {
     row: 'Manuale del robot', button: 'Mostra a schermo intero', hint: 'Una schermata illustrata: i tasti del robot, il telecomando, come avviare e cancellare.',
     title: 'Il robot da solo', close: 'Chiudi', or: 'o',

@@ -16,13 +16,17 @@ export function minify(src) {
   return out.join('\n') + '\n';
 }
 
+// What a limit of the proximity sensor is, for the robot: a whole number, 0 for "an object in the way is not looked for"
+export const cleanLimit = (limit) => (Number.isInteger(limit) && limit > 0 ? Math.min(limit, 9999) : 0);
+
 // A script that holds everything: the program is written in its header and run() is called at the
 // end. Used when the module is not on the robot, and for the download of the settings page.
-export function buildScriptFrom(source, program, { autoplay = true, minified = true } = {}) {
+export function buildScriptFrom(source, program, { autoplay = true, minified = true, limit = 0 } = {}) {
   const prog = cleanProgram(program);
   const src = source
     .replace(/^PROGRAM = ".*"$/m, `PROGRAM = "${prog}"`)
-    .replace(/^AUTOPLAY = \d$/m, `AUTOPLAY = ${autoplay ? 1 : 0}`) + '\nrun()\n';
+    .replace(/^AUTOPLAY = \d$/m, `AUTOPLAY = ${autoplay ? 1 : 0}`)
+    .replace(/^OBSTACLE = \d+/m, `OBSTACLE = ${cleanLimit(limit)}`) + '\nrun()\n';
   return minified ? minify(src) : src;
 }
 
@@ -56,10 +60,12 @@ export function lightsFor(lightsText, program, phase = 0) {
 // run it. A start that only waits for the cards (not a run) begins with the lights of the mode's first
 // tick: importing the mode takes the robot a good while (it is compiled), during which the lights would
 // stay out, since the firmware puts them out when the previous script ends.
-export function launcherFor(name, program, { autoplay = true, phase = 0, lights = '' } = {}) {
+export function launcherFor(name, program, { autoplay = true, phase = 0, lights = '', limit = 0 } = {}) {
   // (a full buffer of 50 steps shows the overflow animation instead: no lights for that one)
   const lit = !autoplay && lights && cleanProgram(program).length < 50 ? lightsFor(lights, program, phase) : '';
-  return `${lit}import ${name}\n${name}.run("${cleanProgram(program)}", ${autoplay ? 1 : 0}${phase ? `, ${phase}` : ''})\n`;
+  const max = cleanLimit(limit);
+  // the limit of the proximity sensor comes last, so that it is only there when an object in the way is looked for
+  return `${lit}import ${name}\n${name}.run("${cleanProgram(program)}", ${autoplay ? 1 : 0}${phase || max ? `, ${phase}` : ''}${max ? `, ${max}` : ''})\n`;
 }
 
 // Where the pulse of the lights should be, so that a restart does not begin it again: a tick count of a

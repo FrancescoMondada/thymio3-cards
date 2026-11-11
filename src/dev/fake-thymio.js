@@ -103,7 +103,7 @@ const loop = (r) => setInterval(() => {
 }, 20 / flags.slow);
 
 function execute(script) {
-  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
+  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
   const whole = /^PROGRAM = "([FBLR()2-9rygcbpwkEYGCUPWK]*)"/m.exec(script);
   if (launcher) {
     if (![...files.keys()].includes(`${launcher[1]}.py`)) {

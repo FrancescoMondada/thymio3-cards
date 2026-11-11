@@ -4,7 +4,7 @@ import SOURCE from './py/sequence_mode.py?raw';
 import LIGHTS from './py/lights.py?raw';
 import { buildScriptFrom, buildModuleFrom, moduleNameFor } from './script-core.js';
 
-export { minify, LineAssembler, parseRobotLine, launcherFor, lightsFor, pulsePhase, liveFrames, liveActuator, ringAt, LiveReceiver, liveNibbles, MODULE_PREFIX } from './script-core.js';
+export { minify, cleanLimit, LineAssembler, parseRobotLine, launcherFor, lightsFor, pulsePhase, liveFrames, liveActuator, ringAt, LiveReceiver, liveNibbles, MODULE_PREFIX } from './script-core.js';
 
 // The lights the launcher draws before the mode is imported (see launcherFor).
 export const LIGHTS_TEXT = LIGHTS;

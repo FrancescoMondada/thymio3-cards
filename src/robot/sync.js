@@ -5,8 +5,10 @@
 // anything, so the robot is given the cards' program by starting its mode again with it, a moment
 // after the last change. This class decides when; the backend does it (backend.idle / backend.play).
 //
-// Inputs: update({ program, live, busy }) whenever the cards, the connection or the busy flag
-// (a run is being sent or played) change; onEvent(e) for what the robot says; play(program).
+// Inputs: update({ program, live, busy, limit }) whenever the cards, the connection, the busy flag
+// (a run is being sent or played) or the limit of the proximity sensor (0: an object in the way is not looked for)
+// change; onEvent(e) for what the robot says; play(program). A limit, unlike the cards, cannot be written into the
+// running mode: a different one is the mode started again.
 // Outputs: onState({ syncing, modeUp, failed }), onAdopt(program) when the robot changed its own program,
 // onError(err) when it could not be given the cards.
 const SHORT_LIFE_MS = 3000;     // a mode that stops by itself within this time of its hello did not really start
@@ -26,6 +28,8 @@ export class RobotSync {
     this.log = (text) => { if (text !== this.lastLog) { this.lastLog = text; onLog?.('info', `sync: ${text}`); } };
     this.lastLog = '';
     this.program = '';
+    this.limit = 0;           // the limit of the proximity sensor the robot should have
+    this.knownLimit = null;   // the one the running mode was started with; null: not known yet
     this.live = false;
     this.busy = false;
     this.known = null;        // the program the robot holds; null: not known yet
@@ -73,8 +77,9 @@ export class RobotSync {
     this.timerFor = null;
   }
 
-  update({ program, live, busy }) {
+  update({ program, live, busy, limit = 0 }) {
     this.program = program;
+    this.limit = limit;
     this.live = live;
     this.busy = busy;
     this.evaluate();
@@ -82,15 +87,16 @@ export class RobotSync {
 
   // Is the robot to be given the cards, and when? (what is decided goes to the journal, once)
   evaluate() {
-    const shown = this.program || '(no cards)';
+    const shown = (this.program || '(no cards)') + (this.limit ? ` (objects in the way above ${this.limit})` : '');
+    const want = `${this.program}|${this.limit}`;
     if (!this.live) { this.cancelTimer(); return; }
     if (this.busy) { this.cancelTimer(); this.log('waiting: a run is being sent or played'); return; }
     if (this.syncing) { this.cancelTimer(); this.log(`waiting: the robot is being given the cards, then ${shown} if they changed`); return; }
-    if (this.modeUp && this.program === this.known) { this.cancelTimer(); this.log(`the robot holds the cards: ${shown}`); return; }
-    if (!this.modeUp && this.hold === this.program) { this.cancelTimer(); this.log(`not starting the mode by itself for ${shown} (it was left on purpose, or it failed): change the cards or press go`); return; }
-    if (this.timer && this.timerFor === this.program) return;                                // already on its way
+    if (this.modeUp && this.program === this.known && this.limit === this.knownLimit) { this.cancelTimer(); this.log(`the robot holds the cards: ${shown}`); return; }
+    if (!this.modeUp && this.hold === want) { this.cancelTimer(); this.log(`not starting the mode by itself for ${shown} (it was left on purpose, or it failed): change the cards or press go`); return; }
+    if (this.timer && this.timerFor === want) return;                                // already on its way
     this.cancelTimer();                                                                       // the cards changed again: wait again
-    this.timerFor = this.program;
+    this.timerFor = want;
     // right away the first time (a robot that has just been connected), a moment after the last change otherwise
     const wait = this.known === null ? 0 : this.delayMs;
     this.log(`${shown} to be given to the robot in ${wait} ms (it holds ${this.known === null ? 'nothing known' : this.known || '(no cards)'}, mode ${this.modeUp ? 'running' : 'not running'})`);
@@ -99,20 +105,22 @@ export class RobotSync {
 
   async push() {
     if (!this.live || this.busy || this.syncing) { this.log(`push skipped (live ${this.live}, busy ${this.busy}, syncing ${this.syncing})`); return; }
-    const sent = this.program;
-    this.log(`starting the mode with ${sent || '(no cards)'}`);
+    const sent = this.program, sentLimit = this.limit;
+    this.log(`starting the mode with ${sent || '(no cards)'}${sentLimit ? `, objects in the way above ${sentLimit}` : ''}`);
     this.hold = null;
     this.kind = 'wait';
     this.syncing = true;
     this.notify();
     try {
-      if (!(await this.tryLive(sent))) await this.backend.idle(sent);
+      // (only the cards can be written into the running mode: a limit that changed is a restart)
+      if (sentLimit !== this.knownLimit || !(await this.tryLive(sent))) await this.backend.idle(sent, { limit: sentLimit });
       // the mode started with `sent` (it said hello), or took it (it answered): that is what the robot
       // holds, whether or not its "@@prog" has arrived yet
       this.known = sent;
+      this.knownLimit = sentLimit;
       this.modeUp = true;
     } catch (err) {
-      this.hold = sent;
+      this.hold = `${sent}|${sentLimit}`;
       this.log(`could not give the robot ${sent || '(no cards)'}: ${err?.message || err}`);
       this.onError(err);
     } finally {
@@ -127,8 +135,10 @@ export class RobotSync {
     this.cancelTimer();
     this.hold = null;
     this.kind = 'play';
-    await this.backend.play(program);
+    const limit = this.limit;
+    await this.backend.play(program, { limit });
     this.known = program;
+    this.knownLimit = limit;
     this.modeUp = true;
     this.notify();
   }
@@ -136,6 +146,7 @@ export class RobotSync {
   // The robot is back in its firmware (after the self test, for instance): start the mode again.
   reset() {
     this.known = null;
+    this.knownLimit = null;
     this.modeUp = false;
     this.hold = null;
     this.notify();
@@ -168,7 +179,7 @@ export class RobotSync {
         this.modeUp = false;
         if (wasUp && !this.syncing && this.now() - this.helloAt < SHORT_LIFE_MS) this.shortLives += 1; else if (wasUp && !this.syncing) this.shortLives = 0;
         if (this.shortLives >= 2) {
-          this.hold = this.program;
+          this.hold = `${this.program}|${this.limit}`;
           this.shortLives = 0;
           this.cancelTimer();
           this.notify();
@@ -181,12 +192,12 @@ export class RobotSync {
       }
       case 'exit':                    // the centre button of the robot: left on purpose
         this.modeUp = false;
-        this.hold = this.program;
+        this.hold = `${this.program}|${this.limit}`;
         this.cancelTimer();           // (a restart planned by the "@@bye" that follows is not wanted)
         this.notify();
         break;
       case 'error':
-        this.hold = this.program;
+        this.hold = `${this.program}|${this.limit}`;
         this.cancelTimer();
         this.notify();
         break;
@@ -194,6 +205,7 @@ export class RobotSync {
         if (e.status === 'disconnected') {
           this.cancelTimer();
           this.known = null;
+          this.knownLimit = null;
           this.modeUp = false;
           this.syncing = false;
           this.hold = null;

@@ -209,6 +209,24 @@ test('a bare exception line is an error too', async () => {
   assert.match(events.find((e) => e.type === 'error').message, /^ValueError/);
 });
 
+test('the limit of the proximity sensor reaches the robot: in the launcher, or in the header of the whole mode, and by default nowhere', async () => {
+  const whole = setup();
+  await whole.backend.idle('FL');
+  assert.match(whole.fake.script, /^OBSTACLE = 0$/m, 'no limit given: nothing is looked for');
+  const withLimit = setup();
+  await withLimit.backend.play('FL', { limit: 3000 });
+  assert.match(withLimit.fake.script, /^OBSTACLE = 3000$/m, 'the whole mode carries it');
+  assert.match(withLimit.fake.script, /^AUTOPLAY = 1$/m);
+  const module = setup({ withModule: true });
+  await module.backend.connect();
+  await module.backend.idle('FL');
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0)\n`, 'the launcher of before when there is none');
+  await module.backend.idle('FL', { limit: 2500 });
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0, 0, 2500)\n`, 'with a limit it is the last argument');
+  await module.backend.play('F', { limit: 3000 });
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("F", 1, 0, 3000)\n`);
+});
+
 test('idle(): the mode starts and waits, nothing is played', async () => {
   const { backend, fake, events, calls } = setup();
   await backend.idle('FRF');

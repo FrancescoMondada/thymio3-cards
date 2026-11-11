@@ -1,9 +1,10 @@
 // The whole configuration of the page as a short text, for a QR code, and back. One page shows the code, another
 // scans it and ends up the same: the cards of the program, the target flag, the colours of the floor, the mode
 // and the cards it gives, the language, the sound, the speed, the path, whether the name of the tablet is shown (the name
-// itself is not: every tablet keeps its own), and the picture under the mat.
+// itself is not: every tablet keeps its own), whether an object in the way of the robot is looked for and at what limit, and the
+// picture under the mat.
 //
-//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
+//   T3C1;l=fr;s=1;v=1;m=c;k=FBLR(2r;d=0;n=0;o=0,3000;p=FF(FR)3F;t=2,-1;f=r:0,2/1,1|g:3,3;w=b,4,4,2,2
 //
 // The first word names the format and its version. A field is `letter=value`; the order does not matter, a
 // field that is missing leaves that part of the page as it is, and a field that is not valid is dropped: what
@@ -17,6 +18,7 @@ import { LANGS } from './i18n.js';
 import { COLOR_CODES, cleanProgram } from './spec.js';
 import { MODES, CARD_KINDS, PALETTE_CODE, cleanCustom } from './modes.js';
 import { cleanMap } from './worldmap.js';
+import { OBSTACLE_MIN, OBSTACLE_MAX, cleanObstacleLimit } from './obstacle.js';
 
 export const PREFIX = 'T3C1';
 export const APP_URL = 'https://francescomondada.github.io/thymio3-cards/';   // the demo, for the QR code that opens it on the other screens of a class
@@ -43,7 +45,7 @@ const int = (s) => (INT.test(s) ? Number(s) : NaN);
 const inRange = (n) => Number.isInteger(n) && Math.abs(n) <= MAX_CELLS;
 const pair = (s) => { const [x, y, ...rest] = String(s).split(','); const p = { x: int(x), y: int(y) }; return !rest.length && inRange(p.x) && inRange(p.y) ? p : null; };
 
-// What the page holds -> the text. `c`: { lang, sound, speed, mode, picked, showPath, showName, program, target, floor, mapKind, map }
+// What the page holds -> the text. `c`: { lang, sound, speed, mode, picked, showPath, showName, obstacle, obstacleLimit, program, target, floor, mapKind, map }
 export function encodeConfig(c) {
   const floor = new Map();
   for (const [key, colour] of Object.entries(c.floor || {})) {
@@ -62,6 +64,7 @@ export function encodeConfig(c) {
     `k=${cleanCustom(c.picked).map((k) => PALETTE_CODE[k]).join('')}`,
     `d=${c.showPath ? 1 : 0}`,
     `n=${c.showName ? 1 : 0}`,
+    `o=${c.obstacle ? 1 : 0},${cleanObstacleLimit(c.obstacleLimit)}`,          // the switch, and the limit it has (also when it is off)
     `p=${cleanProgram(c.program)}`,
     `t=${c.target && inRange(c.target.x) && inRange(c.target.y) ? `${c.target.x},${c.target.y}` : '-'}`,
     `f=${floorText}`,
@@ -87,6 +90,13 @@ export function decodeConfig(text) {
       case 'k': out.picked = cleanCustom([...v].map((ch) => KIND_OF[ch]).filter(Boolean)); break;
       case 'd': if (v === '0' || v === '1') out.showPath = v === '1'; break;
       case 'n': if (v === '0' || v === '1') out.showName = v === '1'; break;
+      case 'o': {                                    // "switch,limit": each is kept if it is valid
+        const [on, limit, ...rest] = v.split(',');
+        if (rest.length) break;
+        if (on === '0' || on === '1') out.obstacle = on === '1';
+        if (/^\d{3,4}$/.test(limit ?? '') && Number(limit) >= OBSTACLE_MIN && Number(limit) <= OBSTACLE_MAX) out.obstacleLimit = Number(limit);
+        break;
+      }
       case 'p': if (/^[^;]*$/.test(v)) out.program = cleanProgram(v); break;
       case 't': if (v === '-') out.target = null; else { const p = pair(v); if (p) out.target = p; } break;
       case 'f': out.floor = readFloor(v); break;
