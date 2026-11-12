@@ -278,4 +278,5 @@ test('the line of an if carries what the sensor read, and old lines without it s
   assert.deepEqual(parseRobotLine('@@blocked 0 0'), { type: 'blocked', index: 0, percent: 0 });
   assert.deepEqual(parseRobotLine('@@end'), { type: 'end' }, 'the end of a program is as it was');
   assert.deepEqual(parseRobotLine('@@end blocked'), { type: 'end', blocked: true }, 'a program given up says so');
+  assert.deepEqual(parseRobotLine('@@end stopped'), { type: 'end', stopped: true }, 'a replay given up because the robot was erased while it played');
 });

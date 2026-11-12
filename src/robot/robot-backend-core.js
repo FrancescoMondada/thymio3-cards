@@ -51,7 +51,7 @@ export class RobotBackendCore {
   constructor(emit, {
     thymio, events, buildScript, launcher, module, doc, win, onLog,
     helloTimeoutMs = 10000, haltTimeoutMs = 3000, firmwareTimeoutMs = 6000, fileTimeoutMs = 8000, moduleUploadTimeoutMs = 40000,
-    unknownHaltMs = 700, moduleHelloTimeoutMs = 5000, uploadTimeoutMs = 30000, byeGraceMs = 40, liveAckMs = 700, liveAttempts = 2,
+    unknownHaltMs = 700, moduleHelloTimeoutMs = 5000, uploadTimeoutMs = 30000, byeGraceMs = 40, lateEndMs = 5000, liveAckMs = 700, liveAttempts = 2,
     liveRing = () => ringAt(Date.now() / 20),
   }) {
     this.thymio = thymio;
@@ -61,7 +61,7 @@ export class RobotBackendCore {
     this.module = module || null;
     this.doc = doc || document;
     this.win = win || window;
-    this.opt = { helloTimeoutMs, haltTimeoutMs, firmwareTimeoutMs, fileTimeoutMs, moduleUploadTimeoutMs, unknownHaltMs, moduleHelloTimeoutMs, uploadTimeoutMs, byeGraceMs, liveAckMs, liveAttempts };
+    this.opt = { helloTimeoutMs, haltTimeoutMs, firmwareTimeoutMs, fileTimeoutMs, moduleUploadTimeoutMs, unknownHaltMs, moduleHelloTimeoutMs, uploadTimeoutMs, byeGraceMs, lateEndMs, liveAckMs, liveAttempts };
     this.liveRing = liveRing;      // where the ring of the waiting mode is, to be written back as it is
     this.liveMsg = 0;              // the number of the last live update message (1..15)
     this.emit = emit;
@@ -71,6 +71,7 @@ export class RobotBackendCore {
     this.traceback = null;
     this.quietErrors = 0;          // > 0 while an attempt whose failure is handled here must not alarm the interface
     this.scriptRunning = false;
+    this.lateEnd = 0;              // until when (clock) the API's "ended" of a script that was stopped may still arrive, late
     this.connected = false;
     this.attached = false;
     this.moduleName = null;        // set once the module is known to be on the robot
@@ -117,6 +118,14 @@ export class RobotBackendCore {
       for (const line of this.lines.push(text)) this.handleLine(line);
     };
     this.onStatus = (e) => {
+      // A script was stopped and its "ended" did not come before the next one was started (the stop was confirmed by the script's own
+      // last words): the notification that comes now is the old script's. Taken for the new one's it would make the page believe
+      // that nothing runs, and Stop would do nothing while the robot goes on.
+      if (e.detail === false && this.lateEnd && clock() < this.lateEnd) {
+        this.lateEnd = 0;
+        this.log('info', 'script: the end of the script that was stopped, arriving late (it says nothing of the one now running)');
+        return;
+      }
       this.log('info', `script: ${e.detail ? 'loaded' : 'ended'}`);
       if (e.detail === false) {
         this.scriptRunning = false;
@@ -216,10 +225,13 @@ export class RobotBackendCore {
   // ---- stopping ---------------------------------------------------------------------------------
   // Stop whatever script is running (the script's own cleanup stops the motors and gives the
   // robot back to its firmware) and wait until the robot says it is done.
-  async halt() {
-    if (!this.scriptRunning) return;
-    this.log('out', 'stop the running script');
-    await this.stopAndWait(this.opt.haltTimeoutMs, true);
+  // `force`: the stop goes to the robot whatever this believes (a Stop pressed by a child must stop the robot: nothing that was
+  // read from a notification is trusted for it). It then waits only as long as for a robot that may have nothing to stop.
+  async halt({ force = false } = {}) {
+    if (!this.scriptRunning && !force) return;
+    const known = this.scriptRunning;
+    this.log('out', known ? 'stop the running script' : 'stop: nothing is known to run, stopping whatever does');
+    await this.stopAndWait(known ? this.opt.haltTimeoutMs : this.opt.unknownHaltMs, known);
     this.scriptRunning = false;
   }
 
@@ -230,6 +242,7 @@ export class RobotBackendCore {
   async stopAndWait(ms, complain) {
     const E = this.EVENTS;
     let ended = false;
+    let notified = false;
     let hook;
     const done = new Promise((resolve) => {
       let timer = 0, grace = 0;
@@ -239,7 +252,7 @@ export class RobotBackendCore {
         this.lineHooks.delete(hook);
         resolve();
       };
-      const on = (e) => { if (e.detail === false) { ended = true; finish(); } };
+      const on = (e) => { if (e.detail === false) { ended = true; notified = true; finish(); } };
       hook = (line) => {
         if (!grace && (line.startsWith('@@bye') || /^KeyboardInterrupt/.test(line.trim()))) {
           grace = setTimeout(() => { ended = true; finish(); }, this.opt.byeGraceMs);
@@ -254,6 +267,7 @@ export class RobotBackendCore {
     });
     await this.once(() => this.thymio.stopScriptExecution(), 'stop');
     await done;
+    if (ended && !notified) this.lateEnd = clock() + this.opt.lateEndMs;      // (the API's notification may still come, late: see onStatus)
     return ended;
   }
 
@@ -392,6 +406,8 @@ export class RobotBackendCore {
 
   // Start the mode on the robot with this program; `autoplay` makes it replay at once, `limit` is what the
   // middle front sensor must read for an object to be in the way (0 or none: not looked for).
+  // The mode is started locked: while this page is connected the centre button of the robot does not leave it
+  // (children press it by mistake, and the cards would no longer reach the robot).
   // Resolves when the mode has said hello.
   run(program, { autoplay, limit = 0 }) {
     const mode = autoplay ? 'play' : 'wait';
@@ -400,7 +416,7 @@ export class RobotBackendCore {
       if (this.moduleName && this.launcher) {
         this.quietErrors++;
         try {
-          await this.start(this.launcher(this.moduleName, program, { autoplay, limit }), `launcher "${program}" (${mode})`, this.opt.moduleHelloTimeoutMs);
+          await this.start(this.launcher(this.moduleName, program, { autoplay, limit, locked: true }), `launcher "${program}" (${mode})`, this.opt.moduleHelloTimeoutMs);
           return;
         } catch (err) {
           // a failing link would fail the whole mode too, and the whole mode is a lot more to send
@@ -412,7 +428,7 @@ export class RobotBackendCore {
           this.quietErrors--;
         }
       }
-      await this.start(this.buildScript(program, { autoplay, limit }), `mode "${program}" (${mode})`, this.opt.helloTimeoutMs);
+      await this.start(this.buildScript(program, { autoplay, limit, locked: true }), `mode "${program}" (${mode})`, this.opt.helloTimeoutMs);
     });
   }
 
@@ -473,7 +489,7 @@ export class RobotBackendCore {
 
   stop() {
     return this.enqueue('stop', async () => {
-      try { await this.halt(); } catch (err) { console.warn('stop failed', err); }
+      try { await this.halt({ force: true }); } catch (err) { console.warn('stop failed', err); }
     });
   }
 

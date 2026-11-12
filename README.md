@@ -61,7 +61,7 @@ les flèches du robot, on les rejoue, on les efface en couchant le robot.
 | robot sur le côté = effacer le dernier pas ; sur le dos = tout effacer ; *Stop* de la télécommande | idem sur le robot ; ici : gomme (toucher) et corbeille (garder appuyé 1 s) |
 | *Go* de la télécommande, ou main passée sur les capteurs arrière | idem sur le robot ; ici : le bouton **C'est parti !** |
 | LED Lego = nombre de pas, LED du cercle = direction du pas, pulsation magenta / cyan | idem sur le robot et sur l'avatar du robot virtuel |
-| bouton central = quitter le mode | idem |
+| bouton central = quitter le mode | idem sur le robot seul ; **avec une tablette connectée, il ne quitte pas le mode : il arrête le rejeu en cours** (comme le bouton rouge de la tablette, les cartes restent) et ne fait rien au repos (voir « Exécuter, arrêter, effacer en même temps ») |
 
 En plus du firmware : insérer une carte entre deux autres, déplacer, supprimer n'importe laquelle,
 voir le chemin prévu sur le tapis sur demande, voir la carte en cours, des sons, des programmes
@@ -100,6 +100,42 @@ d'une autre prend les deux, le seuil aussi quand la détection est éteinte, et 
 cartes, ils ne peuvent pas être écrits dans le mode qui tourne. Dans `src/py/sequence_mode.py` : le numéro du son `SND_BLOCKED` (5 est celui que le
 firmware joue pour « dernier pas effacé »), la durée du rouge `BLOCKED_HOLD_MS`. Le retour est proportionnel au temps, pas mesuré en distance.
 Ce code ajoute environ 2 Ko au module envoyé au robot (≈ 22 Ko), le budget de taille des tests est passé de 21 à 23 Ko.
+
+### Exécuter, arrêter, effacer en même temps (cas limites, pas dans le firmware)
+
+Lors d'un essai, des enfants ont mélangé « exécuter », « stop » et « effacer ». Ce qui a été relevé et corrigé :
+
+- **Effacer pendant que le programme tourne arrête d'abord le robot, puis efface.**
+  - *Sur le robot* (couché sur le côté = dernier pas, à l'envers = tout, *Stop* de la télécommande = tout) : `halt_replay()` dans
+    `src/py/sequence_mode.py` arrête les moteurs, annule un virage en cours, oublie le pas, la pause ou le retour d'un obstacle en cours,
+    dit `@@end stopped` à la tablette, puis l'effacement a lieu. Dans le firmware (et dans la première version du portage) le pas allait
+    jusqu'au bout, et un virage en cours n'était jamais déclaré fini : **le rejeu suivant ne démarrait plus** tant qu'on ne relançait pas
+    le mode. *Stop* de la télécommande effaçait les cartes mais laissait le pas en cours aller jusqu'au bout.
+  - *Sur la tablette* : la corbeille (maintenue 1 s) et le choix d'un exemple (réglages) **arrêtent le rejeu, attendent que le robot soit
+    arrêté, puis changent les cartes**. Avant, la corbeille vidait les cartes sans arrêter le robot.
+  - Quand le robot s'est effacé lui-même pendant un rejeu, la tablette le suit : `@@end stopped` termine la course sans félicitation,
+    et le `@@prog` qui suit (souvent dans le même paquet) est gardé jusqu'à la fin de la course, puis les cartes s'alignent sur le robot
+    (`changedWhileBusy` dans `src/robot/sync.js`). Sans cela la tablette redonnait au robot ses anciennes cartes, annulant le geste.
+- **Le bouton central du robot ne quitte pas le mode tant qu'une tablette est connectée : il arrête le rejeu en cours.** Le mode reçoit
+  `locked` (cinquième argument de `run()`, ou `LOCKED = 1` dans l'en-tête du script entier) : la tablette démarre toujours le mode ainsi,
+  le script téléchargé depuis les réglages (pour un robot sans tablette) ne le fait pas et garde le comportement du firmware (le bouton
+  quitte). Verrouillé, le bouton central fait ce que fait le bouton rouge de la tablette : pendant un rejeu (un pas, un virage, une pause,
+  le retour après un obstacle), le robot s'arrête là où il est, le virage en cours est annulé, le mode dit `@@end stopped` (la tablette
+  s'arrête aussi, sans félicitation) et revient à l'état « enregistrement » **en gardant les cartes** : GO rejoue depuis le début. Au
+  repos, il ne fait rien. Un seul appui = un seul arrêt (un bouton maintenu n'arrête pas le rejeu suivant). **Pas d'appui long pour
+  sortir** : un enfant peut maintenir le bouton sans le vouloir. **Sortir du mode** se fait seulement par la tablette : une
+  déconnexion voulue arrête le mode (le robot retrouve ses modes standard). **Limite** : le robot ne peut pas savoir lui-même que la
+  tablette est partie (le module `thymio` n'expose pas l'état du Bluetooth). Une tablette fermée ou perdue le laisse en marche,
+  verrouillé : il faut le redémarrer (l'éteindre puis le rallumer), ou connecter une tablette (elle arrête le script en cours à la connexion).
+- **Stop pendant l'envoi.** Le bouton rouge et la touche Échap marchent dès que « C'est parti ! » est pressé, pas seulement une fois le
+  robot parti : le rejeu démarre, puis s'arrête aussitôt (l'envoi ne peut pas être interrompu).
+- **Une notification « script terminé » en retard** (celle de l'ancien script, arrivée quand le nouveau est déjà lancé) ne fait plus croire à
+  la tablette que plus rien ne tourne : Stop ne faisait alors **rien** et le robot continuait. Le backend ignore cette notification-là
+  (fenêtre de 5 s après un arrêt confirmé par les derniers mots du script, `lateEndMs`), et **Stop est toujours envoyé au robot**, quoi que
+  la tablette croie (`halt({ force: true })`).
+
+Vérifié par les tests (`Mixing` dans `tests/test_sequence_mode.py`, `tests/live.test.js`, `tests/sync.test.js`) et avec le robot de
+démonstration (`?fakerobot`, `window.fakeRobot.erase()` et `.exit()`, le bouton central). **Pas encore essayé sur un vrai robot.**
 
 ### Le manuel du robot seul (mode débranché)
 
@@ -548,8 +584,9 @@ pilote jamais les moteurs.
   micrologiciel est lue en parallèle, sans que le reste l'attende (`getFirmwareInfo()` n'a pas de
   délai maximum dans l'API).
 - **Stop** arrête le script ; le mode redémarre aussitôt pour que le robot reste en phase. Le bouton
-  central du robot quitte le mode comme dans le firmware ; il ne redémarre alors qu'à la
-  modification suivante des cartes ou à **C'est parti !**.
+  central du robot arrête le rejeu sans quitter le mode tant qu'une tablette est connectée (voir plus haut,
+  « Exécuter, arrêter, effacer en même temps ») ; un mode qui aurait été quitté malgré tout (un script
+  sans verrou) ne redémarre qu'à la modification suivante des cartes ou à **C'est parti !**.
 - Un arrêt demandé par l'interface se termine par un `Traceback … KeyboardInterrupt` imprimé par le
   firmware : c'est attendu, l'interface le lit comme un tout et ne le prend pas pour une erreur (c'était
   le triangle d'avertissement qui apparaissait de temps en temps).

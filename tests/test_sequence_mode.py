@@ -46,12 +46,13 @@ _MODE = _load_mode()
 compile_program, ground_color = _MODE.compile_program, _MODE.ground_color
 
 
-def run_script(robot, program="", autoplay=1, max_ms=60000, source=None, modules=None, obstacle=0):
+def run_script(robot, program="", autoplay=1, max_ms=60000, source=None, modules=None, obstacle=0, locked=0):
     """Run the script until max_ms of virtual time. Returns the list of (t_ms, line).
 
     `source` replaces the script as it is (already carrying its PROGRAM / AUTOPLAY header and its
     final run()). `modules` = {name: text}: files of the robot that the script can import.
-    `obstacle`: the limit of the middle front sensor above which an object is in the way (0: never looked for, as by default)."""
+    `obstacle`: the limit of the middle front sensor above which an object is in the way (0: never looked for, as by default).
+    `locked`: 1 when a tablet is connected (the centre button then does not leave the mode)."""
     thymio_mod, time_mod = make_modules(robot)
     lines = []
 
@@ -61,7 +62,8 @@ def run_script(robot, program="", autoplay=1, max_ms=60000, source=None, modules
     if source is None:
         src = SOURCE.replace('PROGRAM = ""', 'PROGRAM = "%s"' % program, 1)
         src = src.replace("AUTOPLAY = 0", "AUTOPLAY = %d" % autoplay, 1)
-        src = re.sub(r"^OBSTACLE = 0", "OBSTACLE = %d" % obstacle, src, count=1, flags=re.M) + "\nrun()\n"
+        src = re.sub(r"^OBSTACLE = 0", "OBSTACLE = %d" % obstacle, src, count=1, flags=re.M)
+        src = re.sub(r"^LOCKED = 0", "LOCKED = %d" % locked, src, count=1, flags=re.M) + "\nrun()\n"
     else:
         src = source
     saved = {k: sys.modules.get(k) for k in ("thymio", "time")}
@@ -627,6 +629,206 @@ class Safety(unittest.TestCase):
         run_script(r, "L", max_ms=3000)
         self.assertFalse(r.rot_active)
         self.assertEqual((r.vl, r.vr), (0, 0))
+
+
+class Mixing(unittest.TestCase):
+    """What children do when they mix a replay, a stop and an erase. Erasing during a replay stops it where it is (the motors, a
+    turn under way, the replay itself), and the robot can replay afterwards; with a tablet connected the centre button stops a
+    replay (the cards stay) and never leaves the mode."""
+
+    def flip(self, r, a, b):
+        r.hooks.append(lambda t: r.acc.__setitem__(2, -16000 if a <= t < b else 16384))          # on its back from a to b ms
+
+    def side(self, r, a, b):
+        r.hooks.append(lambda t: r.acc.__setitem__(1, 16000 if a <= t < b else 0))               # on its side from a to b ms
+
+    def remote(self, r, at, code):
+        sent = []
+
+        def hook(t):
+            if t >= at and not sent:
+                sent.append(1)
+                r.rc5.append(code)
+        r.hooks.append(hook)
+
+    def press(self, r, button, a, b):
+        r.hooks.append(lambda t: r.buttons.__setitem__(button, 1 if a <= t < b else 0))
+
+    def assertAtRest(self, r):
+        self.assertEqual((r.vl, r.vr), (0, 0))
+        self.assertFalse(r.timer_on)
+        self.assertFalse(r.rot_active)
+
+    def test_erasing_everything_during_a_step_stops_the_robot_there(self):
+        r = VirtualRobot()
+        self.flip(r, 300, 3500)
+        lines = run_script(r, "FFFF", max_ms=7000)
+        self.assertAtRest(r)
+        self.assertLess(max(y for _, _, y, _ in r.trace), 110, "a step is 150 mm: it stopped on the way")
+        self.assertEqual(len(of_kind(lines, "step")), 1, "the next steps are not played")
+        self.assertEqual([a for _, a in of_kind(lines, "end")], [["stopped"]], "the interface is told that the replay was given up")
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["-"])
+        self.assertEqual(of_kind(lines, "state")[-1][1], ["record"])
+
+    def test_the_last_step_erased_during_a_step_stops_the_robot_there(self):
+        r = VirtualRobot()
+        self.side(r, 300, 3500)
+        lines = run_script(r, "FFFF", max_ms=7000)
+        self.assertAtRest(r)
+        self.assertLess(max(y for _, _, y, _ in r.trace), 110)
+        self.assertEqual(len(of_kind(lines, "step")), 1)
+        self.assertEqual([a for _, a in of_kind(lines, "end")], [["stopped"]])
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["FFF"], "one step less, the others are kept")
+
+    def test_stop_on_the_remote_during_a_replay_stops_it_at_once_and_erases(self):
+        r = VirtualRobot()
+        self.remote(r, 500, 87)
+        lines = run_script(r, "FFFF", max_ms=5000)
+        self.assertAtRest(r)
+        self.assertLess(max(y for _, _, y, _ in r.trace), 60, "stopped at about 40 mm")
+        self.assertEqual(len(of_kind(lines, "step")), 1)
+        self.assertEqual([a for _, a in of_kind(lines, "end")], [["stopped"]])
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["-"])
+        self.assertEqual(of_kind(lines, "state")[-1][1], ["record"])
+
+    def test_a_turn_under_way_is_cancelled(self):
+        r = VirtualRobot()
+        self.remote(r, 120, 87)
+        run_script(r, "LLLL", max_ms=3000)
+        self.assertAtRest(r)
+        self.assertLess(abs(r.heading_deg()), 85, "it did not finish its turn")
+
+    def test_a_replay_can_start_again_after_an_erase_during_a_turn(self):
+        # (the turn left the mode believing it was still turning: nothing played afterwards)
+        for gesture in ("remote", "back", "side"):
+            r = VirtualRobot()
+            if gesture == "remote":
+                self.remote(r, 120, 87)
+            elif gesture == "back":
+                self.flip(r, 100, 1800)
+            else:
+                self.side(r, 100, 1800)
+            self.press(r, 3, 4000, 4150)                       # a new step: forward
+            self.remote(r, 5000, 53)                           # and Go
+            lines = run_script(r, "LLLL", max_ms=16000)
+            played = [a[1] for t, a in of_kind(lines, "step") if t > 5000]
+            self.assertEqual(played, ["L", "L", "L", "F"] if gesture == "side" else ["F"], gesture)      # (the side erases one step of four)
+            self.assertEqual(of_kind(lines, "end")[-1][1], [], gesture + ": the new replay reached its end")
+            if gesture != "side":
+                # the new replay goes from where the robot is, whichever way it faces after the turn that was cancelled
+                first = next(p for p in r.trace if p[0] >= 5000)
+                self.assertAlmostEqual(math.hypot(r.x - first[1], r.y - first[2]), 150.0, delta=15.0, msg=gesture)
+
+    def test_a_replay_can_start_again_after_an_erase_during_a_step(self):
+        r = VirtualRobot()
+        self.remote(r, 500, 87)
+        self.press(r, 3, 4000, 4150)
+        self.remote(r, 5000, 53)
+        lines = run_script(r, "FFFF", max_ms=11000)
+        self.assertEqual([a[1] for t, a in of_kind(lines, "step") if t > 5000], ["F"])
+        self.assertEqual(of_kind(lines, "end")[-1][1], [])
+
+    def test_the_erase_gestures_that_find_the_robot_recording_change_nothing_about_a_replay_that_is_not_there(self):
+        r = VirtualRobot()
+        self.flip(r, 200, 3000)
+        lines = run_script(r, "FLR", autoplay=0, max_ms=5000)
+        self.assertEqual(of_kind(lines, "end"), [], "nothing was playing: nothing was given up")
+
+    def test_an_erase_while_the_robot_goes_back_from_an_object_stops_it_there(self):
+        r = VirtualRobot()
+        put_wall(r, 100)
+        self.side(r, 1300, 4000)
+        lines = run_script(r, "FF", obstacle=3000, max_ms=8000)
+        self.assertEqual(len(of_kind(lines, "blocked")), 1)
+        self.assertAtRest(r)
+        self.assertGreater(r.y, 25, "it did not finish going back")
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["F"])
+
+    def test_the_centre_button_does_not_leave_the_mode_while_a_tablet_is_connected(self):
+        r = VirtualRobot()
+        self.press(r, 2, 300, 400)                              # the centre button
+        self.press(r, 3, 800, 900)                              # and, after it, a step is still recorded
+        lines = run_script(r, "", autoplay=0, max_ms=3000, locked=1)
+        self.assertEqual(of_kind(lines, "exit"), [])
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["F"], "the mode is still there")
+        self.assertEqual(len(of_kind(lines, "bye")), 1, "(the one at the end of the test)")
+        self.assertGreaterEqual(of_kind(lines, "bye")[0][0], 2990)
+
+    def test_the_centre_button_stops_a_replay_and_keeps_the_cards(self):
+        # a tablet is connected: the centre button is its red Stop button
+        r = VirtualRobot()
+        self.press(r, 2, 500, 600)
+        lines = run_script(r, "FFFF", max_ms=7000, locked=1)
+        self.assertAtRest(r)
+        self.assertEqual(of_kind(lines, "exit"), [], "the mode is not left")
+        self.assertEqual(len(of_kind(lines, "bye")), 1, "(the one at the end of the test)")
+        self.assertGreaterEqual(of_kind(lines, "bye")[0][0], 6990)
+        self.assertLess(max(y for _, _, y, _ in r.trace), 60, "stopped at about 40 mm, and no step after it")
+        self.assertEqual(len(of_kind(lines, "step")), 1)
+        self.assertEqual([a for _, a in of_kind(lines, "end")], [["stopped"]], "the interface is told, so that it stops too")
+        self.assertEqual(of_kind(lines, "state")[-1][1], ["record"])
+        self.assertEqual([p for _, p in of_kind(lines, "prog")][-1], ["FFFF"], "the cards stay")
+
+    def test_the_centre_button_stops_a_turn_under_way(self):
+        r = VirtualRobot()
+        self.press(r, 2, 120, 220)
+        run_script(r, "LLLL", max_ms=3000, locked=1)
+        self.assertAtRest(r)
+        self.assertLess(abs(r.heading_deg()), 85, "it did not finish its turn")
+
+    def test_the_centre_button_stops_the_way_back_from_an_object(self):
+        r = VirtualRobot()
+        put_wall(r, 100)
+        self.press(r, 2, 1300, 1400)
+        lines = run_script(r, "FF", obstacle=3000, max_ms=8000, locked=1)
+        self.assertEqual(len(of_kind(lines, "blocked")), 1)
+        self.assertAtRest(r)
+        self.assertGreater(r.y, 25, "it did not finish going back")
+        self.assertEqual(of_kind(lines, "exit"), [])
+
+    def test_a_replay_can_start_again_after_the_centre_button_stopped_one(self):
+        for program, at in (("FFFF", 500), ("LLLL", 120)):          # during a step, during a turn
+            r = VirtualRobot()
+            self.press(r, 2, at, at + 100)
+            self.remote(r, 4000, 53)                               # Go
+            lines = run_script(r, program, max_ms=30000, locked=1)
+            played = [a[1] for t, a in of_kind(lines, "step") if t > 4000]
+            self.assertEqual(played, list(program), program + ": the same cards are replayed, from the start")
+            self.assertEqual(of_kind(lines, "end")[-1][1], [], program + ": the new replay reached its end")
+
+    def test_the_centre_button_does_nothing_at_rest(self):
+        r = VirtualRobot()
+        self.press(r, 2, 300, 400)
+        self.press(r, 3, 800, 900)                              # and, after it, a step is still recorded
+        lines = run_script(r, "F", autoplay=0, max_ms=3000, locked=1)
+        self.assertEqual(of_kind(lines, "exit"), [])
+        self.assertEqual(of_kind(lines, "end"), [], "nothing was playing: nothing was stopped")
+        self.assertEqual(of_kind(lines, "prog")[-1][1], ["FF"], "the cards are as they were, and the mode is still there")
+
+    def test_the_centre_button_held_after_a_stop_stops_nothing_more(self):
+        # one press is one stop: the button held down while the replay starts again does not stop it again
+        r = VirtualRobot()
+        self.press(r, 2, 500, 5000)
+        self.remote(r, 1500, 53)
+        lines = run_script(r, "FF", max_ms=12000, locked=1)
+        self.assertEqual([a for _, a in of_kind(lines, "end")], [["stopped"], []], "the first press stopped the first replay; the second reached its end")
+
+    def test_the_lock_is_an_argument_of_run_and_of_the_whole_script(self):
+        centre = lambda r: self.press(r, 2, 300, 400)
+        r = VirtualRobot()
+        centre(r)
+        lines = run_script(r, source='import cards_x\ncards_x.run("F", 0, 0, 0, 1)\n', max_ms=2000, modules={"cards_x": SOURCE})
+        self.assertEqual(of_kind(lines, "exit"), [], "locked by the launcher")
+        r = VirtualRobot()
+        centre(r)
+        lines = run_script(r, source='import cards_x\ncards_x.run("F", 0)\n', max_ms=2000, modules={"cards_x": SOURCE})
+        self.assertEqual(len(of_kind(lines, "exit")), 1, "free without it")
+        self.assertRegex(SOURCE, r"(?m)^LOCKED = 0 ")
+        r = VirtualRobot()
+        centre(r)
+        whole = re.sub(r"(?m)^LOCKED = 0", "LOCKED = 1", SOURCE, count=1) + "\nrun()\n"
+        lines = run_script(r, source=whole, max_ms=2000)
+        self.assertEqual(of_kind(lines, "exit"), [], "locked by the header")
 
 
 def timeline(program, source=None, floor=None):

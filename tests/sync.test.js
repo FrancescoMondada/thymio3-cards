@@ -514,3 +514,65 @@ test('live update: a backend that cannot do it, or a mode that is not up, restar
   await left.advance(450); await left.settle();
   assert.deepEqual(left.calls, ['idle FLRB'], 'a mode that is not up is started, not written to');
 });
+
+// ---- the robot erased while it plays: the cards follow it, they do not give it its old program back --------------------
+test('the robot erased during a run: when the run is over the cards follow it, and the robot is not given its old program back', async () => {
+  const { sync, calls, adopted, advance, settle } = setup({ live: 'ok' });
+  sync.update({ program: 'FFF', live: true, busy: false });
+  await advance(0); await settle();
+  robotRestarts(sync, 'FFF');
+  sync.update({ program: 'FFF', live: true, busy: true });               // it plays
+  // the robot is erased (upside down, Stop of the remote): the replay is given up, the program goes. Both lines may arrive in one go,
+  // before the page has drawn again and told this it is no longer busy
+  sync.onEvent({ type: 'end', stopped: true });
+  sync.onEvent({ type: 'prog', program: '' });
+  assert.deepEqual(adopted, [], 'not yet: the run is not over for the page');
+  sync.update({ program: 'FFF', live: true, busy: false });             // the page has finished the run
+  await advance(5000); await settle();
+  assert.deepEqual(adopted, [''], 'the cards follow the robot');
+  assert.deepEqual(calls, ['idle FFF'], 'and nothing is sent to the robot');
+  sync.update({ program: '', live: true, busy: false });                 // the cards are now empty too
+  await advance(5000); await settle();
+  assert.deepEqual(calls, ['idle FFF'], 'the robot holds the cards: nothing more');
+});
+
+test('the robot erased by one step during a run: the cards follow, a step less', async () => {
+  const { sync, adopted, advance, settle } = setup({ live: 'ok' });
+  sync.update({ program: 'FFF', live: true, busy: false });
+  await advance(0); await settle();
+  robotRestarts(sync, 'FFF');
+  sync.update({ program: 'FFF', live: true, busy: true });
+  sync.onEvent({ type: 'prog', program: 'FF' });
+  sync.update({ program: 'FFF', live: true, busy: false });
+  assert.deepEqual(adopted, ['FF']);
+});
+
+test('what the robot reports during a run and equals the cards is nothing to follow, and the cards touched meanwhile win', async () => {
+  const { sync, calls, adopted, advance, settle } = setup({ live: 'ok' });
+  sync.update({ program: 'FF', live: true, busy: false });
+  await advance(0); await settle();
+  robotRestarts(sync, 'FF');
+  sync.update({ program: 'FF', live: true, busy: true });
+  sync.onEvent({ type: 'prog', program: 'FF' });                         // the same: the start of a run says it
+  sync.update({ program: 'FF', live: true, busy: false });
+  assert.deepEqual(adopted, []);
+  // erased on the robot, but the page's cards were changed before the run was over: the page's cards are the newer word
+  sync.update({ program: 'FF', live: true, busy: true });
+  sync.onEvent({ type: 'prog', program: '' });
+  sync.update({ program: 'FFL', live: true, busy: false });
+  assert.deepEqual(adopted, [], 'not followed');
+  await advance(451); await settle();
+  assert.deepEqual(calls.at(-1), 'live FFL', 'the cards are given to the robot');
+});
+
+test('a run that is over forgets what the robot said during it (a new run, a lost connection)', async () => {
+  const { sync, adopted, advance, settle } = setup({ live: 'ok' });
+  sync.update({ program: 'FF', live: true, busy: false });
+  await advance(0); await settle();
+  robotRestarts(sync, 'FF');
+  sync.update({ program: 'FF', live: true, busy: true });
+  sync.onEvent({ type: 'prog', program: '' });
+  sync.onEvent({ type: 'conn', status: 'disconnected' });
+  sync.update({ program: 'FF', live: false, busy: false });
+  assert.deepEqual(adopted, [], 'no robot any more');
+});

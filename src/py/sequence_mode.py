@@ -17,6 +17,12 @@
 #           back to the square where the step began, and gives up the rest of the sequence (the
 #           firmware's own obstacle detection is commented out).
 #
+# Two things differ from the firmware where children mix a replay, a stop and an erase:
+#   - erasing during a replay (on its side, upside down, Stop on the remote) stops the replay where it is, then erases
+#     (the firmware lets the step go on, and a turn under way is never told it is over);
+#   - with a tablet connected (LOCKED, set by the interface) the centre button does not leave the mode: it stops the replay
+#     that is under way (the cards stay, as with the red button of the tablet) and does nothing at rest.
+#
 # Movements are driven here, like the firmware does:
 #   - turns: the firmware angle controller, started with rotate_deg_absolute()
 #     on a heading accumulated from the gyroscope (the drift of the straight
@@ -37,6 +43,7 @@ import time
 PROGRAM = ""
 AUTOPLAY = 0
 OBSTACLE = 0            # the middle front sensor above this: an object is in the way of a forward step; 0: not looked for
+LOCKED = 0              # 1: the centre button stops a replay but does not leave the mode (a tablet is connected and holds the cards); 0: it leaves, as in the firmware
 
 # ---- constants of the firmware ---------------------------------------------
 BUFFER_SIZE = 50        # SEQUENCE_BUFFER_SIZE
@@ -344,7 +351,8 @@ def ground_color(h, s, v):
 
 
 class Sequence:
-    def __init__(self, program, phase=0, limit=0):
+    def __init__(self, program, phase=0, limit=0, locked=0):
+        self.locked = locked            # the centre button does not leave the mode
         self.seq = []
         for ch in program:
             if ch in TOKENS and len(self.seq) < BUFFER_SIZE:
@@ -501,6 +509,29 @@ class Sequence:
                 self.alert = False          # (the red light of a blocked step does not outlive the replay)
             say("state", STATE_NAMES[state])
 
+    def halt_replay(self):
+        # A replay that is under way is given up where it is: whoever erases the robot (on its side, upside down, Stop on the
+        # remote) while it moves wants it to stop, and the rest of the replay with it. The motors stop, a turn under way is
+        # cancelled, and what the replay held (a step in progress, a turn, a pause, an "if", a way back) is forgotten, so that
+        # the next replay starts clean (a turn left "in progress" would have kept the next replay from ever beginning).
+        # True if a replay was given up.
+        if self.state != ST_PLAY:
+            return False
+        mot.set_speed(0, 0)
+        mot.distance_calib_timer_pause()
+        imu.rotate_deg(0, 0)
+        mot.set_speed(0, 0)
+        self.motion_running = False
+        self.s_on = False
+        self.motion_in_progress = False
+        self.rotation_in_progress = False
+        self.play_state = PS_REPLAY
+        self.machine = None
+        self.alert = False
+        self.rd = 0
+        say("end", "stopped")           # the interface plays along: it is told the replay is over
+        return True
+
     # ---- LEDs ---------------------------------------------------------------------
     def body_pulse(self):
         # Common_GetBodyColorPulse()
@@ -651,10 +682,16 @@ class Sequence:
     def tick(self):
         status = btn.get_status()   # [BACKWARD, LEFT, CENTER, FORWARD, RIGHT]
         command = rc5.get_command()
-        if self.e_center(status[2]):
-            say("exit")
-            self.quit = True
-            return
+        if self.e_center(status[2]):                    # (the edge is read in any case: the button released and pressed again counts)
+            if not self.locked:
+                say("exit")
+                self.quit = True
+                return
+            # A tablet is connected: the centre button is its red Stop button - the replay is given up where it is, the cards
+            # stay - and it never leaves the mode (the tablet leaves it, when it disconnects). At rest it does nothing.
+            if self.halt_replay():
+                self.set_state(ST_RECORD)
+                return
         if self.state == ST_RECORD:
             self.rx_poll()
         brightness = self.body_pulse()
@@ -885,6 +922,7 @@ class Sequence:
                 if self.cnt_last > 15:
                     self.erase_last = 1
                     self.cnt_last = 0
+                    self.halt_replay()
                     self.set_state(ST_ERASE_LAST)
                     self.led_counter = 0
                     self.cnt_exit = 0
@@ -939,6 +977,7 @@ class Sequence:
                 if self.cnt_all > 25:
                     self.erase_all = 1
                     self.cnt_exit = 0
+                    self.halt_replay()
                     self.set_state(ST_ERASE_ALL)
                     self.cnt_all = 0
             else:
@@ -946,6 +985,8 @@ class Sequence:
             if command == RC_STOP or command == RC_5:
                 self.erase_all = 4
                 self.cnt_all = 0
+                if self.halt_replay():
+                    self.set_state(ST_RECORD)       # (the firmware stays in the replay for these few ticks: the robot goes on)
         elif self.erase_all == 1:
             play_sound(4)
             self.erase_all = 3
@@ -1014,20 +1055,23 @@ def cleanup():
         say("bye")
 
 
-def run(program=None, autoplay=None, phase=0, limit=None):
+def run(program=None, autoplay=None, phase=0, limit=None, locked=None):
     # program: the steps the robot holds ("FFLR"), autoplay: replay at once (1) or wait (0), phase: see Sequence,
-    # limit: what the middle front sensor must read for an object to be in the way (0: not looked for)
+    # limit: what the middle front sensor must read for an object to be in the way (0: not looked for),
+    # locked: 1 when a tablet is connected, and the centre button must not leave the mode
     if program is None:
         program = PROGRAM
     if autoplay is None:
         autoplay = AUTOPLAY
     if limit is None:
         limit = OBSTACLE
+    if locked is None:
+        locked = LOCKED
     beh.disable_behaviors()
     beh.enable_leds_proximity()
     beh.enable_led_receiver()
     try:
-        seq = Sequence(program, phase, limit)
+        seq = Sequence(program, phase, limit, locked)
         seq.tick()                  # the lights first: the robot has been dark since the last script ended
         say("hello", 1)
         say("cal", seq.dur_fw, seq.dur_bw, seq.rot90)

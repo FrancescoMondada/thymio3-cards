@@ -50,7 +50,7 @@ function pythonStdout(script, files) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-function setup({ silent = false, failUpload = false, extraLines = [], helloTimeoutMs = 2000, moduleHelloTimeoutMs = 2000, firmware = 'now', firmwareTimeoutMs = 6000, files = [], withModule = false, brokenImport = false, running = false, noFiles = false, stopFails = 0, hangUpload = false, launchLinkError = false, noStopStatus = false, uploadDelay = 0, withLights = false, live = 'ok', liveDropMessages = 0, liveAckMs = 80 } = {}) {
+function setup({ silent = false, failUpload = false, extraLines = [], helloTimeoutMs = 2000, moduleHelloTimeoutMs = 2000, firmware = 'now', firmwareTimeoutMs = 6000, files = [], withModule = false, brokenImport = false, running = false, noFiles = false, stopFails = 0, hangUpload = false, launchLinkError = false, noStopStatus = false, lateStopStatusMs = 0, uploadDelay = 0, withLights = false, live = 'ok', liveDropMessages = 0, liveAckMs = 80 } = {}) {
   const doc = new EventTarget();
   const win = new EventTarget();
   const fire = (type, detail) => doc.dispatchEvent(new CustomEvent(type, { detail }));
@@ -123,8 +123,9 @@ function setup({ silent = false, failUpload = false, extraLines = [], helloTimeo
         setTimeout(() => {
           fire(EV.stdout, `@@bye${' '.repeat(95)}\x1e`);
           fire(EV.stdout, 'Traceback (most recent call last):\r\n  File "mp_script", line 567, in <module>\r\n  File "mp_script", line 564, in run\r\nKeyboardInterrupt: \r\n');
-          if (!noStopStatus) fire(EV.pyStatus, false);          // (the API's notification does not always come)
+          if (!noStopStatus && !lateStopStatusMs) fire(EV.pyStatus, false);          // (the API's notification does not always come)
         }, 5);
+        if (lateStopStatusMs) setTimeout(() => fire(EV.pyStatus, false), lateStopStatusMs);      // ... and may come late, when the next script is up
       }
     },
   };
@@ -213,6 +214,7 @@ test('the limit of the proximity sensor reaches the robot: in the launcher, or i
   const whole = setup();
   await whole.backend.idle('FL');
   assert.match(whole.fake.script, /^OBSTACLE = 0$/m, 'no limit given: nothing is looked for');
+  assert.match(whole.fake.script, /^LOCKED = 1$/m, 'a page is connected: the centre button of the robot does not leave the mode');
   const withLimit = setup();
   await withLimit.backend.play('FL', { limit: 3000 });
   assert.match(withLimit.fake.script, /^OBSTACLE = 3000$/m, 'the whole mode carries it');
@@ -220,11 +222,11 @@ test('the limit of the proximity sensor reaches the robot: in the launcher, or i
   const module = setup({ withModule: true });
   await module.backend.connect();
   await module.backend.idle('FL');
-  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0)\n`, 'the launcher of before when there is none');
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0, 0, 0, 1)\n`, 'locked (a page is connected), no limit');
   await module.backend.idle('FL', { limit: 2500 });
-  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0, 0, 2500)\n`, 'with a limit it is the last argument');
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FL", 0, 0, 2500, 1)\n`, 'the limit comes before the lock');
   await module.backend.play('F', { limit: 3000 });
-  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("F", 1, 0, 3000)\n`);
+  assert.equal(module.fake.script, `import ${MODULE.name}\n${MODULE.name}.run("F", 1, 0, 3000, 1)\n`);
 });
 
 test('idle(): the mode starts and waits, nothing is played', async () => {
@@ -261,6 +263,46 @@ test('a stop is confirmed by the script\'s own last words when the API\'s notifi
   assert.deepEqual(calls.filter((c) => /^(stop|send)$/.test(c)), ['send', 'stop', 'send']);
 });
 
+test('Stop stops the robot even if the API\'s "ended" of the script before arrives late, when the next one is already up', async () => {
+  // (a child presses Go, then Stop: the first start stopped the resident mode; its notification came after the second was loaded, and
+  // made the page believe that nothing ran: Stop did nothing and the robot went on)
+  const { backend, calls, events, log } = setup({ lateStopStatusMs: 250 });
+  await backend.play('F');
+  await until(() => backend.scriptRunning);
+  await backend.play('FF');
+  assert.equal(backend.scriptRunning, true, 'the second script is up');
+  await new Promise((r) => setTimeout(r, 400));                       // the late notification has come
+  assert.equal(backend.scriptRunning, true, 'and it is not the end of the second');
+  assert.equal(events.filter((e) => e.type === 'script-ended').length, 0, 'the page is not told that the second one ended');
+  assert.ok(log.some((l) => /arriving late/.test(l.text)));
+  const before = calls.filter((c) => c === 'stop').length;
+  await backend.stop();
+  assert.equal(calls.filter((c) => c === 'stop').length, before + 1, 'Stop reached the robot');
+  assert.equal(backend.scriptRunning, false);
+});
+
+test('a late "ended" does not hide the end of a script that really ends afterwards', async () => {
+  const { backend, events } = setup({ lateStopStatusMs: 90 });        // (the stop was confirmed at about 45 ms by the script's last words)
+  backend.opt.lateEndMs = 150;
+  await backend.play('F');
+  await until(() => backend.scriptRunning);
+  await backend.play('FF');
+  await new Promise((r) => setTimeout(r, 400));                       // the late one (90 ms) was ignored, and the window is over
+  assert.equal(events.filter((e) => e.type === 'script-ended').length, 0);
+  backend.doc.dispatchEvent(new CustomEvent(EV.pyStatus, { detail: false }));      // a real end, long after
+  assert.equal(backend.scriptRunning, false);
+  assert.equal(events.filter((e) => e.type === 'script-ended').length, 1);
+});
+
+test('Stop is sent to the robot even when nothing is believed to run, and does not wait long for an answer then', async () => {
+  const { backend, calls } = setup();
+  backend.scriptRunning = false;
+  const t0 = Date.now();
+  await backend.stop();
+  assert.deepEqual(calls, ['stop'], 'the robot is asked');
+  assert.ok(Date.now() - t0 < 400, `the short wait for a robot that may have nothing to stop (${Date.now() - t0} ms)`);
+});
+
 test('the wait for hello does not start before the script has been sent: a slow upload is not a missing robot', async () => {
   const { backend, events } = setup({ uploadDelay: 300, helloTimeoutMs: 120 });
   await backend.play('F');                               // the upload alone takes longer than the wait for hello
@@ -274,7 +316,7 @@ test('at connection: stop what may run, put the module on the robot once, then s
   await backend.idle('FRF');
   assert.deepEqual(calls.slice(0, 8), ['streamOff', 'stop', 'list', `uploadFile ${MODULE.name}.py`, `saveFile ${MODULE.name}.py`, 'freeMemory', 'list', 'send'], calls.join(', '));
   assert.ok(files.has(`${MODULE.name}.py`));
-  assert.equal(fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FRF", 0)\n`, 'two lines, not the whole mode');
+  assert.equal(fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FRF", 0, 0, 0, 1)\n`, 'two lines, not the whole mode');
   assert.ok(log.some((l) => /a script was running and has stopped/.test(l.text)));
   await until(() => events.some((e) => e.type === 'prog'));
   assert.deepEqual(events.find((e) => e.type === 'prog'), { type: 'prog', program: 'FRF' });
@@ -484,7 +526,7 @@ test('a robot that has just been connected is given the cards at once (the inter
   await backend.connect();                                              // the connection is announced by the API
   sync.update({ program: 'FFLF', live: true, busy: false });            // the interface now sees a connected robot
   await until(() => events.some((e) => e.type === 'prog'), 3000);
-  assert.equal(fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FFLF", 0)\n`, 'the cards\' program, started on the robot');
+  assert.equal(fake.script, `import ${MODULE.name}\n${MODULE.name}.run("FFLF", 0, 0, 0, 1)\n`, 'the cards\' program, started on the robot');
   assert.deepEqual(events.find((e) => e.type === 'prog'), { type: 'prog', program: 'FFLF' });
   assert.ok(calls.indexOf('send') > calls.indexOf('list'), 'after the preparation');
 });
@@ -535,7 +577,7 @@ test('a start that waits runs through the lights and the module like one without
   await backend.idle('FRF');
   // the lights come first, then the two lines
   assert.match(fake.script, /^import thymio as t\n/);
-  assert.match(fake.script, /^import cards_\w+\ncards_\w+\.run\("FRF", 0(, \d+)?\)\n$/m);
+  assert.match(fake.script, /^import cards_\w+\ncards_\w+\.run\("FRF", 0(, \d+)*\)\n$/m);
   assert.ok(Buffer.byteLength(fake.script) <= 990, `two packets at the usual MTU (501 bytes of script in the first, 508 in the next): ${Buffer.byteLength(fake.script)} bytes`);
   await until(() => events.some((e) => e.type === 'hello') && events.some((e) => e.type === 'prog'));
   assert.ok(events.some((e) => e.type === 'prog' && e.program === 'FRF'), 'the mode holds the cards');

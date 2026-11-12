@@ -68,9 +68,12 @@ test('the robot script carries the program and stays small', () => {
   assert.match(idle, /^OBSTACLE = 0 /m, 'no detection by default');
   assert.match(buildScriptFrom(SOURCE, 'F', { autoplay: true, minified: false, limit: 3000 }), /^OBSTACLE = 3000 /m, 'the limit is written in the header of the whole script');
   assert.match(buildScriptFrom(SOURCE, 'F', { limit: -4 }), /^OBSTACLE = 0$/m, 'minified: the comment goes');
+  assert.match(buildScriptFrom(SOURCE, 'F', { autoplay: true, minified: false }), /^LOCKED = 0 /m, 'free by default (the script of the settings page, for a robot without a tablet)');
+  assert.match(buildScriptFrom(SOURCE, 'F', { autoplay: true, minified: false, locked: true }), /^LOCKED = 1 /m, 'locked: a tablet is connected');
+  assert.match(buildScriptFrom(SOURCE, 'F', { locked: true }), /^LOCKED = 1$/m);
   const small = buildScriptFrom(SOURCE, 'FFLR');
   assert.ok(small.length < SOURCE.length * 0.7, `minified ${small.length} of ${SOURCE.length}`);
-  assert.ok(small.length < 23000, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it, the obstacle stop about 2 KB)');
+  assert.ok(small.length < 23500, 'a few seconds of Bluetooth upload (the live-update receiver and the advanced cards are about 4 KB of it, the obstacle stop about 2 KB)');
   assert.ok(!/^\s*#/m.test(small));
   assert.ok(small.trimEnd().endsWith('\nrun()'), 'the whole mode ends by running');
   assert.ok(minify('a = 1  # one\nb = "#"  # two\n\n# c\n').startsWith('a = 1\nb = "#"  # two\n'));
@@ -143,8 +146,9 @@ test('the simulator mirrors the events of the script', () => {
 test('the module: no call at the end, a name from its content, a two-line launcher', () => {
   const mod = buildModuleFrom(SOURCE);
   assert.ok(!/^run\(\)/m.test(mod), 'importing it runs nothing');
-  assert.match(mod, /^def run\(program=None, autoplay=None, phase=0, limit=None\):$/m);
+  assert.match(mod, /^def run\(program=None, autoplay=None, phase=0, limit=None, locked=None\):$/m);
   assert.match(mod, /^OBSTACLE = 0$/m, 'an object in the way is not looked for unless the start says so');
+  assert.match(mod, /^LOCKED = 0$/m, 'the centre button leaves the mode unless the start says a tablet is connected');
   const name = moduleNameFor(mod);
   assert.match(name, /^cards_[0-9a-f]{8}$/);
   assert.ok(`${name}.py`.length <= 29, 'a robot file name is at most 30 bytes with its NUL');
@@ -159,9 +163,14 @@ test('the module: no call at the end, a name from its content, a two-line launch
   assert.equal(launcherFor(name, 'F', { autoplay: true, limit: 3000 }), `import ${name}\n${name}.run("F", 1, 0, 3000)\n`);
   assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123, limit: 3000 }), `import ${name}\n${name}.run("F", 0, 123, 3000)\n`);
   for (const bad of [-5, 1.5, 'x', NaN, null, undefined]) assert.equal(launcherFor(name, 'F', { autoplay: true, limit: bad }), `import ${name}\n${name}.run("F", 1)\n`, `a limit that is not a whole number above 0 is no limit (${bad})`);
+  // the lock of the centre button comes last (a page is connected): the phase and the limit are written before it, as zero when they are not needed
+  assert.equal(launcherFor(name, 'F', { autoplay: true, locked: true }), `import ${name}\n${name}.run("F", 1, 0, 0, 1)\n`);
+  assert.equal(launcherFor(name, 'F', { autoplay: false, phase: 123, locked: true }), `import ${name}\n${name}.run("F", 0, 123, 0, 1)\n`);
+  assert.equal(launcherFor(name, 'F', { autoplay: true, limit: 3000, locked: true }), `import ${name}\n${name}.run("F", 1, 0, 3000, 1)\n`);
+  assert.equal(launcherFor(name, 'F', { autoplay: true, locked: false }), `import ${name}\n${name}.run("F", 1)\n`);
   assert.equal(cleanLimit(99999), 9999);
   assert.ok(launcher.length < 80, 'two lines instead of the whole mode');
-  assert.ok(mod.length < 23000);
+  assert.ok(mod.length < 23500);
 });
 
 test('the phase of the lights comes from one clock, so that restarts continue them', () => {

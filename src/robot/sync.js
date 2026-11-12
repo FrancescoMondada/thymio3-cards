@@ -43,6 +43,7 @@ export class RobotSync {
     this.shortLives = 0;      // how many times in a row the mode ended soon after starting
     this.liveFails = 0;       // live updates that failed in a row
     this.liveBroken = false;  // given up for this connection
+    this.changedWhileBusy = null;   // { theirs, mine }: the program the robot reported during a run (it was erased while it played) and the cards' at that moment, for the cards to follow once the run is over
   }
 
   // The cards are written into the mode that runs, which answers with its program (see backend.live):
@@ -78,10 +79,22 @@ export class RobotSync {
   }
 
   update({ program, live, busy, limit = 0 }) {
+    const wasBusy = this.busy;
     this.program = program;
     this.limit = limit;
     this.live = live;
     this.busy = busy;
+    // The run is over, and the robot changed its own program during it (it was erased while it played): the cards follow it, they do not
+    // give the robot its old program back. (If the cards were touched in the meantime, they are the newer word.)
+    if (wasBusy && !busy && this.changedWhileBusy !== null) {
+      const { theirs, mine } = this.changedWhileBusy;
+      this.changedWhileBusy = null;
+      if (live && !this.syncing && !this.timer && mine === program && theirs !== program) {
+        this.log(`the robot's program changed on the robot during the run: ${theirs || '(no cards)'} (the cards follow)`);
+        this.onAdopt(theirs);
+        return;
+      }
+    }
     this.evaluate();
   }
 
@@ -133,6 +146,7 @@ export class RobotSync {
   // "C'est parti": the run carries the program itself, whatever was on its way is not needed.
   async play(program) {
     this.cancelTimer();
+    this.changedWhileBusy = null;
     this.hold = null;
     this.kind = 'play';
     const limit = this.limit;
@@ -167,7 +181,12 @@ export class RobotSync {
         if (this.live && !this.busy && !this.syncing && !this.timer && e.program !== this.program) {
           this.log(`the robot's program changed on the robot: ${e.program || '(no cards)'} (the cards follow)`);
           this.onAdopt(e.program);
-        } else this.evaluate();
+        } else {
+          // During a run the robot only reports a different program if it was erased (on its side, upside down, Stop on the remote):
+          // that is kept for the end of the run, when the cards follow.
+          if (this.live && this.busy && !this.syncing && e.program !== this.program) this.changedWhileBusy = { theirs: e.program, mine: this.program };
+          this.evaluate();
+        }
         break;
       // The mode's own "@@bye" is what says it ended: it comes in order with its other lines. The
       // script-ended notification of the API travels on another channel and may arrive late, when
@@ -204,6 +223,7 @@ export class RobotSync {
       case 'conn':
         if (e.status === 'disconnected') {
           this.cancelTimer();
+          this.changedWhileBusy = null;
           this.known = null;
           this.knownLimit = null;
           this.modeUp = false;

@@ -21,12 +21,14 @@ export const cleanLimit = (limit) => (Number.isInteger(limit) && limit > 0 ? Mat
 
 // A script that holds everything: the program is written in its header and run() is called at the
 // end. Used when the module is not on the robot, and for the download of the settings page.
-export function buildScriptFrom(source, program, { autoplay = true, minified = true, limit = 0 } = {}) {
+// `locked`: a tablet is connected, and the centre button of the robot must not leave the mode.
+export function buildScriptFrom(source, program, { autoplay = true, minified = true, limit = 0, locked = false } = {}) {
   const prog = cleanProgram(program);
   const src = source
     .replace(/^PROGRAM = ".*"$/m, `PROGRAM = "${prog}"`)
     .replace(/^AUTOPLAY = \d$/m, `AUTOPLAY = ${autoplay ? 1 : 0}`)
-    .replace(/^OBSTACLE = \d+/m, `OBSTACLE = ${cleanLimit(limit)}`) + '\nrun()\n';
+    .replace(/^OBSTACLE = \d+/m, `OBSTACLE = ${cleanLimit(limit)}`)
+    .replace(/^LOCKED = \d/m, `LOCKED = ${locked ? 1 : 0}`) + '\nrun()\n';
   return minified ? minify(src) : src;
 }
 
@@ -60,12 +62,14 @@ export function lightsFor(lightsText, program, phase = 0) {
 // run it. A start that only waits for the cards (not a run) begins with the lights of the mode's first
 // tick: importing the mode takes the robot a good while (it is compiled), during which the lights would
 // stay out, since the firmware puts them out when the previous script ends.
-export function launcherFor(name, program, { autoplay = true, phase = 0, lights = '', limit = 0 } = {}) {
+export function launcherFor(name, program, { autoplay = true, phase = 0, lights = '', limit = 0, locked = false } = {}) {
   // (a full buffer of 50 steps shows the overflow animation instead: no lights for that one)
   const lit = !autoplay && lights && cleanProgram(program).length < 50 ? lightsFor(lights, program, phase) : '';
-  const max = cleanLimit(limit);
-  // the limit of the proximity sensor comes last, so that it is only there when an object in the way is looked for
-  return `${lit}import ${name}\n${name}.run("${cleanProgram(program)}", ${autoplay ? 1 : 0}${phase || max ? `, ${phase}` : ''}${max ? `, ${max}` : ''})\n`;
+  // After the program and the replay: the phase of the lights, the limit of the proximity sensor (0: an object in the way is not
+  // looked for) and the lock of the centre button. Each is only there when it, or one after it, is needed.
+  const extra = [phase || 0, cleanLimit(limit), locked ? 1 : 0];
+  while (extra.length && !extra[extra.length - 1]) extra.pop();
+  return `${lit}import ${name}\n${name}.run("${cleanProgram(program)}", ${autoplay ? 1 : 0}${extra.map((v) => `, ${v}`).join('')})\n`;
 }
 
 // Where the pulse of the lights should be, so that a restart does not begin it again: a tick count of a
@@ -224,7 +228,8 @@ export function parseRobotLine(line) {
     case 'sense': return { type: 'sense', index: Number(a[0]) };
     case 'if': return { type: 'if', index: Number(a[0]), taken: a[1] === '1', seen: a[2] || '?', hsv: a.length >= 6 ? [Number(a[3]), Number(a[4]), Number(a[5])] : null };
     case 'blocked': return { type: 'blocked', index: Number(a[0]), percent: Number(a[1]) || 0 };       // an object in the way of the step; the part of it that was made
-    case 'end': return a[0] === 'blocked' ? { type: 'end', blocked: true } : { type: 'end' };            // ("end blocked": the program was given up)
+    // ("end blocked": the program was given up after an object in the way; "end stopped": the robot was erased while it played)
+    case 'end': return a[0] === 'blocked' ? { type: 'end', blocked: true } : a[0] === 'stopped' ? { type: 'end', stopped: true } : { type: 'end' };
     case 'exit': return { type: 'exit' };
     case 'bye': return { type: 'bye' };
     default: return null;

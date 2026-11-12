@@ -6,7 +6,7 @@
 // firmware's habits (stdout sent in batches, a Traceback when a script is stopped, the module kept
 // in the robot's files). The mode itself is the JavaScript port of the Python one (sim/mode.js).
 //
-// window.fakeRobot lets a test play the robot's side: press('F'), exit(), drop('status'), ...
+// window.fakeRobot lets a test play the robot's side: press('F'), exit() (the centre button), drop('status'), ...
 import { VirtualThymio } from '../sim/physics.js';
 import { SimSequence } from '../sim/mode.js';
 import { LiveReceiver, liveNibbles } from '../script-core.js';
@@ -60,7 +60,7 @@ const lineOf = (e) => {
     case 'moved': return say('moved', e.index);
     case 'sense': return say('sense', e.index);
     case 'if': return say('if', e.index, e.taken ? 1 : 0, e.seen);
-    case 'end': return say('end');
+    case 'end': return e.blocked ? say('end', 'blocked') : e.stopped ? say('end', 'stopped') : say('end');
     case 'bye': return say('bye');
     default: return undefined;
   }
@@ -81,10 +81,10 @@ function stopRun(withTraceback) {
   if (!flags.dropStatus) setTimeout(() => fire('thymio-python-execution-status', false), 120);
 }
 
-function startMode(program, autoplay, phase = 0) {
+function startMode(program, autoplay, phase = 0, locked = false) {
   const robot = new VirtualThymio();
   const mode = new SimSequence(robot, program, (e) => lineOf(e), { floor: (x, y) => floorCells[`${x},${y}`] });
-  const r = { robot, mode, kind: 'mode', n: 0, timer: 0 };
+  const r = { robot, mode, kind: 'mode', n: 0, timer: 0, locked };
   run = r;
   setTimeout(() => {                                // the interpreter compiles the module and starts
     if (run !== r) return;
@@ -103,7 +103,7 @@ const loop = (r) => setInterval(() => {
 }, 20 / flags.slow);
 
 function execute(script) {
-  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
+  const launcher = /^import (cards_\w+)\s+\1\.run\("([FBLR()2-9rygcbpwkEYGCUPWK]*)", (\d)(?:, (\d+))?(?:, (\d+))?(?:, (\d+))?\)/m.exec(script);   // (after the lights, when it has them)
   const whole = /^PROGRAM = "([FBLR()2-9rygcbpwkEYGCUPWK]*)"/m.exec(script);
   if (launcher) {
     if (![...files.keys()].includes(`${launcher[1]}.py`)) {
@@ -111,9 +111,9 @@ function execute(script) {
       setTimeout(() => fire('thymio-python-execution-status', false), 100);
       return;
     }
-    startMode(launcher[2], launcher[3] === '1', Number(launcher[4] || 0));
+    startMode(launcher[2], launcher[3] === '1', Number(launcher[4] || 0), launcher[6] === '1');
   } else if (whole && /\nrun\(\)\s*$/.test(script)) {
-    startMode(whole[1], /^AUTOPLAY = 1$/m.test(script));
+    startMode(whole[1], /^AUTOPLAY = 1$/m.test(script), 0, /^LOCKED = 1$/m.test(script));
   } else if (script.includes('@@test start')) {
     run = { kind: 'test', timer: 0 };
     print('@@test start\r\n', true);
@@ -192,7 +192,51 @@ if (typeof window !== 'undefined') {
       m.wr += 1;
       lineOf({ type: 'prog', program: m.seq.slice(0, m.wr).join('') });
     },
-    exit() { if (run?.mode) { say('exit'); stopRun(false); } },
+    // The centre button of the robot. A mode started by a connected page is locked: the button does not leave the mode, it stops
+    // the replay that is under way (the cards stay, "end stopped") and does nothing at rest. Returns true if it did something.
+    exit() {
+      if (!run?.mode) return false;
+      if (run.locked) {
+        const m = run.mode;
+        if (m.state !== 1) return false;                   // (1: the mode is playing)
+        m.r.setSpeed(0, 0);
+        m.r.timerPause();
+        m.sOn = false;
+        m.machine = null;
+        m.rd = 0;
+        m.state = 0;
+        m.playState = 0;
+        m.motionRunning = m.motionInProgress = m.rotationInProgress = false;
+        say('end', 'stopped');
+        say('state', 'record');
+        return true;
+      }
+      say('exit');
+      stopRun(false);
+      return true;
+    },
+    // The robot erased while it plays (on its side, upside down, Stop on the remote): the replay is given up where it is ("end
+    // stopped"), then the cards go: all of them, or only the last one. The demo robot does not really move.
+    erase(all = true) {
+      const r = run, m = r?.mode;
+      if (!m) return false;
+      if (m.state === 1) {                                 // (1: the mode is playing)
+        m.r.setSpeed(0, 0);
+        m.r.timerPause();
+        m.sOn = false;
+        m.machine = null;
+        m.rd = 0;
+        m.state = 0;
+        m.playState = 0;
+        m.motionRunning = m.motionInProgress = m.rotationInProgress = false;
+        say('end', 'stopped');
+        say('state', 'record');
+      }
+      m.wr = all ? 0 : Math.max(0, m.wr - 1);
+      m.seq = m.seq.slice(0, m.wr);
+      lineOf({ type: 'prog', program: m.seq.join('') });
+      return true;
+    },
     // An object in the way of the step that is playing, as the real mode lives it: it says so at once and, a moment later, that the
     // program is given up (the demo robot does not really go back), then waits for cards again.
     block(percent = 40, holdMs = 1500) {

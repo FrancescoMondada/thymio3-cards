@@ -247,7 +247,7 @@ export default function App() {
         anim.current.onBlocked(e.percent, performance.now());
         sfx('oops');
         break;
-      case 'end': anim.current.onEnd(); finish(!e.blocked); break;      // (a program given up is not one that reached its end)
+      case 'end': anim.current.onEnd(); finish(!e.blocked && !e.stopped); break;      // (a program given up, after an object in the way or because the robot was erased, is not one that reached its end)
       case 'bye': case 'script-ended': case 'exit':
         // while a script is being replaced ('sending') the old one ending is expected
         if (s.phase === 'playing') finish(false);
@@ -523,25 +523,38 @@ export default function App() {
     sfx('pick', 'L');
   }, [edited]);
 
+  // Stop: from the moment Go is pressed (the run being sent too: it stops as soon as it is up) until the run is over.
+  // Resolves when the robot has stopped.
+  const stop = useCallback(async () => {
+    if (S.current.phase === 'idle') return;
+    sfx('stop');
+    if (S.current.live) await robot.current.stop(); else sim.current.stop();
+    finish(false);
+  }, [finish]);
+
   const eraseLast = useCallback(() => {
     if (!S.current.cards.length) return;
     removeAt(S.current.cards.length - 1);
   }, [removeAt]);
 
-  const clearAll = useCallback(() => {
+  // Erasing everything while the program runs: the robot is stopped first (it must not go on without its cards), then the cards go.
+  const clearAll = useCallback(async () => {
     if (!S.current.cards.length) return;
+    if (S.current.phase !== 'idle') await stop();
     setCards([]);
     sfx('clear');
     edited();
-  }, [edited]);
+  }, [edited, stop]);
 
-  const loadExample = useCallback((ex) => {
+  // An example replaces the cards: while a program runs, it is stopped first, like for erasing.
+  const loadExample = useCallback(async (ex) => {
+    setPanel(false);
+    if (S.current.phase !== 'idle') await stop();
     setCards(toCards(ex.program));
     if (ex.floor) setFloor(Object.fromEntries(ex.floor.map(([x, y, c]) => [`${x},${y}`, c])));     // the floor the example is made for
     edited();
-    setPanel(false);
     sfx('go');
-  }, [edited]);
+  }, [edited, stop]);
 
   // ---- running ---------------------------------------------------------------------------------
   const go = useCallback(async () => {
@@ -571,13 +584,6 @@ export default function App() {
       sim.current.play(s.program, s.colourAt || (() => undefined));
     }
   }, [cal, note, t]);
-
-  const stop = useCallback(async () => {
-    if (S.current.phase !== 'playing') return;
-    sfx('stop');
-    if (S.current.live) await robot.current.stop(); else sim.current.stop();
-    finish(false);
-  }, [finish]);
 
   const connect = useCallback(async () => {
     if (S.current.live) { setConfirmDisc(true); return; }
