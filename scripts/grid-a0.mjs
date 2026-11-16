@@ -16,7 +16,9 @@ const LINE = 0.6;                                      // mm, the lines of the g
 const FONT = 38;                                       // mm, the letters and numbers of the border
 const SWATCH = 30;
 
-const colourNames = { r: 'rouge', y: 'jaune', g: 'vert', c: 'cyan', b: 'bleu', p: 'violet', w: 'blanc', k: 'noir' };
+// the names of the palette (an id has no space nor accent): the middle classes are what is printed orange, light green, dark green
+const colourNames = { r: 'rouge', y: 'orange', g: 'vert-clair', c: 'vert-fonce', b: 'bleu', p: 'violet', w: 'blanc', k: 'noir' };
+const colourLabels = { ...colourNames, g: 'vert clair', c: 'vert foncé' };
 const f = (v) => +v.toFixed(3);
 const letter = (i) => String.fromCharCode(65 + i);
 
@@ -50,7 +52,7 @@ export function buildGridSvg(options = {}) {
     labels.push(text(gap, cy(r), r + 1, `ligne-${r + 1}-gauche`), text(page.width - gap, cy(r), r + 1, `ligne-${r + 1}-droite`));
   }
   const swatches = COLOR_CODES.map((c, i) => `<rect id="palette-${colourNames[c]}" x="${page.width + 30}" y="${f(top + i * (SWATCH + 10))}" width="${SWATCH}" height="${SWATCH}" fill="${GROUND_CSS[c]}" stroke="#000000" stroke-width="0.5"/>`
-    + `<text x="${page.width + 30 + SWATCH + 8}" y="${f(top + i * (SWATCH + 10) + SWATCH / 2 + 4)}" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">${colourNames[c]}</text>`).join('');
+    + `<text x="${page.width + 30 + SWATCH + 8}" y="${f(top + i * (SWATCH + 10) + SWATCH / 2 + 4)}" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">${colourLabels[c]}</text>`).join('');
   const note = `<text x="${page.width + 30}" y="${f(top - 14)}" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">Palette des 8 couleurs du capteur (hors page, non imprimée)</text>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${page.width}mm" height="${page.height}mm" viewBox="0 0 ${page.width} ${page.height}">

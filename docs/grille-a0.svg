@@ -1,115 +1,203 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="841mm" height="1189mm" viewBox="0 0 841 1189">
-<title>Grille de cases de 15 cm, A0</title>
-<desc>5 colonnes (A à E) et 7 lignes (1 à 7) de cases de 15 cm, un point de 5 mm au centre de chaque case. 1 unité = 1 mm.</desc>
-<g id="couleurs" inkscape:groupmode="layer" inkscape:label="1 · Couleurs des cases (donner une couleur de remplissage à un carré colorie toute la case)"><rect id="cell-A1" x="45.5" y="69.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B1" x="195.5" y="69.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C1" x="345.5" y="69.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D1" x="495.5" y="69.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E1" x="645.5" y="69.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A2" x="45.5" y="219.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B2" x="195.5" y="219.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C2" x="345.5" y="219.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D2" x="495.5" y="219.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E2" x="645.5" y="219.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A3" x="45.5" y="369.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B3" x="195.5" y="369.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C3" x="345.5" y="369.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D3" x="495.5" y="369.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E3" x="645.5" y="369.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A4" x="45.5" y="519.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B4" x="195.5" y="519.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C4" x="345.5" y="519.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D4" x="495.5" y="519.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E4" x="645.5" y="519.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A5" x="45.5" y="669.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B5" x="195.5" y="669.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C5" x="345.5" y="669.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D5" x="495.5" y="669.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E5" x="645.5" y="669.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A6" x="45.5" y="819.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B6" x="195.5" y="819.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C6" x="345.5" y="819.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D6" x="495.5" y="819.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E6" x="645.5" y="819.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-A7" x="45.5" y="969.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-B7" x="195.5" y="969.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-C7" x="345.5" y="969.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-D7" x="495.5" y="969.5" width="150" height="150" fill="#ffffff"/>
-<rect id="cell-E7" x="645.5" y="969.5" width="150" height="150" fill="#ffffff"/></g>
-<g id="lieux" inkscape:groupmode="layer" inkscape:label="2 · Lieux et détails (dessiner ici, dans un coin des cases)"></g>
-<g id="grille" inkscape:groupmode="layer" inkscape:label="3 · Grille" fill="none" stroke="#000000" stroke-width="0.6" stroke-linecap="square"><line x1="45.5" y1="69.5" x2="45.5" y2="1119.5"/>
-<line x1="195.5" y1="69.5" x2="195.5" y2="1119.5"/>
-<line x1="345.5" y1="69.5" x2="345.5" y2="1119.5"/>
-<line x1="495.5" y1="69.5" x2="495.5" y2="1119.5"/>
-<line x1="645.5" y1="69.5" x2="645.5" y2="1119.5"/>
-<line x1="795.5" y1="69.5" x2="795.5" y2="1119.5"/>
-<line x1="45.5" y1="69.5" x2="795.5" y2="69.5"/>
-<line x1="45.5" y1="219.5" x2="795.5" y2="219.5"/>
-<line x1="45.5" y1="369.5" x2="795.5" y2="369.5"/>
-<line x1="45.5" y1="519.5" x2="795.5" y2="519.5"/>
-<line x1="45.5" y1="669.5" x2="795.5" y2="669.5"/>
-<line x1="45.5" y1="819.5" x2="795.5" y2="819.5"/>
-<line x1="45.5" y1="969.5" x2="795.5" y2="969.5"/>
-<line x1="45.5" y1="1119.5" x2="795.5" y2="1119.5"/></g>
-<g id="points" inkscape:groupmode="layer" inkscape:label="4 · Points au centre des cases"><circle id="dot-A1" cx="120.5" cy="144.5" r="2.5" fill="#000000"/>
-<circle id="dot-B1" cx="270.5" cy="144.5" r="2.5" fill="#000000"/>
-<circle id="dot-C1" cx="420.5" cy="144.5" r="2.5" fill="#000000"/>
-<circle id="dot-D1" cx="570.5" cy="144.5" r="2.5" fill="#000000"/>
-<circle id="dot-E1" cx="720.5" cy="144.5" r="2.5" fill="#000000"/>
-<circle id="dot-A2" cx="120.5" cy="294.5" r="2.5" fill="#000000"/>
-<circle id="dot-B2" cx="270.5" cy="294.5" r="2.5" fill="#000000"/>
-<circle id="dot-C2" cx="420.5" cy="294.5" r="2.5" fill="#000000"/>
-<circle id="dot-D2" cx="570.5" cy="294.5" r="2.5" fill="#000000"/>
-<circle id="dot-E2" cx="720.5" cy="294.5" r="2.5" fill="#000000"/>
-<circle id="dot-A3" cx="120.5" cy="444.5" r="2.5" fill="#000000"/>
-<circle id="dot-B3" cx="270.5" cy="444.5" r="2.5" fill="#000000"/>
-<circle id="dot-C3" cx="420.5" cy="444.5" r="2.5" fill="#000000"/>
-<circle id="dot-D3" cx="570.5" cy="444.5" r="2.5" fill="#000000"/>
-<circle id="dot-E3" cx="720.5" cy="444.5" r="2.5" fill="#000000"/>
-<circle id="dot-A4" cx="120.5" cy="594.5" r="2.5" fill="#000000"/>
-<circle id="dot-B4" cx="270.5" cy="594.5" r="2.5" fill="#000000"/>
-<circle id="dot-C4" cx="420.5" cy="594.5" r="2.5" fill="#000000"/>
-<circle id="dot-D4" cx="570.5" cy="594.5" r="2.5" fill="#000000"/>
-<circle id="dot-E4" cx="720.5" cy="594.5" r="2.5" fill="#000000"/>
-<circle id="dot-A5" cx="120.5" cy="744.5" r="2.5" fill="#000000"/>
-<circle id="dot-B5" cx="270.5" cy="744.5" r="2.5" fill="#000000"/>
-<circle id="dot-C5" cx="420.5" cy="744.5" r="2.5" fill="#000000"/>
-<circle id="dot-D5" cx="570.5" cy="744.5" r="2.5" fill="#000000"/>
-<circle id="dot-E5" cx="720.5" cy="744.5" r="2.5" fill="#000000"/>
-<circle id="dot-A6" cx="120.5" cy="894.5" r="2.5" fill="#000000"/>
-<circle id="dot-B6" cx="270.5" cy="894.5" r="2.5" fill="#000000"/>
-<circle id="dot-C6" cx="420.5" cy="894.5" r="2.5" fill="#000000"/>
-<circle id="dot-D6" cx="570.5" cy="894.5" r="2.5" fill="#000000"/>
-<circle id="dot-E6" cx="720.5" cy="894.5" r="2.5" fill="#000000"/>
-<circle id="dot-A7" cx="120.5" cy="1044.5" r="2.5" fill="#000000"/>
-<circle id="dot-B7" cx="270.5" cy="1044.5" r="2.5" fill="#000000"/>
-<circle id="dot-C7" cx="420.5" cy="1044.5" r="2.5" fill="#000000"/>
-<circle id="dot-D7" cx="570.5" cy="1044.5" r="2.5" fill="#000000"/>
-<circle id="dot-E7" cx="720.5" cy="1044.5" r="2.5" fill="#000000"/></g>
-<g id="reperes" inkscape:groupmode="layer" inkscape:label="5 · Lettres et numéros du bord" fill="#000000" text-anchor="middle" font-size="38" font-weight="700" style="font-family:Helvetica,Arial,sans-serif"><text id="col-A-haut" x="120.5" y="48.43">A</text>
-<text id="col-A-bas" x="120.5" y="1167.93">A</text>
-<text id="col-B-haut" x="270.5" y="48.43">B</text>
-<text id="col-B-bas" x="270.5" y="1167.93">B</text>
-<text id="col-C-haut" x="420.5" y="48.43">C</text>
-<text id="col-C-bas" x="420.5" y="1167.93">C</text>
-<text id="col-D-haut" x="570.5" y="48.43">D</text>
-<text id="col-D-bas" x="570.5" y="1167.93">D</text>
-<text id="col-E-haut" x="720.5" y="48.43">E</text>
-<text id="col-E-bas" x="720.5" y="1167.93">E</text>
-<text id="ligne-1-gauche" x="22.75" y="158.18">1</text>
-<text id="ligne-1-droite" x="818.25" y="158.18">1</text>
-<text id="ligne-2-gauche" x="22.75" y="308.18">2</text>
-<text id="ligne-2-droite" x="818.25" y="308.18">2</text>
-<text id="ligne-3-gauche" x="22.75" y="458.18">3</text>
-<text id="ligne-3-droite" x="818.25" y="458.18">3</text>
-<text id="ligne-4-gauche" x="22.75" y="608.18">4</text>
-<text id="ligne-4-droite" x="818.25" y="608.18">4</text>
-<text id="ligne-5-gauche" x="22.75" y="758.18">5</text>
-<text id="ligne-5-droite" x="818.25" y="758.18">5</text>
-<text id="ligne-6-gauche" x="22.75" y="908.18">6</text>
-<text id="ligne-6-droite" x="818.25" y="908.18">6</text>
-<text id="ligne-7-gauche" x="22.75" y="1058.18">7</text>
-<text id="ligne-7-droite" x="818.25" y="1058.18">7</text></g>
-<g id="palette" inkscape:groupmode="layer" inkscape:label="6 · Palette (hors page, non imprimée)"><text x="871" y="55.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">Palette des 8 couleurs du capteur (hors page, non imprimée)</text><rect id="palette-rouge" x="871" y="69.5" width="30" height="30" fill="#ef4444" stroke="#000000" stroke-width="0.5"/><text x="909" y="88.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">rouge</text><rect id="palette-jaune" x="871" y="109.5" width="30" height="30" fill="#facc15" stroke="#000000" stroke-width="0.5"/><text x="909" y="128.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">jaune</text><rect id="palette-vert" x="871" y="149.5" width="30" height="30" fill="#22c55e" stroke="#000000" stroke-width="0.5"/><text x="909" y="168.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">vert</text><rect id="palette-cyan" x="871" y="189.5" width="30" height="30" fill="#06b6d4" stroke="#000000" stroke-width="0.5"/><text x="909" y="208.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">cyan</text><rect id="palette-bleu" x="871" y="229.5" width="30" height="30" fill="#3b82f6" stroke="#000000" stroke-width="0.5"/><text x="909" y="248.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">bleu</text><rect id="palette-violet" x="871" y="269.5" width="30" height="30" fill="#a855f7" stroke="#000000" stroke-width="0.5"/><text x="909" y="288.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">violet</text><rect id="palette-blanc" x="871" y="309.5" width="30" height="30" fill="#ffffff" stroke="#000000" stroke-width="0.5"/><text x="909" y="328.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">blanc</text><rect id="palette-noir" x="871" y="349.5" width="30" height="30" fill="#1f2937" stroke="#000000" stroke-width="0.5"/><text x="909" y="368.5" font-size="12" fill="#000000" style="font-family:Helvetica,Arial,sans-serif">noir</text></g>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" version="1.1" viewBox="0 0 2383.9370117 3370.3937988">
+  <!-- Generator: Adobe Illustrator 30.8.2, SVG Export Plug-In . SVG Version: 2.1.4 Build 7)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #e2a325;
+      }
+
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8 {
+        stroke: #000;
+      }
+
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st8 {
+        stroke-miterlimit: 11.338583;
+        stroke-width: 1.4173229px;
+      }
+
+      .st9 {
+        font-family: Helvetica-Bold, Helvetica;
+        font-size: 107.7165375px;
+        font-weight: 700;
+      }
+
+      .st9, .st10 {
+        isolation: isolate;
+      }
+
+      .st1 {
+        fill: #e41f26;
+      }
+
+      .st2 {
+        fill: #1f2937;
+      }
+
+      .st3 {
+        fill: #8e4c9b;
+      }
+
+      .st4 {
+        fill: #3c54a5;
+      }
+
+      .st11, .st5 {
+        fill: #fff;
+      }
+
+      .st10 {
+        font-family: Helvetica, Helvetica;
+        font-size: 34.0157509px;
+      }
+
+      .st6 {
+        fill: #48b75a;
+      }
+
+      .st7 {
+        fill: none;
+        stroke-linecap: square;
+        stroke-miterlimit: 11.338583;
+        stroke-width: 1.7007875px;
+      }
+
+      .st8 {
+        fill: #bfd632;
+      }
+    </style>
+  </defs>
+  <g id="couleurs" inkscape:groupmode="layer" inkscape:label="1 ¬∑ Couleurs des cases (donner une couleur de remplissage √† un carr√© colorie toute la case)">
+    <rect id="cell-A1" class="st11" x="128.9763815" y="197.0078795" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B1" class="st11" x="554.1732438" y="197.0078795" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C1" class="st11" x="979.370106" y="197.0078795" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D1" class="st11" x="1404.5669682" y="197.0078795" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E1" class="st11" x="1829.7638304" y="197.0078795" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A2" class="st11" x="128.9763815" y="622.2047417" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B2" class="st11" x="554.1732438" y="622.2047417" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C2" class="st11" x="979.370106" y="622.2047417" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D2" class="st11" x="1404.5669682" y="622.2047417" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E2" class="st11" x="1829.7638304" y="622.2047417" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A3" class="st11" x="128.9763815" y="1047.4016039" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B3" class="st11" x="554.1732438" y="1047.4016039" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C3" class="st11" x="979.370106" y="1047.4016039" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D3" class="st11" x="1404.5669682" y="1047.4016039" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E3" class="st11" x="1829.7638304" y="1047.4016039" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A4" class="st11" x="128.9763815" y="1472.5984662" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B4" class="st11" x="554.1732438" y="1472.5984662" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C4" class="st11" x="979.370106" y="1472.5984662" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D4" class="st11" x="1404.5669682" y="1472.5984662" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E4" class="st11" x="1829.7638304" y="1472.5984662" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A5" class="st11" x="128.9763815" y="1897.7953284" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B5" class="st11" x="554.1732438" y="1897.7953284" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C5" class="st11" x="979.370106" y="1897.7953284" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D5" class="st11" x="1404.5669682" y="1897.7953284" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E5" class="st11" x="1829.7638304" y="1897.7953284" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A6" class="st11" x="128.9763815" y="2322.9921906" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B6" class="st11" x="554.1732438" y="2322.9921906" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C6" class="st11" x="979.370106" y="2322.9921906" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D6" class="st11" x="1404.5669682" y="2322.9921906" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E6" class="st11" x="1829.7638304" y="2322.9921906" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-A7" class="st11" x="128.9763815" y="2748.1890528" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-B7" class="st11" x="554.1732438" y="2748.1890528" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-C7" class="st11" x="979.370106" y="2748.1890528" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-D7" class="st11" x="1404.5669682" y="2748.1890528" width="425.1968622" height="425.1968622"/>
+    <rect id="cell-E7" class="st11" x="1829.7638304" y="2748.1890528" width="425.1968622" height="425.1968622"/>
+  </g>
+  <g id="grille" inkscape:groupmode="layer" inkscape:label="3 ¬∑ Grille">
+    <line class="st7" x1="128.9763815" y1="197.0078795" x2="128.9763815" y2="3173.385915"/>
+    <line class="st7" x1="554.1732438" y1="197.0078795" x2="554.1732438" y2="3173.385915"/>
+    <line class="st7" x1="979.370106" y1="197.0078795" x2="979.370106" y2="3173.385915"/>
+    <line class="st7" x1="1404.5669682" y1="197.0078795" x2="1404.5669682" y2="3173.385915"/>
+    <line class="st7" x1="1829.7638304" y1="197.0078795" x2="1829.7638304" y2="3173.385915"/>
+    <line class="st7" x1="2254.9606926" y1="197.0078795" x2="2254.9606926" y2="3173.385915"/>
+    <line class="st7" x1="128.9763815" y1="197.0078795" x2="2254.9606926" y2="197.0078795"/>
+    <line class="st7" x1="128.9763815" y1="622.2047417" x2="2254.9606926" y2="622.2047417"/>
+    <line class="st7" x1="128.9763815" y1="1047.4016039" x2="2254.9606926" y2="1047.4016039"/>
+    <line class="st7" x1="128.9763815" y1="1472.5984662" x2="2254.9606926" y2="1472.5984662"/>
+    <line class="st7" x1="128.9763815" y1="1897.7953284" x2="2254.9606926" y2="1897.7953284"/>
+    <line class="st7" x1="128.9763815" y1="2322.9921906" x2="2254.9606926" y2="2322.9921906"/>
+    <line class="st7" x1="128.9763815" y1="2748.1890528" x2="2254.9606926" y2="2748.1890528"/>
+    <line class="st7" x1="128.9763815" y1="3173.385915" x2="2254.9606926" y2="3173.385915"/>
+  </g>
+  <g id="points" inkscape:groupmode="layer" inkscape:label="4 ¬∑ Points au centre des cases">
+    <circle id="dot-A1" cx="341.5748127" cy="409.6063106" r="7.0866144"/>
+    <circle id="dot-B1" cx="766.7716749" cy="409.6063106" r="7.0866144"/>
+    <circle id="dot-C1" cx="1191.9685371" cy="409.6063106" r="7.0866144"/>
+    <circle id="dot-D1" cx="1617.1653993" cy="409.6063106" r="7.0866144"/>
+    <circle id="dot-E1" cx="2042.3622615" cy="409.6063106" r="7.0866144"/>
+    <circle id="dot-A2" cx="341.5748127" cy="834.8031728" r="7.0866144"/>
+    <circle id="dot-B2" cx="766.7716749" cy="834.8031728" r="7.0866144"/>
+    <circle id="dot-C2" cx="1191.9685371" cy="834.8031728" r="7.0866144"/>
+    <circle id="dot-D2" cx="1617.1653993" cy="834.8031728" r="7.0866144"/>
+    <circle id="dot-E2" cx="2042.3622615" cy="834.8031728" r="7.0866144"/>
+    <circle id="dot-A3" cx="341.5748127" cy="1260.000035" r="7.0866144"/>
+    <circle id="dot-B3" cx="766.7716749" cy="1260.000035" r="7.0866144"/>
+    <circle id="dot-C3" cx="1191.9685371" cy="1260.000035" r="7.0866144"/>
+    <circle id="dot-D3" cx="1617.1653993" cy="1260.000035" r="7.0866144"/>
+    <circle id="dot-E3" cx="2042.3622615" cy="1260.000035" r="7.0866144"/>
+    <circle id="dot-A4" cx="341.5748127" cy="1685.1968973" r="7.0866144"/>
+    <circle id="dot-B4" cx="766.7716749" cy="1685.1968973" r="7.0866144"/>
+    <circle id="dot-C4" cx="1191.9685371" cy="1685.1968973" r="7.0866144"/>
+    <circle id="dot-D4" cx="1617.1653993" cy="1685.1968973" r="7.0866144"/>
+    <circle id="dot-E4" cx="2042.3622615" cy="1685.1968973" r="7.0866144"/>
+    <circle id="dot-A5" cx="341.5748127" cy="2110.3937595" r="7.0866144"/>
+    <circle id="dot-B5" cx="766.7716749" cy="2110.3937595" r="7.0866144"/>
+    <circle id="dot-C5" cx="1191.9685371" cy="2110.3937595" r="7.0866144"/>
+    <circle id="dot-D5" cx="1617.1653993" cy="2110.3937595" r="7.0866144"/>
+    <circle id="dot-E5" cx="2042.3622615" cy="2110.3937595" r="7.0866144"/>
+    <circle id="dot-A6" cx="341.5748127" cy="2535.5906217" r="7.0866144"/>
+    <circle id="dot-B6" cx="766.7716749" cy="2535.5906217" r="7.0866144"/>
+    <circle id="dot-C6" cx="1191.9685371" cy="2535.5906217" r="7.0866144"/>
+    <circle id="dot-D6" cx="1617.1653993" cy="2535.5906217" r="7.0866144"/>
+    <circle id="dot-E6" cx="2042.3622615" cy="2535.5906217" r="7.0866144"/>
+    <circle id="dot-A7" cx="341.5748127" cy="2960.7874839" r="7.0866144"/>
+    <circle id="dot-B7" cx="766.7716749" cy="2960.7874839" r="7.0866144"/>
+    <circle id="dot-C7" cx="1191.9685371" cy="2960.7874839" r="7.0866144"/>
+    <circle id="dot-D7" cx="1617.1653993" cy="2960.7874839" r="7.0866144"/>
+    <circle id="dot-E7" cx="2042.3622615" cy="2960.7874839" r="7.0866144"/>
+  </g>
+  <g id="reperes" inkscape:groupmode="layer" inkscape:label="5 ¬∑ Lettres et num√©ros du bord">
+    <text id="col-A-haut" class="st9" transform="translate(302.6806641 137.2816162)"><tspan x="0" y="0">A</tspan></text>
+    <text id="col-A-bas" class="st9" transform="translate(302.6806641 3310.6673584)"><tspan x="0" y="0">A</tspan></text>
+    <text id="col-B-haut" class="st9" transform="translate(727.8769531 137.2816162)"><tspan x="0" y="0">B</tspan></text>
+    <text id="col-B-bas" class="st9" transform="translate(727.8769531 3310.6673584)"><tspan x="0" y="0">B</tspan></text>
+    <text id="col-C-haut" class="st9" transform="translate(1153.0742188 137.2816162)"><tspan x="0" y="0">C</tspan></text>
+    <text id="col-C-bas" class="st9" transform="translate(1153.0742188 3310.6673584)"><tspan x="0" y="0">C</tspan></text>
+    <text id="col-D-haut" class="st9" transform="translate(1578.2705078 137.2816162)"><tspan x="0" y="0">D</tspan></text>
+    <text id="col-D-bas" class="st9" transform="translate(1578.2705078 3310.6673584)"><tspan x="0" y="0">D</tspan></text>
+    <text id="col-E-haut" class="st9" transform="translate(2006.4394531 137.2816162)"><tspan x="0" y="0">E</tspan></text>
+    <text id="col-E-bas" class="st9" transform="translate(2006.4394531 3310.6673584)"><tspan x="0" y="0">E</tspan></text>
+    <text id="ligne-1-gauche" class="st9" transform="translate(34.5351562 448.3831787)"><tspan x="0" y="0">1</tspan></text>
+    <text id="ligne-1-droite" class="st9" transform="translate(2289.4960938 448.3831787)"><tspan x="0" y="0">1</tspan></text>
+    <text id="ligne-2-gauche" class="st9" transform="translate(34.5351562 873.5804443)"><tspan x="0" y="0">2</tspan></text>
+    <text id="ligne-2-droite" class="st9" transform="translate(2289.4960938 873.5804443)"><tspan x="0" y="0">2</tspan></text>
+    <text id="ligne-3-gauche" class="st9" transform="translate(34.5351562 1298.7767334)"><tspan x="0" y="0">3</tspan></text>
+    <text id="ligne-3-droite" class="st9" transform="translate(2289.4960938 1298.7767334)"><tspan x="0" y="0">3</tspan></text>
+    <text id="ligne-4-gauche" class="st9" transform="translate(34.5351562 1723.973999)"><tspan x="0" y="0">4</tspan></text>
+    <text id="ligne-4-droite" class="st9" transform="translate(2289.4960938 1723.973999)"><tspan x="0" y="0">4</tspan></text>
+    <text id="ligne-5-gauche" class="st9" transform="translate(34.5351562 2149.1702881)"><tspan x="0" y="0">5</tspan></text>
+    <text id="ligne-5-droite" class="st9" transform="translate(2289.4960938 2149.1702881)"><tspan x="0" y="0">5</tspan></text>
+    <text id="ligne-6-gauche" class="st9" transform="translate(34.5351562 2574.3675537)"><tspan x="0" y="0">6</tspan></text>
+    <text id="ligne-6-droite" class="st9" transform="translate(2289.4960938 2574.3675537)"><tspan x="0" y="0">6</tspan></text>
+    <text id="ligne-7-gauche" class="st9" transform="translate(34.5351562 2999.5648193)"><tspan x="0" y="0">7</tspan></text>
+    <text id="ligne-7-droite" class="st9" transform="translate(2289.4960938 2999.5648193)"><tspan x="0" y="0">7</tspan></text>
+  </g>
+  <text class="st10" transform="translate(2499.7821655 233.225708)"><tspan x="0" y="0">Palette des 8 couleurs du capteur (hors page, non imprimée)</tspan></text>
+  <rect id="palette-rouge" class="st1" x="2499.7821098" y="272.9120804" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 326.7706299)"><tspan x="0" y="0">rouge</tspan></text>
+  <text class="st10" transform="translate(2607.4979858 440.1553955)"><tspan x="0" y="0">orange</tspan></text>
+  <rect id="palette-vert" class="st8" x="2499.7821098" y="499.6837402" width="85.0393724" height="85.0393724"/>
+  <rect id="palette-vert1" data-name="palette-vert" class="st0" x="2499.7821098" y="386.2979103" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 553.5411377)"><tspan x="0" y="0">vert clair</tspan></text>
+  <rect id="palette-cyan" class="st6" x="2499.7821098" y="613.0695702" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 666.9278564)"><tspan x="0" y="0">vert foncé</tspan></text>
+  <rect id="palette-bleu" class="st4" x="2499.7821098" y="726.4554001" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 780.3135986)"><tspan x="0" y="0">bleu</tspan></text>
+  <rect id="palette-violet" class="st3" x="2499.7821098" y="839.84123" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 893.6993408)"><tspan x="0" y="0">violet</tspan></text>
+  <rect id="palette-blanc" class="st5" x="2499.7821098" y="953.22706" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 1007.085083)"><tspan x="0" y="0">blanc</tspan></text>
+  <rect id="palette-noir" class="st2" x="2499.7821098" y="1066.6128899" width="85.0393724" height="85.0393724"/>
+  <text class="st10" transform="translate(2607.4979858 1120.4708252)"><tspan x="0" y="0">noir</tspan></text>
 </svg>

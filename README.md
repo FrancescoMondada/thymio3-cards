@@ -187,13 +187,42 @@ reçoit un pinceau :
 | répéter, avec une **couleur** au milieu de la boucle | « tant que » : refait la carte (ou le groupe) **tant que le sol est de cette couleur**, en regardant le sol avant chaque tour |
 | si le sol est… (8 couleurs) | **lit la couleur du sol** sous le robot, et fait la carte suivante (ou le groupe suivant) seulement si c'est celle-là ; sinon la saute |
 
-Les huit couleurs sont celles du capteur du robot (`color_sensor.h` : rouge, jaune, vert, cyan, bleu,
-violet, blanc, noir). Une carte ajoutée à la palette part avec une valeur (×2, rouge) et reste
+Les huit couleurs sont les huit classes du capteur du robot (`color_sensor.h`), nommées ici **comme on les
+imprime** (voir « Les huit couleurs : quoi imprimer » plus bas) : rouge, **orange, vert clair, vert foncé**, bleu,
+violet, blanc, noir. Une carte ajoutée à la palette part avec une valeur (×2, rouge) et reste
 sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pour la répétition : les
   chiffres 2 à 9, **ou** les huit couleurs de la boucle « tant que » ; pour le « si » : les huit couleurs).
 
+### Les huit couleurs : quoi imprimer
+
+Le capteur range ce qu'il voit en huit classes d'après **la teinte qu'il mesure**, qui n'est pas celle d'un écran. Le firmware appelle
+les trois classes du milieu « jaune », « vert » et « cyan » ; ce sont, d'après le rapport « Détection couleurs T3 » (V1, 18.06.2026 :
+3 robots, 7 papiers, 6 imprimantes, mesure au densitomètre) et la fiche de référence du 01.07.2026, un **orange**, un **vert clair**
+et un **vert foncé** imprimés. L'application les dessine et les nomme ainsi, pour que la carte choisie soit celle qui réagit au
+papier posé sous le robot. Les lettres des programmes (`y`, `g`, `c`) ne changent pas : ce sont les numéros de classe du robot.
+
+| carte | lettres | classe du firmware | à imprimer (teinte, saturation ; valeur 100) | CMJN du rapport | teinte lue par le capteur |
+| --- | --- | --- | --- | --- | --- |
+| rouge | `r` `E` | red | 0, 100 | C 3,7 M 100 J 100 N 0,37 | 350 à 10 |
+| **orange** | `y` `Y` | yellow | 40, 100 | C 11 M 38 J 100 | 10 à 30 |
+| **vert clair** | `g` `G` | green | 70, 80 | C 30 M 0 J 100 | 30 à 80 |
+| **vert foncé** | `c` `C` | cyan | 130, 65 | C 67 M 0 J 100 | 80 à 210 |
+| bleu | `b` `U` | blue | 230, 70 | C 87 M 76 J 0 | 210 à 260 |
+| violet | `p` `P` | purple | 290, 80 | C 44 M 84 J 0 | 260 à 350 |
+| blanc | `w` `W` | white | papier blanc | | saturation < 12 et valeur > 65 |
+| noir | `k` `K` | black | noir | | valeur ≤ 20 |
+
+- **Un tapis de cases vert foncé se lit avec la carte « vert foncé »**, pas avec « vert clair ». (Les deux cartes s'appelaient « vert » et
+  « cyan » : un tapis vert foncé envoyait vers la carte « vert », qui ne réagit qu'au vert clair.)
+- **Papier mat, pas brillant** (le brillant fausse la teinte). **Un vrai jaune** (teinte 60) n'est pas l'orange de la fiche : d'après la
+  courbe du rapport il est lu « vert clair ». Les verts se dispersent énormément d'une imprimante à l'autre (le rapport le dit),
+  d'où deux verts seulement et une plage large pour le vert foncé ; les bleus sont les plus réguliers, les violets divergent.
+- **À vérifier sur un robot** : pour le vert foncé (130, 65) la fiche du 01.07 donne une lecture de la sonde de valeur **18**, sous le seuil
+  du noir (valeur ≤ 20) du firmware : sur ce papier-là le robot lirait **noir**. Le violet (valeur 23) est à 3 points du même seuil.
+  Une seule imprimante : à contrôler avec le papier du tapis avant de s'y fier ; s'il se confirme, c'est le seuil du firmware qui est à revoir.
+
 - **Une carte, un caractère** : un programme reste une chaîne. `F B L R` (les pas), `( )`, `2`…`9`
-  (répéter), `r y g c b p w k` (si rouge, jaune, vert, cyan, bleu, violet, blanc, noir) et
+  (répéter), `r y g c b p w k` (si rouge, orange, vert clair, vert foncé, bleu, violet, blanc, noir) et
   `E Y G C U P W K` (la boucle « tant que » avec la même couleur, dans le même ordre : des majuscules,
   sauf R et B qui sont des pas, d'où E pour le rouge et U pour le bleu). `4(FR)` est un carré ;
   `5(FrL)` avance cinq fois et tourne à gauche chaque fois que le sol est rouge ; `E(F)` avance tant
@@ -210,7 +239,7 @@ sélectionnée : une barre sous elle propose les valeurs, en petites cartes (pou
   couleur vue le plus souvent compte (à égalité, la première de `rygcbpwk`). Le mode classe les
   valeurs TSV du capteur (`COLOR_SENSOR().get_hsv()`) comme `UpdateColor()` de `main/color_sensor.c`
   (saturation < 12 et valeur > 65 : blanc ; valeur ≤ 20 : noir ; sinon la teinte : rouge ≤ 10 ou
-  > 350, jaune ≤ 30, vert ≤ 80, cyan ≤ 210, bleu ≤ 260, violet ≤ 350), sauf un point : le micrologiciel
+  > 350, « jaune » = orange ≤ 30, « vert » = vert clair ≤ 80, « cyan » = vert foncé ≤ 210, bleu ≤ 260, violet ≤ 350), sauf un point : le micrologiciel
   appelle « inconnu » un sol gris et sombre, ici un sol sombre et gris (valeur ≤ 20) est noir. Le
   capteur est créé à la première lecture : un micrologiciel qui n'en a pas fait quand même tourner les
   autres cartes (un « si » ne voit alors aucune couleur).
@@ -267,9 +296,9 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 | ![if-group-true](docs/examples/if-group-true.svg) | `Fr(BB)F`<br>sol : rouge en `(0, 1)` | avance ; si rouge, (recule deux fois) ; avance. `FBBF` : avance sur le rouge, recule de deux cases, avance : revient en `(0, 0)`. |
 | ![if-group-false](docs/examples/if-group-false.svg) | `Fr(BB)F`<br>sol : pas de rouge | le groupe est sauté : `FF`, arrive en `(0, 2)` sans attendre. |
 | ![if-turn-red](docs/examples/if-turn-red.svg) | `5(FrL)`<br>sol : rouge en `(0, 2)` | 5 fois : avance ; si rouge, tourne à gauche. Avance de deux cases, tourne à gauche sur le rouge, continue vers la gauche : arrive en `(-3, 2)`. |
-| ![if-green-back](docs/examples/if-green-back.svg) | `2(Fg(BB))`<br>sol : vert en `(0, 1)` | 2 fois : avance ; si vert, (recule deux fois). Premier tour : sur le vert, il recule de deux cases ; second tour : la case n'est pas verte, le groupe est sauté. Arrive en `(0, 0)`. |
+| ![if-green-back](docs/examples/if-green-back.svg) | `2(Fg(BB))`<br>sol : vert clair en `(0, 1)` | 2 fois : avance ; si vert clair, (recule deux fois). Premier tour : sur le vert clair, il recule de deux cases ; second tour : la case n'est pas vert clair, le groupe est sauté. Arrive en `(0, 0)`. |
 | ![if-two](docs/examples/if-two.svg) | `rF gF`<br>sol : rouge en `(0, 0)` | deux « si » côte à côte, chacun avec sa carte. `F` : le premier est vrai, le second est faux. |
-| ![if-never](docs/examples/if-never.svg) | `rgF`<br>sol : rouge en `(0, 0)` | si rouge, (si vert, avance). Ne fait **jamais** rien : une case n'a qu'une couleur. |
+| ![if-never](docs/examples/if-never.svg) | `rgF`<br>sol : rouge en `(0, 0)` | si rouge, (si vert clair, avance). Ne fait **jamais** rien : une case n'a qu'une couleur. |
 
 **La répétition avec une couleur (« tant que ») : recommence tant que le sol a cette couleur**
 
@@ -277,7 +306,7 @@ prendre l'un des exemples des réglages, qui apportent leur sol.
 | --- | --- | --- |
 | ![while-red](docs/examples/while-red.svg) | `E(F)`<br>sol : rouge en `(0, 0)`, `(0, 1)`, `(0, 2)` | tant que le sol est rouge, avance. Suit la bande rouge et s'arrête sur la première case qui n'est pas rouge : `(0, 3)`. |
 | ![while-none](docs/examples/while-none.svg) | `E(F)`<br>sol : pas de rouge | ne bouge pas : le sol n'est pas rouge dès le départ. |
-| ![while-yellow](docs/examples/while-yellow.svg) | `Y(FL)`<br>sol : jaune en `(0, 0)`, `(0, 1)`, `(-1, 1)` | tant que jaune : avance, tourne à gauche. `FLFLFL` : tourne autour des cases jaunes, s'arrête en `(-1, 0)` (pas jaune), tourné vers la droite. |
+| ![while-orange](docs/examples/while-orange.svg) | `Y(FL)`<br>sol : orange en `(0, 0)`, `(0, 1)`, `(-1, 1)` | tant que orange : avance, tourne à gauche. `FLFLFL` : tourne autour des cases orange, s'arrête en `(-1, 0)` (pas orange), tourné vers la droite. |
 | ![while-in-loop](docs/examples/while-in-loop.svg) | `3(F E(F))`<br>sol : rouge en `(0, 1)`, `(0, 2)` | 3 fois : avance, puis tant que rouge avance. `FFFFF` : au premier tour la boucle suit la bande rouge jusqu'en `(0, 3)`, aux autres le sol n'est pas rouge : arrive en `(0, 5)`. |
 | ![while-forever](docs/examples/while-forever.svg) | `E(R)`<br>sol : rouge en `(0, 0)` | tant que le sol est rouge, tourne à droite. **Ne s'arrête jamais** : le sol sous le robot reste rouge. Appuyer sur **Stop**. L'action d'une boucle « tant que » doit pouvoir changer ce que voit le robot. |
 
@@ -301,7 +330,7 @@ puis avec le robot. Les cartes ont les couleurs et les pictogrammes de l'applica
 | 1 | Comment imprimer et découper, comment programmer avec les cartes, ce que fait chaque carte |
 | 2 | **Cartes de base** (24) : avance ×8, recule ×4, tourne à gauche ×4, tourne à droite ×4, et les cartes **Départ** ×2 et **Arrivée** ×2 |
 | 3 | **Groupes et répétitions** (24) : `(` ×6, `)` ×6, répéter ×2 à ×9 (une carte de chaque, et un deuxième jeu de ×2 à ×5) |
-| 4 | **Couleurs** (16) : « si le sol est… » et « répéter tant que le sol est… » dans les huit couleurs du capteur |
+| 4 | **Couleurs** (16) : « si le sol est… » et « répéter tant que le sol est… » dans les huit couleurs du capteur (rouge, orange, vert clair, vert foncé, bleu, violet, blanc, noir) |
 | 5 | **Les cartes en grand** (11, pas à découper) : une carte de chaque sorte — Départ, Arrivée, avance, recule, gauche, droite, début et fin de groupe, répéter, répéter avec une couleur, « si » — de 62 mm, à montrer devant la classe (ou à projeter) |
 
 Imprimer en **A4 à 100 %** (« taille réelle », sans « ajuster à la page »), recto seul : les cartes mesurent
@@ -322,7 +351,7 @@ sur la carte Thymio). Deux versions, chacune en **PDF à imprimer** et en **SVG 
 | | PDF (à imprimer en A0) | SVG (à modifier) |
 | --- | --- | --- |
 | **Grille vide** : les cases blanches, les points, les lettres | [`docs/grille-a0.pdf`](docs/grille-a0.pdf) | [`docs/grille-a0.svg`](docs/grille-a0.svg) |
-| **Exemple « ville »** : des cases en couleur (vert, violet, rouge, jaune, bleu ou blanc) et onze lieux dessinés dans un coin des cases (phare, immeuble, caserne, hôpital, maison, cabane, ferme, musée, château, magasin, école) | [`docs/grille-a0-ville.pdf`](docs/grille-a0-ville.pdf) | [`docs/grille-a0-ville.svg`](docs/grille-a0-ville.svg) |
+| **Exemple « ville »** : des cases en couleur (vert, violet, rouge, jaune, bleu ou blanc ; couleurs revues à la main le 16.11.2026, après le changement des couleurs à imprimer du tableau « Les huit couleurs : quoi imprimer » : un vrai jaune se lit « vert clair », un vert se lit « vert clair » ou « vert foncé » selon sa teinte) et onze lieux dessinés dans un coin des cases (phare, immeuble, caserne, hôpital, maison, cabane, ferme, musée, château, magasin, école) | [`docs/grille-a0-ville.pdf`](docs/grille-a0-ville.pdf) | [`docs/grille-a0-ville.svg`](docs/grille-a0-ville.svg) |
 
 Les SVG s'ouvrent avec Inkscape (gratuit), Illustrator, Affinity ou Figma (une unité = 1 mm dans la grille vide ; Illustrator
 enregistre en points et supprime les calques vides, sans conséquence). L'exemple « ville » est la grille vide complétée :
@@ -334,7 +363,7 @@ grille vide, du bas vers le haut :
 2. **Lieux et détails** : vide. On y dessine les lieux (maison, école, zoo…) **dans un coin d'une case** : ils sont au-dessus
    de la couleur de la case, et sous la grille et le point, qu'ils ne cachent donc pas.
 3. **Grille**, 4. **Points** au centre, 5. **Lettres et numéros** du bord.
-6. **Palette** des huit couleurs du capteur du robot, **hors de la page** (visible dans l'éditeur, jamais imprimée).
+6. **Palette** des huit couleurs du capteur du robot, **hors de la page** (visible dans l'éditeur, jamais imprimée). Le générateur (`npm run docs:grid`) y met maintenant les couleurs à imprimer (orange, vert clair, vert foncé) ; les fichiers de `docs/` (grille vide et « ville », SVG et PDF) ont été revus à la main le 16.11.2026 et ne sortent plus du générateur tels quels (un éditeur renomme les identifiants).
 
 Pour obtenir un PDF après des modifications : l'exporter depuis l'éditeur (en gardant le format A0), ou imprimer le SVG par Chrome :
 `npm run docs:grid` fait `docs/grille-a0.pdf` depuis `docs/grille-a0.svg`, et `node scripts/make-grid-a0.mjs docs/grille-a0-ville.svg`
@@ -449,12 +478,16 @@ drapeau) est déplacé dans l'autre sens, pour rester sur la même case de l'ima
 
 **L'image est le sol du robot virtuel.** Au centre de chaque carré, le robot virtuel lit la couleur
 que vous voyez (sur la carte Thymio : blanc à la maison, jaune au supermarché, rouge au restaurant,
-chez les pompiers et à l'école, bleu à la police, cyan à la piscine, rien sur les routes grises), ramenée à l'une des huit couleurs des cartes « si » et « tant que » (`src/picturecolor.js`) :
+chez les pompiers et à l'école, bleu à la police, cyan à la piscine, rien sur les routes grises ; ici ce sont les noms de **l'écran**, pas ceux
+des cartes : voir la limite ci-dessous), ramenée à l'une des huit couleurs des cartes « si » et « tant que » (`src/picturecolor.js`) :
 la couleur qui occupe le plus le milieu du carré l'emporte (un trait ou une étiquette n'y change
 rien) ; un gris, un carré transparent ou hors de l'image n'ont pas de couleur ; un clair sans teinte
 est du blanc, un très sombre du noir. Les teintes sont rangées par **secteurs autour de chaque couleur**
 (rouge, jaune, vert, cyan, bleu, violet), et non avec les seuils du capteur du robot : ceux-ci sont
-ceux de la teinte du capteur, où le vert d'un écran (teinte 120) serait cyan et son jaune (60) vert. Le pinceau du
+ceux de la teinte du capteur, où le vert d'un écran (teinte 120) serait cyan et son jaune (60) vert. **Limite connue, à corriger** : c'est
+aussi ce que fait le vrai robot avec un papier imprimé (voir « Les huit couleurs : quoi imprimer »), donc le robot virtuel prévoit mal le vrai sur
+les verts et le jaune : une image dont les cases sont vert foncé est lue « vert clair » (carte `g`), alors que le vrai robot lirait « vert foncé »
+(carte `c`) ; une image jaune est lue « orange » (`y`), alors que le vrai robot lirait « vert clair ». Le pinceau du
 mode avancé passe avant l'image, case par case ; le chemin prévu (touche **D**) suit aussi l'image. En
 plaçant le robot, un point de la couleur lue s'affiche au centre de chaque carré, pour voir ce
 que le robot comprend d'un dégradé ou d'une photo : des aplats de couleur franche marchent le mieux.

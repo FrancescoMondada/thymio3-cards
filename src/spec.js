@@ -19,18 +19,20 @@ export const isStep = (c) => STEP_CODES.includes(c);
 // The advanced cards (see lang.js). One card, one character, so that a program stays a string.
 //   ( )        a group: the cards between them count as one
 //   2 .. 9     repeat the next card (or group) that many times
-//   r y g c b p w k   if the ground under the robot is red, yellow, green, cyan, blue, purple, white
-//                     or black (the 8 colours of the colour sensor, color_sensor.h), do the next card
+//   r y g c b p w k   if the ground under the robot is red, orange, light green, dark green, blue, purple, white
+//                     or black (the 8 classes of the colour sensor, color_sensor.h: the letters are the firmware's
+//                     red, yellow, green, cyan, blue, purple, white, black; what the sensor calls yellow, green and
+//                     cyan is what is PRINTED orange, light green and dark green, see colors.js), do the next card
 //                     (or group); if not, skip it
 //   E Y G C U P W K   the same eight colours, for a repeat card that has a colour instead of a number:
 //                     do the next card (or group) again and again while the ground is that colour
-//                     (E red, Y yellow, G green, C cyan, U blue, P purple, W white, K black: capital
+//                     (E red, Y orange, G light green, C dark green, U blue, P purple, W white, K black: capital
 //                     letters, but not R and B, which are steps)
 export const OPEN = '(';
 export const CLOSE = ')';
 export const REPEAT_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 export const COLOR_CODES = ['r', 'y', 'g', 'c', 'b', 'p', 'w', 'k'];
-export const COLOR_NAMES = { r: 'red', y: 'yellow', g: 'green', c: 'cyan', b: 'blue', p: 'purple', w: 'white', k: 'black' };
+export const COLOR_NAMES = { r: 'red', y: 'orange', g: 'light green', c: 'dark green', b: 'blue', p: 'purple', w: 'white', k: 'black' };     // as printed (the firmware's names: yellow, green, cyan)
 export const WHILE_CODES = ['E', 'Y', 'G', 'C', 'U', 'P', 'W', 'K'];
 export const WHILE_COLOR = { E: 'r', Y: 'y', G: 'g', C: 'c', U: 'b', P: 'p', W: 'w', K: 'k' };   // the colour a "while" card asks for
 // every card, in the order of the five-bit codes of the live update (1..30, see script-core.js)

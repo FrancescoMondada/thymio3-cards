@@ -18,7 +18,7 @@ export const EXAMPLES = [
   { id: 'if-never', program: 'rgF', floor: [[0, 0, 'r']], steps: '', cell: [0, 0], looks: 'haut' },
   { id: 'while-red', program: 'E(F)', floor: [[0, 0, 'r'], [0, 1, 'r'], [0, 2, 'r']], steps: 'FFF', cell: [0, 3], looks: 'haut' },
   { id: 'while-none', program: 'E(F)', floor: [], steps: '', cell: [0, 0], looks: 'haut' },
-  { id: 'while-yellow', program: 'Y(FL)', floor: [[0, 0, 'y'], [0, 1, 'y'], [-1, 1, 'y']], steps: 'FLFLFL', cell: [-1, 0], looks: 'droite' },
+  { id: 'while-orange', program: 'Y(FL)', floor: [[0, 0, 'y'], [0, 1, 'y'], [-1, 1, 'y']], steps: 'FLFLFL', cell: [-1, 0], looks: 'droite' },
   { id: 'while-in-loop', program: '3(F E(F))', floor: [[0, 1, 'r'], [0, 2, 'r']], steps: 'FFFFF', cell: [0, 5], looks: 'haut' },
   { id: 'while-forever', program: 'E(R)', floor: [[0, 0, 'r']], steps: null, cell: null, looks: null },
   { id: 'bad-repeat', program: 'F3', floor: [], steps: 'F', cell: [0, 1], looks: 'haut' },

@@ -83,8 +83,8 @@ test('layers an editor shows, from the bottom: colours, places, grid, dots, lett
 });
 
 test('a palette of the eight colours of the sensor is off the page, where it is not printed', () => {
-  const swatches = all(/<rect id="palette-([a-zé]+)" x="([\d.]+)"[^>]*fill="(#[0-9a-f]{6})"/g);
-  assert.deepEqual(swatches.map((m) => m[1]), ['rouge', 'jaune', 'vert', 'cyan', 'bleu', 'violet', 'blanc', 'noir']);
+  const swatches = all(/<rect id="palette-([a-zé-]+)" x="([\d.]+)"[^>]*fill="(#[0-9a-f]{6})"/g);
+  assert.deepEqual(swatches.map((m) => m[1]), ['rouge', 'orange', 'vert-clair', 'vert-fonce', 'bleu', 'violet', 'blanc', 'noir']);
   assert.ok(swatches.every((m) => Number(m[2]) >= PAGE.width), 'beyond the right edge of the page');
 });
 
